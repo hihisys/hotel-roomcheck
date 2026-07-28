@@ -2,12 +2,7 @@ name: Deploy to Cloud Run
 
 on:
   push:
-    branches:
-      - main
-
-env:
-  REGISTRY: gcr.io
-  IMAGE_NAME: hotel-roomcheck
+    branches: [main]
 
 jobs:
   deploy:
@@ -19,49 +14,49 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
-      - name: Authenticate to Google Cloud (Workload Identity Federation)
-        uses: google-github-actions/auth@v2
+      - name: Copy server files to live directory
+        run: |
+          mkdir -p public src data
+          cp -r ../server/public/* public/ 2>/dev/null || true
+          cp -r ../server/src/* src/ 2>/dev/null || true
+          cp -r ../server/data/* data/ 2>/dev/null || true
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
         with:
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v1
 
       - name: Configure Docker for GCR
-        run: |
-          gcloud auth configure-docker
+        run: gcloud auth configure-docker
 
       - name: Build Docker image
         run: |
-          docker build \
-            -t ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:latest \
-            -t ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            .
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/hotel-roomcheck:latest .
 
       - name: Push image to GCR
         run: |
-          docker push ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:latest
-          docker push ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/hotel-roomcheck:latest
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy hotel-roomcheck \
-            --image ${{ env.REGISTRY }}/${{ secrets.GCP_PROJECT_ID }}/${{ env.IMAGE_NAME }}:latest \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/hotel-roomcheck:latest \
             --platform managed \
             --region us-central1 \
-            --allow-unauthenticated \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
             --port 8080 \
             --memory 512Mi \
-            --cpu 1 \
-            --project ${{ secrets.GCP_PROJECT_ID }}
+            --no-allow-unauthenticated
 
       - name: Display service URL
         run: |
           gcloud run services describe hotel-roomcheck \
-            --platform managed \
             --region us-central1 \
             --project ${{ secrets.GCP_PROJECT_ID }} \
             --format='value(status.url)'

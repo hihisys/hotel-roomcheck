@@ -17,17 +17,19 @@ RUN mkdir -p /var/www/html/data && \
     chmod -R 755 /var/www/src
 
 # VirtualHost 설정 - Directory 권한 명시
-RUN echo '<VirtualHost *:8080>\n\
-    ServerName localhost\n\
-    DocumentRoot /var/www/html\n\
-    <Directory /var/www/html>\n\
-        Options Indexes FollowSymLinks\n\
-        AllowOverride All\n\
-        Require all granted\n\
-    </Directory>\n\
-    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
-    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
-</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
+RUN cat > /etc/apache2/sites-available/000-default.conf << 'APACHE'
+<VirtualHost *:8080>
+    ServerName localhost
+    DocumentRoot /var/www/html
+    <Directory /var/www/html>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+APACHE
 
 EXPOSE 8080
 RUN sed -i 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf

@@ -5,14 +5,17 @@ RUN a2enmod rewrite
 
 WORKDIR /var/www/html
 
-COPY . /var/www/html/
+# public 폴더만 복사
+COPY public/ /var/www/html/
+COPY src/ /var/www/src/
 
 RUN mkdir -p /var/www/html/data && \
     chown -R www-data:www-data /var/www/html && \
+    chown -R www-data:www-data /var/www/src && \
     chmod -R 755 /var/www/html && \
     chmod -R 644 /var/www/html/* && \
-    chmod -R 755 /var/www/html/src && \
-    chmod -R 755 /var/www/html/data && \
+    find /var/www/html -type d -exec chmod 755 {} \; && \
+    chmod -R 755 /var/www/src && \
     chmod -R 775 /var/www/html/data
 
 EXPOSE 8080

@@ -16,6 +16,9 @@ RUN mkdir -p /var/www/html/data && \
     chmod -R 775 /var/www/html/data && \
     chmod -R 755 /var/www/src
 
+# Apache 기본 사이트 비활성화
+RUN a2dissite 000-default || true
+
 # VirtualHost 설정 - Directory 권한 명시
 RUN printf '%s\n' \
   '<VirtualHost *:8080>' \
@@ -29,6 +32,9 @@ RUN printf '%s\n' \
   '    ErrorLog ${APACHE_LOG_DIR}/error.log' \
   '    CustomLog ${APACHE_LOG_DIR}/access.log combined' \
   '</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
+
+# VirtualHost 활성화
+RUN a2ensite 000-default
 
 EXPOSE 8080
 RUN sed -i 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>너바나 · 회원정보</title>
+<link rel="stylesheet" href="style.css?v=20260722000000" />
+<style>
+.wrap{max-width:470px}
+.field{margin-top:12px}
+.ro{background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-size:14.5px;font-weight:700;color:var(--sub)}
+.msg{margin-top:12px;font-size:13px;font-weight:700;padding:10px 12px;border-radius:9px;display:none;line-height:1.5}
+.msg.err{background:var(--soBg);color:var(--so);display:block}
+.msg.ok{background:var(--avBg);color:var(--av);display:block}
+.note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6}
+.backbtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer}
+.sechead2{font-size:14.5px;font-weight:800;margin:2px 0 4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="hdrtop">
+      <div class="hdrbrand">
+        <img src="logo.png?v=20260718180000" class="hdrlogo" alt="THE NIRVANA">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
+        <div id="langSelector" style="display:flex;gap:5px">
+          <button data-lang="ko" class="langbtn on" style="padding:6px 10px;border:1px solid var(--line);background:var(--surface);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">한글</button>
+          <button data-lang="en" class="langbtn" style="padding:6px 10px;border:1px solid var(--line);background:var(--surface);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">EN</button>
+          <button data-lang="th" class="langbtn" style="padding:6px 10px;border:1px solid var(--line);background:var(--surface);border-radius:6px;font-size:11px;font-weight:700;cursor:pointer">TH</button>
+        </div>
+        <span class="pagechip pc-agent" id="nameChip"></span><button class="backbtn" id="back" data-i="back">← 돌아가기</button>
+      </div>
+    </div>
+    <p class="lede" data-i="lede">회원정보를 확인하고 수정합니다.</p>
+  </header>
+  <section class="card">
+    <div class="sechead2" data-i="title">회원정보</div>
+    <div class="field"><div class="label" data-i="name">이름</div><div class="ro" id="vName">-</div><input id="nameInput" style="display:none" placeholder="이름 (한글이름)"></div>
+    <div class="field"><div class="label" data-i="acct">계정</div><div class="ro" id="vAcct">-</div></div>
+    <div class="field"><div class="label" data-i="nickname">닉네임</div><input id="nickname" placeholder="표시용 닉네임 (선택사항)"></div>
+    <div class="field" id="fEmail"><div class="label" data-i="email">이메일</div><input id="email" type="email" autocomplete="email"></div>
+    <div class="field"><div class="label" data-i="phone">연락처 (전화번호)</div><input id="phone" autocomplete="tel" placeholder="+66 ..."></div>
+    <div class="field"><div class="label" data-i="bank">은행 계좌</div><input id="bank" placeholder="은행명 + 계좌번호 (선택사항)"></div>
+    <div class="field" id="regionField" style="display:none"><div class="label" data-i="region">관할지역</div><select id="region"><option value="">선택 안 함</option><option value="krabi">카오락 + 푸켓</option><option value="bangkok">방콕 + 파타야</option></select></div>
+    <button class="cta" id="save" data-i="save">저장</button>
+    <div class="msg" id="msg1"></div>
+  </section>
+  <section class="card" id="pwCard">
+    <div class="sechead2" data-i="pw_title">비밀번호 변경</div>
+    <div id="pwForm">
+      <div class="field"><div class="label" data-i="cur_pw">현재 비밀번호</div><input id="curPw" type="password" autocomplete="current-password"></div>
+      <div class="field"><div class="label" data-i="new_pw">새 비밀번호 (6자 이상)</div><input id="newPw" type="password" autocomplete="new-password"></div>
+      <button class="cta" id="pwBtn" data-i="pw_btn">비밀번호 변경</button>
+    </div>
+    <div class="note" id="extNote" style="display:none" data-i="ext_note">에이전시 부계정의 비밀번호·이메일은 에이전시 시스템에서 관리됩니다.</div>
+    <div class="msg" id="msg2"></div>
+  </section>
+  <section class="card" id="tgCard" style="display:none">
+    <div class="sechead2">📲 텔레그램 연결</div>
+    <p class="small" style="margin:0 0 12px">Telegram을 통해 알림을 받을 수 있습니다.</p>
+    <div id="tgStatus"></div>
+    <div id="tgForm" style="display:none">
+      <button class="cta" id="tgLink">텔레그램 연결 링크 생성</button>
+      <div class="msg" id="tgMsg" style="display:none;margin-top:10px;font-size:13px;font-weight:700;padding:10px 12px;border-radius:9px"></div>
+    </div>
+    <div id="tgConnected" style="display:none">
+      <p class="small" style="color:var(--av);margin:0 0 10px">✓ 텔레그램이 연결되었습니다.</p>
+      <button class="backbtn" id="tgDisconnect">연결 해제</button>
+    </div>
+  </section>
+</div>
+<script>
+const LD={
+ko:{back:"← 돌아가기",lede:"회원정보를 확인하고 수정합니다.",title:"회원정보",name:"이름",acct:"계정",nickname:"닉네임",email:"이메일",phone:"연락처 (전화번호)",bank:"은행 계좌",region:"관할지역",save:"저장",
+ ph_name:"이름 (한글이름)",ph_nickname:"표시용 닉네임 (선택사항)",ph_bank:"은행명 + 계좌번호 (선택사항)",region_none:"선택 안 함",region_krabi:"카오락 + 푸켓",region_bangkok:"방콕 + 파타야",
+ pw_title:"비밀번호 변경",cur_pw:"현재 비밀번호",new_pw:"새 비밀번호 (6자 이상)",pw_btn:"비밀번호 변경",
+ ext_note:"에이전시 부계정의 비밀번호·이메일은 에이전시 시스템에서 관리됩니다.",
+ saved:"저장되었습니다.",pw_saved:"비밀번호가 변경되었습니다.",bad_password:"현재 비밀번호가 올바르지 않습니다.",weak_password:"새 비밀번호는 6자 이상이어야 합니다.",
+ invalid_email:"이메일 형식을 확인해주세요.",email_exists:"이미 사용 중인 이메일입니다.",invalid_phone:"연락처를 확인해주세요.",invalid_nickname:"닉네임을 확인해주세요.",invalid_bank_account:"계좌 정보를 확인해주세요.",noserver:"서버에 연결할 수 없습니다.",
+ role_agent:"에이전트",role_sreq:"직원 · 요청자",role_schk:"직원 · 확인자",role_admin:"관리자",agency_acct:"에이전시 부계정",
+ tg_title:"📲 텔레그램 연결",tg_desc:"Telegram을 통해 알림을 받을 수 있습니다.",tg_link:"텔레그램 연결 링크 생성",tg_connected:"✓ 텔레그램이 연결되었습니다.",tg_disconnect:"연결 해제",tg_not_connected:"아직 연결되지 않았습니다.",tg_link_copied:"텔레그램 링크를 복사했습니다.",tg_link_desc:"아래 링크를 Telegram에서 열어서 연결하세요:",tg_link_failed:"링크 생성에 실패했습니다",tg_confirm_disconnect:"텔레그램 연결을 해제할까요?",tg_disconnect_failed:"해제하지 못했습니다"},
+en:{back:"← Back",lede:"View and update your account info.",title:"My Info",name:"Name",acct:"Account",nickname:"Nickname",email:"Email",phone:"Phone",bank:"Bank Account",region:"Region",save:"Save",
+ ph_name:"Name (Korean name)",ph_nickname:"Display nickname (optional)",ph_bank:"Bank name + Account number (optional)",region_none:"Not selected",region_krabi:"Krabi + Phuket",region_bangkok:"Bangkok + Pattaya",
+ pw_title:"Change Password",cur_pw:"Current password",new_pw:"New password (6+ chars)",pw_btn:"Change password",
+ ext_note:"Password and email of agency sub-accounts are managed in the agency system.",
+ saved:"Saved.",pw_saved:"Password changed.",bad_password:"Current password is incorrect.",weak_password:"New password must be 6+ characters.",
+ invalid_email:"Please check the email format.",email_exists:"This email is already in use.",invalid_phone:"Please check the phone number.",invalid_nickname:"Please check the nickname.",invalid_bank_account:"Please check the bank account info.",noserver:"Cannot reach the server.",
+ role_agent:"Agent",role_sreq:"Staff · Requester",role_schk:"Staff · Checker",role_admin:"Admin",agency_acct:"Agency sub-account",
+ tg_title:"📲 Connect Telegram",tg_desc:"Get notifications via Telegram.",tg_link:"Create connection link",tg_connected:"✓ Telegram connected.",tg_disconnect:"Disconnect",tg_not_connected:"Not connected yet.",tg_link_copied:"Telegram link copied.",tg_link_desc:"Open the link in Telegram to connect:",tg_link_failed:"Failed to generate link",tg_confirm_disconnect:"Disconnect Telegram?",tg_disconnect_failed:"Failed to disconnect"},
+th:{back:"← กลับ",lede:"ดูและแก้ไขข้อมูลบัญชีของคุณ",title:"ข้อมูลของฉัน",name:"ชื่อ",acct:"บัญชี",nickname:"ชื่อเล่น",email:"อีเมล",phone:"เบอร์โทร",bank:"บัญชีธนาคาร",region:"ภูมิภาค",save:"บันทึก",
+ ph_name:"ชื่อ (ชื่อเกาหลี)",ph_nickname:"ชื่อเล่น (ไม่บังคับ)",ph_bank:"ชื่อธนาคาร + หมายเลขบัญชี (ไม่บังคับ)",region_none:"ไม่เลือก",region_krabi:"กระบี่ + ภูเก็ต",region_bangkok:"กรุงเทพ + พัทยา",
+ pw_title:"เปลี่ยนรหัสผ่าน",cur_pw:"รหัสผ่านปัจจุบัน",new_pw:"รหัสผ่านใหม่ (6 ตัวขึ้นไป)",pw_btn:"เปลี่ยนรหัสผ่าน",
+ ext_note:"รหัสผ่านและอีเมลของบัญชีย่อยเอเจนซีจัดการในระบบเอเจนซี",
+ saved:"บันทึกแล้ว",pw_saved:"เปลี่ยนรหัสผ่านแล้ว",bad_password:"รหัสผ่านปัจจุบันไม่ถูกต้อง",weak_password:"รหัสผ่านใหม่ต้อง 6 ตัวขึ้นไป",
+ invalid_email:"กรุณาตรวจสอบรูปแบบอีเมล",email_exists:"อีเมลนี้ถูกใช้แล้ว",invalid_phone:"กรุณาตรวจสอบเบอร์โทร",invalid_nickname:"กรุณาตรวจสอบชื่อเล่น",invalid_bank_account:"กรุณาตรวจสอบบัญชีธนาคาร",noserver:"เชื่อมต่อเซิร์ฟเวอร์ไม่ได้",
+ role_agent:"เอเจนต์",role_sreq:"พนักงาน · ผู้ขอ",role_schk:"พนักงาน · ผู้ตรวจสอบ",role_admin:"ผู้ดูแล",agency_acct:"บัญชีย่อยเอเจนซี",
+ tg_title:"📲 เชื่อมต่อ Telegram",tg_desc:"รับการแจ้งเตือนผ่าน Telegram",tg_link:"สร้างลิงค์เชื่อมต่อ",tg_connected:"✓ เชื่อมต่อ Telegram แล้ว",tg_disconnect:"ยกเลิกการเชื่อมต่อ",tg_not_connected:"ยังไม่ได้เชื่อมต่อ",tg_link_copied:"คัดลอกลิงค์ Telegram แล้ว",tg_link_desc:"เปิดลิงค์ใน Telegram เพื่อเชื่อมต่อ:",tg_link_failed:"ไม่สามารถสร้างลิงค์ได้",tg_confirm_disconnect:"ยกเลิกการเชื่อมต่อ Telegram หรือ?",tg_disconnect_failed:"ไม่สามารถยกเลิกการเชื่อมต่อได้"}};
+let L='ko', ME=null;
+const $=id=>document.getElementById(id);
+function tr(){
+  const d=LD[L];
+  document.querySelectorAll('[data-i]').forEach(el=>{if(d[el.dataset.i])el.textContent=d[el.dataset.i];});
+  fillAcct();
+  // placeholder 텍스트 업데이트
+  if($('nameInput'))$('nameInput').placeholder=d.ph_name;
+  if($('nickname'))$('nickname').placeholder=d.ph_nickname;
+  if($('bank'))$('bank').placeholder=d.ph_bank;
+  // select option 업데이트
+  const regionSelect=$('region');
+  if(regionSelect){
+    const currentValue=regionSelect.value;
+    regionSelect.innerHTML='<option value="">'+d.region_none+'</option><option value="krabi">'+d.region_krabi+'</option><option value="bangkok">'+d.region_bangkok+'</option>';
+    regionSelect.value=currentValue;
+  }
+  // 텔레그램 섹션 텍스트 업데이트
+  const tgTitle=document.querySelector('#tgCard .sechead2');
+  if(tgTitle)tgTitle.textContent=d.tg_title||tgTitle.textContent;
+  const tgDescP=document.querySelector('#tgCard .small');
+  if(tgDescP)tgDescP.textContent=d.tg_desc||tgDescP.textContent;
+  const tgLink=$('tgLink');
+  if(tgLink)tgLink.textContent=d.tg_link||tgLink.textContent;
+  const tgConnected=document.querySelector('#tgConnected .small');
+  if(tgConnected)tgConnected.textContent=(d.tg_connected||tgConnected.textContent);
+  const tgDisconnect=$('tgDisconnect');
+  if(tgDisconnect)tgDisconnect.textContent=d.tg_disconnect||tgDisconnect.textContent;
+  // tgStatus 업데이트 (연결되지 않은 상태)
+  if(ME && !ME.tg){
+    const tgStatus=$('tgStatus');
+    if(tgStatus) tgStatus.innerHTML='<p class="small" style="color:var(--muted);margin:0">'+d.tg_not_connected+'</p>';
+  }
+}
+function showMsg(id,kind,key){const m=$(id);m.className='msg '+kind;m.textContent=LD[L][key]||key;}
+function fillAcct(){if(!ME)return;const d=LD[L];
+  $('vAcct').textContent=ME.ext?(d.agency_acct+' · '+((ME.agency&&ME.agency.login_id)||'')):(d['role_'+ME.role]||ME.role);}
+$('back').onclick=()=>{
+  // 브라우저 히스토리가 있으면 실제 이전 페이지로 돌아가고, 없으면 역할별 페이지로 이동
+  if(window.history.length>1){
+    window.history.back();
+  }else{
+    const page={agent:'agent.html',sreq:'request.html',schk:'check.html',admin:'admin.html'}[ME?ME.role:'']||'login.html';
+    location.href=page;
+  }
+};
+// 언어 선택 버튼 핸들러
+document.querySelectorAll('.langbtn').forEach(btn=>{
+  btn.onclick=async()=>{
+    const newLang=btn.dataset.lang;
+    L=newLang;
+    tr();
+    // 서버에도 저장
+    try{
+      await fetch('api/me',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({lang:newLang})});
+      ME.lang=newLang;
+    }catch(e){}
+    // 버튼 상태 업데이트
+    document.querySelectorAll('.langbtn').forEach(b=>b.classList.toggle('on',b.dataset.lang===newLang));
+  };
+});
+(async()=>{
+  try{
+    const r=await fetch('api/me',{cache:'no-store'});const j=await r.json();
+    if(!j.user){location.href='login.html';return;}
+    ME=j.user;
+    if(ME.lang&&LD[ME.lang])L=ME.lang;
+    // 역할별 배색: 로그인한 사용자의 실제 역할에 맞춰 --brand를 동적으로 지정 (2026-07-22, 사이트 전체 배색 일관성 정리)
+    const ROLE_BRAND={sreq:'#2B5FA3',schk:'#B07908',admin:'#54406E'};
+    if(ROLE_BRAND[ME.role]) document.documentElement.style.setProperty('--brand',ROLE_BRAND[ME.role]);
+    $('nameChip').textContent=ME.nickname||(ME.agency&&ME.agency.nickname)||ME.name; // 닉네임 우선
+    $('nameChip').className='pagechip pc-'+ME.role;
+    $('vName').textContent=ME.name;
+    if(ME.role==='admin'){$('vName').style.display='none';$('nameInput').style.display='';$('nameInput').value=ME.name||'';} // 관리자는 이름 수정 가능
+    $('email').value=ME.email||'';
+    $('phone').value=ME.phone||'';
+    $('nickname').value=ME.nickname||'';
+    $('bank').value=ME.bank_account||'';
+    // 직원(sreq/schk)과 관리자는 지역 선택 가능 (에이전트만 표시 안 함)
+    if(ME.role==='sreq'||ME.role==='schk'||ME.role==='admin'){
+      $('regionField').style.display='';
+      if(ME.region) $('region').value=ME.region;
+    }else{
+      $('regionField').style.display='none';
+    }
+    if(ME.ext){
+      $('fEmail').style.display='none'; // 내부용 합성 이메일 숨김
+      $('pwForm').style.display='none';
+      $('extNote').style.display='block';
+    }
+    // 텔레그램 연결 UI (요청자/확인자/승격된 관리자에게만 표시)
+    const showTG = ME.role==='sreq'||ME.role==='schk'||(ME.role==='admin'&&!ME.super);
+    if(showTG){
+      $('tgCard').style.display='';
+      if(ME.tg){
+        $('tgConnected').style.display='';
+        $('tgForm').style.display='none';
+        $('tgStatus').innerHTML='';
+      }else{
+        $('tgForm').style.display='';
+        $('tgConnected').style.display='none';
+        $('tgStatus').innerHTML='<p class="small" style="color:var(--muted);margin:0">'+LD[L].tg_not_connected+'</p>';
+      }
+    }
+    tr();
+  }catch(e){location.href='login.html';}
+})();
+$('save').onclick=async()=>{
+  const body={phone:$('phone').value.trim(),nickname:$('nickname').value.trim(),bank_account:$('bank').value.trim()};
+  if(ME.role==='admin'){const nm=$('nameInput').value.trim();if(nm)body.name=nm;} // 관리자 이름 수정
+  if(!ME.ext){const em=$('email').value.trim();if(em&&em!==ME.email)body.email=em;}
+  // 직원·관리자: 지역 정보도 함께 저장
+  if(ME.role==='sreq'||ME.role==='schk'||ME.role==='admin'){body.region=$('region').value;}
+  try{
+    const r=await fetch('api/me',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(j.ok){ME=j.user||ME;showMsg('msg1','ok','saved');return;}
+    showMsg('msg1','err',j.error||'noserver');
+  }catch(e){showMsg('msg1','err','noserver');}
+};
+$('pwBtn').onclick=async()=>{
+  const cur=$('curPw').value,nw=$('newPw').value;
+  if(nw.length<6){showMsg('msg2','err','weak_password');return;}
+  try{
+    const r=await fetch('api/me',{method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({cur_password:cur,new_password:nw})});
+    const j=await r.json();
+    if(j.ok){$('curPw').value='';$('newPw').value='';showMsg('msg2','ok','pw_saved');return;}
+    showMsg('msg2','err',j.error||'noserver');
+  }catch(e){showMsg('msg2','err','noserver');}
+};
+$('tgLink').onclick=async()=>{
+  const d=LD[L];
+  try{
+    const r=await fetch('api/tg-link',{cache:'no-store'});const j=await r.json();
+    if(j.ok&&j.url){
+      navigator.clipboard.writeText(j.url);
+      const m=$('tgMsg');m.className='msg ok';m.style.display='block';m.innerHTML='<strong>'+d.tg_link_copied+'</strong><br>'+d.tg_link_desc+'<br><code style="font-family:monospace;font-size:11px;word-break:break-all">'+j.url+'</code>';
+      return;
+    }
+    const m=$('tgMsg');m.className='msg err';m.style.display='block';m.textContent=j.message||d.tg_link_failed;
+  }catch(e){
+    const m=$('tgMsg');m.className='msg err';m.style.display='block';m.textContent=d.noserver;
+  }
+};
+$('tgDisconnect').onclick=async()=>{
+  const d=LD[L];
+  if(!confirm(d.tg_confirm_disconnect))return;
+  try{
+    const r=await fetch('api/me',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({tg_unlink:true})});
+    const j=await r.json();
+    if(j.ok){ME=j.user||ME;location.reload();return;}
+    alert(d.tg_disconnect_failed);
+  }catch(e){alert(d.noserver);}
+};
+</script>
+</body>
+</html>

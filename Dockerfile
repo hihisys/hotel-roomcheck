@@ -9,11 +9,11 @@ COPY public/ /var/www/html/
 COPY src/ /var/www/src/
 
 RUN mkdir -p /var/www/html/data && \
-    chown -R www-data:www-data /var/www/html /var/www/src && \
+    chown -R www-data:www-data /var/www/html /var/www/src /var/www/html/data && \
     chmod -R 755 /var/www/html && \
     chmod -R 644 /var/www/html/* && \
     find /var/www/html -type d -exec chmod 755 {} \; && \
-    chmod -R 775 /var/www/html/data && \
+    chmod -R 777 /var/www/html/data && \
     chmod -R 755 /var/www/src
 
 # Apache 기본 사이트 비활성화

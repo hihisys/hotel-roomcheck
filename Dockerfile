@@ -9,8 +9,9 @@ RUN apt-get update && apt-get install -y \
 # Install PHP extensions - SQLite support
 RUN docker-php-ext-install pdo pdo_sqlite
 
-# Enable Apache mod_rewrite for URL rewriting
-RUN a2enmod rewrite
+# Enable Apache mod_rewrite for URL rewriting and configure port
+RUN a2enmod rewrite && \
+    sed -i 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf
 
 # Set working directory
 WORKDIR /var/www/html

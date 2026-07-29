@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions - SQLite support
+# Enable PHP module in Apache
+RUN a2enmod php8.4
+
 RUN docker-php-ext-install pdo pdo_sqlite
 
 # Enable Apache mod_rewrite for URL rewriting and configure port

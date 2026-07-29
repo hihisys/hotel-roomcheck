@@ -1,25 +1,24 @@
 FROM php:8.4-apache
 
-RUN docker-php-ext-install pdo pdo_mysql && \
-    a2enmod rewrite
+# Install PHP extensions - SQLite support
+RUN docker-php-ext-install pdo pdo_sqlite
 
+# Enable Apache mod_rewrite for URL rewriting
+RUN a2enmod rewrite
+
+# Set working directory
 WORKDIR /var/www/html
 
-COPY public/ /var/www/html/
-COPY src/ /var/www/src/
+# Copy all project files
+COPY . /var/www/html/
 
+# Create data directory and set proper permissions
 RUN mkdir -p /var/www/html/data && \
-    chown -R www-data:www-data /var/www/html /var/www/src /var/www/html/data && \
+    chown -R www-data:www-data /var/www/html && \
     chmod -R 755 /var/www/html && \
-    chmod -R 644 /var/www/html/* && \
-    find /var/www/html -type d -exec chmod 755 {} \; && \
-    chmod -R 777 /var/www/html/data && \
-    chmod -R 755 /var/www/src
+    chmod -R 777 /var/www/html/data
 
-# Apache 기본 사이트 비활성화
-RUN a2dissite 000-default || true
-
-# VirtualHost 설정 - Directory 권한 명시
+# Configure Apache using printf for proper newline handling
 RUN printf '%s\n' \
   '<VirtualHost *:8080>' \
   '    ServerName localhost' \
@@ -31,12 +30,13 @@ RUN printf '%s\n' \
   '    </Directory>' \
   '    ErrorLog ${APACHE_LOG_DIR}/error.log' \
   '    CustomLog ${APACHE_LOG_DIR}/access.log combined' \
-  '</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
+  '</VirtualHost>' > /etc/apache2/sites-available/000-default.conf && \
+    a2dissite 000-default.conf 2>/dev/null || true && \
+    a2ensite 000-default.conf
 
-# VirtualHost 활성화
-RUN a2ensite 000-default
-
+# Set environment variables
+ENV PORT=8080
 EXPOSE 8080
-RUN sed -i 's/Listen 80/Listen 8080/' /etc/apache2/ports.conf
 
+# Start Apache
 CMD ["apache2-foreground"]

@@ -28,12 +28,12 @@ RUN mkdir -p /var/www/html/data && \
     chmod -R 755 /var/www/html && \
     chmod -R 777 /var/www/html/data
 
-# Configure Apache VirtualHost
+# Configure Apache VirtualHost with public folder as DocumentRoot
 RUN printf '%s\n' \
   '<VirtualHost *:8080>' \
   '    ServerName localhost' \
-  '    DocumentRoot /var/www/html' \
-  '    <Directory /var/www/html>' \
+  '    DocumentRoot /var/www/html/public' \
+  '    <Directory /var/www/html/public>' \
   '        Options Indexes FollowSymLinks' \
   '        AllowOverride All' \
   '        Require all granted' \

@@ -1,5 +1,11 @@
 FROM php:8.4-apache
 
+# Install system dependencies for SQLite
+RUN apt-get update && apt-get install -y \
+    sqlite3 \
+    libsqlite3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install PHP extensions - SQLite support
 RUN docker-php-ext-install pdo pdo_sqlite
 

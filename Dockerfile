@@ -9,10 +9,12 @@ RUN apt-get update && apt-get install -y \
 # Install PHP extensions - SQLite support
 RUN docker-php-ext-install pdo pdo_sqlite
 
-# Enable Apache mod_rewrite for URL rewriting and configure port
-RUN a2enmod rewrite && \
-    echo "Listen 8080" > /etc/apache2/ports.conf && \
-    sed -i 's/^Listen 80$//g' /etc/apache2/ports.conf
+# Remove default Apache ports configuration and set port 8080
+RUN rm -f /etc/apache2/ports.conf && \
+    echo "Listen 8080" > /etc/apache2/ports.conf
+
+# Enable Apache mod_rewrite
+RUN a2enmod rewrite
 
 # Set working directory
 WORKDIR /var/www/html
@@ -26,7 +28,7 @@ RUN mkdir -p /var/www/html/data && \
     chmod -R 755 /var/www/html && \
     chmod -R 777 /var/www/html/data
 
-# Configure Apache using printf for proper newline handling
+# Configure Apache VirtualHost
 RUN printf '%s\n' \
   '<VirtualHost *:8080>' \
   '    ServerName localhost' \
@@ -42,7 +44,7 @@ RUN printf '%s\n' \
     a2dissite 000-default.conf 2>/dev/null || true && \
     a2ensite 000-default.conf
 
-# Set environment variables
+# Environment and expose
 ENV PORT=8080
 EXPOSE 8080
 

@@ -49,6 +49,14 @@ ENV PORT=8080
 # 외부 API 연동 설정 — 에이전시 부계정 로그인 / 호텔 목록·상세 조회 (2026-07-30)
 ENV AGENCY_API_BASE=https://nirvana835.mycafe24.com
 ENV HOTEL_API_BASE=https://nirvana835.mycafe24.com
+
+# 텔레그램 알림 + 관리자 계정 + 다이제스트 (2026-07-30, 값 출처: claude/server/DEPLOY.md)
+ENV TELEGRAM_BOT_TOKEN=8804358854:AAH1OLKQGc-8uZdp2255KIhLwVIXXQ5x1FY
+ENV TELEGRAM_BOT_USERNAME=Nirvana_hotel_bot
+ENV TELEGRAM_WEBHOOK_SECRET=qYgyAJ8HXip7sx7xlN3CmwHmFGahCH21
+ENV CRON_KEY=3bQaKHPq3aSwu0Fhn59WQwoxGWLz8MZX
+ENV ADMIN_EMAIL=hihisys@gmail.com
+ENV ADMIN_PASSWORD=123456
 EXPOSE 8080
 
 # Start Apache

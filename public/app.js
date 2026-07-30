@@ -217,7 +217,20 @@ async function srvInit(){
     const pageOf={agent:'agent.html',sreq:'request.html',schk:'check.html',admin:'admin.html'};
     if(j.user.role!==ui.role&&j.user.role!=='admin'){location.href=pageOf[j.user.role]||'index.html';return false;}
     SRV.on=true;SRV.me=j.user;
+    /* 에이전트 부계정 API 반영: 부계정 정보(이름/닉네임/전화/계좌)로 draft 자동 채우기 (2026-07-30) */
+    if(ui.role==='agent'&&j.user.agency){
+      draft.agentName=j.user.name||'';
+      draft.agentNickname=j.user.nickname||(j.user.agency&&j.user.agency.nickname)||'';
+      draft.agentPhone=j.user.phone||'';
+      draft.agentBank=j.user.bank_account||'';
+    }
     try{const _ar=await fetch('api/agents',{cache:'no-store'});if(_ar.ok)AGENTS=(await _ar.json()).agents||[];}catch(e){}
+    /* 호텔 API 반영: 외부 호텔 목록을 기존 정적 목록에 병합 — main_hotel_yn='Y' 우선, 이름 ABC순 (2026-07-30, 기존 목록 유지) */
+    try{const _hr=await fetch('api/hotels?active=Y',{cache:'no-store'});
+      if(_hr.ok){const _hj=await _hr.json();const _hl=(_hj&&_hj.hotels)||[];
+        _hl.sort((a,b)=>((b.main_hotel_yn==='Y')-(a.main_hotel_yn==='Y'))||String(a.name||'').localeCompare(String(b.name||'')));
+        _hl.forEach(h=>{if(h&&h.name&&!HOTELS.some(x=>x.name===h.name))HOTELS.push({name:h.name,region:(REGIONS.includes(h.area)?h.area:'전체'),rooms:GENERIC.slice(),api:true,idx:h.idx,main:h.main_hotel_yn==='Y'});});
+      }}catch(e){}
     DB.langs=DB.langs||{};
     if(j.user.lang&&(LANG_ALLOWED[ui.role]||[]).includes(j.user.lang))DB.langs[ui.role]=j.user.lang;
     await srvPull();
@@ -316,6 +329,7 @@ function draftFromReq(r){const base=Date.now();
       options:(row.options||[]).map((o,j)=>({id:base+100+i*10+j,name:o.name,qty:o.qty||1,amt:o.amt||0,show:o.show!==false,memo:o.memo||''}))}))};}
 function newDraft(prev){return {mode:'multi',startDate:todayISO(),sharedNights:1,sharedRooms:1,
   agent:prev?prev.agent:(DB.agentName||''),agentManager:prev?prev.agentManager:'',registrant:prev?prev.registrant:'심은선',manager:'',notes:'',quoteAsk:false,
+  agentName:prev?prev.agentName:'',agentNickname:prev?prev.agentNickname:'',agentPhone:prev?prev.agentPhone:'',agentBank:prev?prev.agentBank:'',
   rows:[{id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[]}]};}
 let draft=newDraft();
 
@@ -379,6 +393,19 @@ function checkerHTML(){
 function agentSelOpts(cur){var opts='<option value="">'+escT(T('ph_sel_input'))+'</option>';var names=AGENTS.map(function(a){return a.name;});AGENTS.forEach(function(a){var lbl=(a.nickname&&a.nickname!==a.name)?(a.nickname+' ('+a.name+')'):a.name;opts+='<option value="'+esc(a.name)+'"'+(a.name===cur?' selected':'')+'>'+escT(lbl)+'</option>';});if(cur&&names.indexOf(cur)<0)opts+='<option value="'+esc(cur)+'" selected>'+escT(cur)+'</option>';return opts;}
 function formHTML(){
   const d=draft;
+  /* 에이전트 부계정 정보 섹션 — 부계정 로그인 시에만 표시, 수동 수정 가능 (2026-07-30) */
+  const agentInfoSection = ui.role==='agent'&&SRV.on&&SRV.me&&SRV.me.agency
+    ? '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">'
+      +'<div class="label" style="margin-bottom:12px;font-size:13px;font-weight:800;color:var(--brand)">📋 '+T('agency_acct')+'</div>'
+      +'<div class="line l3">'
+      +'<div><div class="label">'+T('name')+'</div><input id="agentName" value="'+esc(d.agentName||'')+'" placeholder="'+esc(T('ph_name'))+'"></div>'
+      +'<div><div class="label">'+T('nickname')+'</div><input id="agentNickname" value="'+esc(d.agentNickname||'')+'" placeholder="'+esc(T('ph_nickname'))+'"></div>'
+      +'<div><div class="label">'+T('phone')+'</div><input id="agentPhone" value="'+esc(d.agentPhone||'')+'" placeholder="+66 ..."></div>'
+      +'</div>'
+      +'<div style="margin-top:10px"><div class="label">'+T('bank')+'</div><input id="agentBank" value="'+esc(d.agentBank||'')+'" placeholder="'+esc(T('ph_bank'))+'"></div>'
+      +'<div class="note" style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5">'+T('agency_acct_help')+'</div>'
+      +'</div>'
+    : '';
   const dateArea = d.mode==='parallel'
     ? '<div class="dategrid">'
       +'<div class="datewrap" style="grid-area:1/1"><span class="dlab">'+T('checkin')+'</span><input class="dateinput" readonly data-target="global" data-kind="in" value="'+fdate(d.startDate)+'"><button class="calico calOpen" data-target="global" data-kind="in" title="'+esc(T('cal_open'))+'">📅</button></div>'
@@ -437,6 +464,7 @@ function formHTML(){
     +'<button id="addRow" class="addbtn">'+T('add_hotel')+'</button>'
     +'<div class="memo"><div class="memohead" id="notesHead"><span class="chev'+(ui.notesOpen?' open':'')+'">▶</span> '+T('notes')+'</div>'
     +'<div class="memobody" id="notesBody" style="display:'+(ui.notesOpen?'block':'none')+'"><textarea id="notes" placeholder="'+esc(T('ph_notes'))+'">'+escT(d.notes)+'</textarea></div></div>'
+    +agentInfoSection
     +(ui.role==='sreq'
       ? '<div style="display:flex;gap:8px;margin-top:14px">'
         +'<button id="run" class="cta" style="margin-top:0;flex:1;font-size:13.5px;padding:13px 6px;word-break:keep-all;line-height:1.35">'+T('btn_send_staff')+'</button>'
@@ -458,6 +486,11 @@ function bindForm(){
   const ag=document.getElementById('agent');if(ag)ag.onchange=e=>{d.agent=e.target.value;};
   const am=document.getElementById('agentMgr');if(am)am.oninput=e=>{d.agentManager=e.target.value;};
   const rg=document.getElementById('regName');if(rg)rg.oninput=e=>{d.registrant=e.target.value;};
+  /* 에이전트 부계정 정보 필드 바인딩 (2026-07-30) */
+  const agn=document.getElementById('agentName');if(agn)agn.oninput=e=>{d.agentName=e.target.value;};
+  const agnn=document.getElementById('agentNickname');if(agnn)agnn.oninput=e=>{d.agentNickname=e.target.value;};
+  const agp=document.getElementById('agentPhone');if(agp)agp.oninput=e=>{d.agentPhone=e.target.value;};
+  const agb=document.getElementById('agentBank');if(agb)agb.oninput=e=>{d.agentBank=e.target.value;};
   const nt=document.getElementById('notes');nt.oninput=e=>{d.notes=e.target.value;};
   document.getElementById('notesHead').onclick=()=>{ui.notesOpen=!ui.notesOpen;renderApp();};
   var _qk=document.getElementById('qkind');if(_qk)_qk.onchange=function(e){d.quoteKind=Number(e.target.value)||0;};

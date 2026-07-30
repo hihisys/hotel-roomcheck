@@ -74,6 +74,14 @@ function publicUser(?array $u): ?array {
     'off_days' => decodeOffDays($u['off_days'] ?? '')];
   // 에이전시 부계정으로 로그인한 세션이면 인증 정보 노출 (비밀번호 관련 값 없음)
   if (!empty($_SESSION['agency'])) $out['agency'] = $_SESSION['agency'];
+  // 세션 정보가 없어도 agency_idx가 있으면 agency 구조 구성 — 부계정 자동채우기용 (2026-07-30)
+  elseif (!empty($u['agency_idx'])) {
+    $out['agency'] = [
+      'idx' => (int)$u['agency_idx'],
+      'login_id' => $u['agency_login_id'] ?? '',
+      'nickname' => $u['nickname'] ?? '',
+    ];
+  }
   return $out;
 }
 /* 요청 payload에서 표시용 요약 추출 */

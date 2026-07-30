@@ -46,6 +46,9 @@ RUN printf '%s\n' \
 
 # Environment and expose
 ENV PORT=8080
+# 외부 API 연동 설정 — 에이전시 부계정 로그인 / 호텔 목록·상세 조회 (2026-07-30)
+ENV AGENCY_API_BASE=https://nirvana835.mycafe24.com
+ENV HOTEL_API_BASE=https://nirvana835.mycafe24.com
 EXPOSE 8080
 
 # Start Apache

@@ -479,8 +479,8 @@ function formHTML(){
       +'<div class="flex between aic"><span class="bnum">'+T('hotel_n')+' '+(i+1)+'</span><button class="del btnDel" title="'+esc(T('del_hotel'))+'">−</button></div>'
       +'<div class="line lhotel" style="margin-top:8px">'
         +'<div><div class="label">'+T('region')+'</div><select class="selRegion">'+rlist+'</select></div>'
-        +'<div><div class="label">'+T('hotel_sel')+'</div><div style="position:relative;display:flex;align-items:stretch;gap:4px"><input class="inHotel" style="flex:1;min-width:0" list="hdl'+row.id+'" value="'+esc(dHotel(row.hotel))+'" placeholder="'+esc(T('ph_hotel'))+'"><button type="button" class="cmbBtn" data-kind="hotel" title="'+esc(T('cmb_open')||'목록 열기')+'" style="flex:0 0 30px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;color:var(--muted);font-size:12px">▾</button><div class="cmbList" data-kind="hotel" style="display:none;position:absolute;top:100%;left:0;right:0;margin-top:4px;max-height:220px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:8px;z-index:60;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div></div><datalist id="hdl'+row.id+'">'+hdl+'</datalist></div>'
-        +'<div><div class="label">'+T('room_sel')+'</div><div style="position:relative;display:flex;align-items:stretch;gap:4px"><input class="inRoom" style="flex:1;min-width:0" list="rdl'+row.id+'" value="'+esc(row.roomType)+'" placeholder="'+esc(T('ph_room'))+'"><button type="button" class="cmbBtn" data-kind="room" title="'+esc(T('cmb_open')||'목록 열기')+'" style="flex:0 0 30px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;color:var(--muted);font-size:12px">▾</button><div class="cmbList" data-kind="room" style="display:none;position:absolute;top:100%;left:0;right:0;margin-top:4px;max-height:220px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:8px;z-index:60;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div></div><datalist id="rdl'+row.id+'">'+rdl+'</datalist></div></div>'
+        +'<div><div class="label">'+T('hotel_sel')+'</div><input class="inHotel" list="hdl'+row.id+'" value="'+esc(dHotel(row.hotel))+'" placeholder="'+esc(T('ph_hotel'))+'"><datalist id="hdl'+row.id+'">'+hdl+'</datalist></div>'
+        +'<div><div class="label">'+T('room_sel')+'</div><input class="inRoom" list="rdl'+row.id+'" value="'+esc(row.roomType)+'" placeholder="'+esc(T('ph_room'))+'"><datalist id="rdl'+row.id+'">'+rdl+'</datalist></div></div>'
       +dateRow
       +'<div style="margin-top:10px"><div class="label">'+T('opt_label')+'</div>'
         +(row.options||[]).map(o=>{const custom=o._custom||(!!o.name&&!OPTLIST.includes(o.name));
@@ -501,7 +501,7 @@ function formHTML(){
     +'<div class="seg" id="mode"><button data-v="parallel"'+(d.mode==='parallel'?' class="on"':'')+'>'+T('mode_parallel')+'</button><button data-v="multi"'+(d.mode==='multi'?' class="on"':'')+'>'+T('mode_multi')+'</button></div>'
     +(ui.role==='sreq'
       ? '<div class="line l3">'
-        +'<div><div class="label">'+T('agent_select')+'</div><div style="position:relative;display:flex;align-items:stretch;gap:4px"><input id="agent" style="flex:1;min-width:0" list="dlAg" value="'+esc(d.agent||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"><button type="button" id="agentCmbBtn" title="'+esc(T('cmb_open'))+'" style="flex:0 0 30px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;color:var(--muted);font-size:12px">▾</button><div id="agentCmbList" class="cmbList" style="display:none;position:absolute;top:100%;left:0;right:0;margin-top:4px;max-height:220px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:8px;z-index:60;box-shadow:0 8px 20px rgba(0,0,0,.12)"></div></div><datalist id="dlAg">'+AGENTS.map(a=>'<option value="'+esc(a.name)+'">').join('')+'</datalist></div>'
+        +'<div><div class="label">'+T('agent_select')+'</div><input id="agent" list="dlAg" value="'+esc(d.agent||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"><datalist id="dlAg">'+AGENTS.map(a=>'<option value="'+esc(a.name)+'">').join('')+'</datalist></div>'
         +'<div><div class="label">'+T('agent_mgr')+'</div><input id="agentMgr" list="dlAm" value="'+esc(d.agentManager||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"><datalist id="dlAm">'+((DB.hist&&DB.hist.am)||[]).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist></div>'
         +'<div><div class="label">'+T('mgr_nirvana')+'</div><input id="regName" list="dlSt" value="'+esc(d.registrant||'심은선')+'" placeholder="'+esc(T('ph_input'))+'"><datalist id="dlSt">'+((DB.hist&&DB.hist.st)||[]).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist></div></div>'
       : '')
@@ -531,17 +531,13 @@ function bindForm(){
   document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{d.mode=b.dataset.v;renderApp();});
   const ag=document.getElementById('agent');if(ag){ag.oninput=e=>{d.agent=e.target.value;loadAgencyManagers(d.agent);};ag.onchange=e=>{d.agent=e.target.value;loadAgencyManagers(d.agent);};}
   if(d.agent)loadAgencyManagers(d.agent); /* 이미 선택된 에이전트의 담당자 목록 미리 로드 */
-  /* 에이전트 ▾ 버튼: 전체 에이전시 목록에서 선택 (2026-07-30) */
-  const agBtn=document.getElementById('agentCmbBtn'),agBox=document.getElementById('agentCmbList');
-  if(agBtn&&agBox)agBtn.onclick=ev=>{ev.preventDefault();ev.stopPropagation();
-    if(agBox.style.display==='block'){agBox.style.display='none';return;}
-    document.querySelectorAll('.cmbList').forEach(b=>{b.style.display='none';});
-    agBox.innerHTML=AGENTS.length?AGENTS.map(a=>'<div class="cmbIt" style="padding:8px 10px;cursor:pointer;font-size:13px">'+escT(a.name)+'</div>').join(''):'<div style="padding:8px 10px;font-size:13px;color:var(--muted)">–</div>';
-    agBox.style.display='block';
-    agBox.querySelectorAll('.cmbIt').forEach(it=>{
-      it.onmouseenter=()=>{it.style.background='#F2F5FA';};it.onmouseleave=()=>{it.style.background='';};
-      it.onclick=()=>{d.agent=it.textContent;loadAgencyManagers(d.agent);renderApp();};});
+  /* 입력창(기존 화살표) 클릭 시 전체 목록 표시: 포커스 때 값을 비워 datalist 전체를 열고,
+     선택 없이 나가면 원래 값 복원 (2026-07-30) */
+  const comboize=(inp,getDisp)=>{if(!inp||inp._cmb)return;inp._cmb=true;
+    inp.addEventListener('focus',()=>{inp.dataset.prev=inp.value;if(inp.value)inp.value='';});
+    inp.addEventListener('blur',()=>{setTimeout(()=>{if(document.body.contains(inp)&&!inp.value)inp.value=getDisp()||inp.dataset.prev||'';},120);});
   };
+  if(ag)comboize(ag,()=>d.agent||'');
   const am=document.getElementById('agentMgr');if(am)am.oninput=e=>{d.agentManager=e.target.value;};
   const rg=document.getElementById('regName');if(rg)rg.oninput=e=>{d.registrant=e.target.value;};
   /* 에이전트 부계정 정보 필드 바인딩 (2026-07-30) */
@@ -578,21 +574,9 @@ function bindForm(){
     /* 룸타입은 입력·선택한 그대로 저장/표시 — 한글 입력=한글, 영문 입력=영문 (2026-07-30) */
     ri.oninput=e=>{row.roomType=e.target.value;};
     ri.onchange=e=>{row.roomType=e.target.value;renderApp();};
-    /* ▾ 버튼: 현재 목록에서 다시 선택 (호텔/룸타입, 2026-07-30) */
-    el.querySelectorAll('.cmbBtn').forEach(btn=>{btn.onclick=ev=>{ev.preventDefault();ev.stopPropagation();
-      const kind=btn.dataset.kind;const box=el.querySelector('.cmbList[data-kind="'+kind+'"]');if(!box)return;
-      if(box.style.display==='block'){box.style.display='none';return;}
-      document.querySelectorAll('.cmbList').forEach(b=>{b.style.display='none';});
-      const items=kind==='hotel'?hotelsIn(row.region).map(h=>dHotel(h.name)):roomsFor(row.hotel).map(r=>dRoom(r));
-      box.innerHTML=items.length?items.map(n=>'<div class="cmbIt" style="padding:8px 10px;cursor:pointer;font-size:13px">'+escT(n)+'</div>').join(''):'<div style="padding:8px 10px;font-size:13px;color:var(--muted)">–</div>';
-      box.style.display='block';
-      box.querySelectorAll('.cmbIt').forEach(it=>{
-        it.onmouseenter=()=>{it.style.background='#F2F5FA';};it.onmouseleave=()=>{it.style.background='';};
-        it.onclick=()=>{const v=it.textContent;
-          if(kind==='hotel'){row.hotel=HOTEL_KO[v]||v;loadHotelRooms(row.hotel);}
-          else{row.roomType=v;} /* 선택한 그대로 저장 (한글=한글, 영문=영문) */
-          renderApp();};});
-    };});
+    /* 기존 화살표(입력창) 클릭 시 전체 목록 다시 열기 (2026-07-30) */
+    comboize(hi,()=>dHotel(row.hotel)||'');
+    comboize(ri,()=>row.roomType||'');
     const n=el.querySelector('.inNights');if(n)n.onchange=e=>{row.nights=Math.max(1,Number(e.target.value)||1);renderApp();};
     const rm=el.querySelector('.inRooms');if(rm)rm.onchange=e=>{row.rooms=Math.max(1,Number(e.target.value)||1);};
     el.querySelectorAll('[data-optid]').forEach(o=>{const oid=Number(o.dataset.optid),op=(row.options||[]).find(x=>x.id===oid);
@@ -609,10 +593,6 @@ function bindForm(){
     el.querySelector('.btnDel').onclick=()=>{if(d.rows.length>1){d.rows=d.rows.filter(r=>r.id!==id);renderApp();}};
   });
   document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[]});renderApp();};
-  /* 목록 팝업 바깥 클릭 시 닫기 — 문서 전체에 1회만 등록 (2026-07-30) */
-  if(!window._cmbCloser){window._cmbCloser=true;document.addEventListener('click',e=>{
-    const t=e.target;if(t&&t.closest&&(t.closest('.cmbBtn')||t.closest('.cmbList')))return;
-    document.querySelectorAll('.cmbList').forEach(b=>{b.style.display='none';});});}
   function doSubmit(direct){
     if(!d.rows.some(r=>r.hotel.trim())){toast(T('t_need_hotel1'));return;}
     if(d.mode==='parallel')d.rows.forEach(r=>{r.rooms=Math.max(1,Number(d.sharedRooms)||1);});

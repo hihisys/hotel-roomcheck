@@ -293,7 +293,7 @@ function route(string $path, string $method): void {
   if ($path === 'admin/users' && $method === 'GET') {
     requireAdmin();
     // 2026-07-30: 부계정 회원 정보(닉네임·연락처·계좌·부계정 아이디)도 회원 관리에 표시
-    $rows = $pdo->query("SELECT id,name,email,role,status,lang,telegram_chat_id,off_days,created_at,phone,nickname,bank_account,agency_idx,agency_login_id FROM users ORDER BY status='pending' DESC, id DESC")->fetchAll();
+    $rows = $pdo->query("SELECT id,name,email,role,status,lang,telegram_chat_id,off_days,created_at,phone,nickname,bank_account,agency_idx,agency_login_id,agent_company FROM users ORDER BY status='pending' DESC, id DESC")->fetchAll();
     $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
     foreach ($rows as &$r) {
       $r['tg'] = !empty($r['telegram_chat_id']);
@@ -449,7 +449,8 @@ function route(string $path, string $method): void {
       if ($quoteSent) $tot['quoteSent']++;
       if ($contracted) $tot['contracted']++;
       $none = '(미지정)';
-      statBump($byAgent, trim((string)($p['agent'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);
+      /* 2026-07-31: 에이전트 통계는 에이전시+담당자 쌍으로 집계 (예: Awesome · 최선우) */
+      statBump($byAgent, (trim((string)($p['agent'] ?? '')) ?: $none) . '||' . trim((string)($p['agentManager'] ?? '')), $confirmed, $quoteSent, $contracted);
       statBump($byAgentMgr, trim((string)($p['agentManager'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);
       statBump($byRequester, trim((string)($p['registrant'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);
       if ($answered) statBump($byChecker, trim((string)($p['manager'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);
@@ -460,9 +461,16 @@ function route(string $path, string $method): void {
       usort($out, fn($a, $b) => ($b['confirmed'] <=> $a['confirmed']) ?: ($b['requests'] <=> $a['requests']));
       return $out;
     };
+    /* 에이전트 통계: 'agent||manager' 키를 name/manager로 분리 (2026-07-31) */
+    $agentsOut = [];
+    foreach ($byAgent as $k => $v) {
+      $parts = explode('||', (string)$k, 2);
+      $agentsOut[] = array_merge(['name' => $parts[0], 'manager' => $parts[1] ?? ''], $v);
+    }
+    usort($agentsOut, fn($a, $b) => ($b['confirmed'] <=> $a['confirmed']) ?: ($b['requests'] <=> $a['requests']));
     jsonOut([
       'total' => $tot,
-      'agents' => $fmt($byAgent),
+      'agents' => $agentsOut,
       'agentMgrs' => $fmt($byAgentMgr),
       'requesters' => $fmt($byRequester),
       'checkers' => $fmt($byChecker),

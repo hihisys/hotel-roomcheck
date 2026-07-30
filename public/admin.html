@@ -194,7 +194,9 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function row(u,withDecide){
   const dt=new Date(u.created_at);
   const when=dt.getFullYear()+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+String(dt.getDate()).padStart(2,'0');
-  const roleTag=(ROLE_KO[u.role]||u.role)+(u.ext?' <span class="rolechip">에이전시 부계정</span>':'')+(u.super?' <span class="rolechip">최고관리자</span>':(u.role==='admin'?' <span class="rolechip">관리자</span>':''));
+  /* 2026-07-31: 부계정은 역할명 대신 소속 에이전시(회사명) 표시 */
+  const _comp=u.ext?(u.agent_company||(window.AGC_MAP&&window.AGC_MAP[u.agency_idx])||''):'';
+  const roleTag=(_comp?esc(_comp):(ROLE_KO[u.role]||u.role))+(u.ext?' <span class="rolechip">에이전시 부계정</span>':'')+(u.super?' <span class="rolechip">최고관리자</span>':(u.role==='admin'?' <span class="rolechip">관리자</span>':''));
   let btns='';
   if(withDecide){
     btns='<button class="bt-ok" data-a="approve" data-id="'+u.id+'">✓ 승인</button><button class="bt-no" data-a="reject" data-id="'+u.id+'">거절</button><button class="bt-del" data-a="delete" data-id="'+u.id+'">삭제</button>';
@@ -221,7 +223,7 @@ function row(u,withDecide){
   ].filter(Boolean);
   const infoLine=infoBits.length?'<div class="meta">'+infoBits.join(' · ')+'</div>':'';
   return '<div class="urow"><div class="u1"><div><div class="nm">'+esc(u.name)+' <span class="small">· '+roleTag+'</span></div>'
-    +'<div class="em">'+esc(u.email)+'</div>'
+    +(u.ext?'':'<div class="em">'+esc(u.email)+'</div>') /* 부계정은 내부용 합성 이메일 숨김 (2026-07-31) */
     +'<div class="meta">언어 '+(LANG_KO[u.lang]||u.lang)+' · 가입 '+when+(u.tg?' · 📲 텔레그램 연결됨':'')+'</div>'
     +infoLine+'</div>'
     +'<span class="badge st-'+u.status+'">'+(ST_KO[u.status]||u.status)+'</span></div>'
@@ -426,8 +428,8 @@ function renderStats(){
   const sb=document.getElementById('statSummary');
   if(sb)sb.innerHTML='<div class="statgrid">'+statCard('전체 요청',t.requests)+statCard('확정',t.confirmed)+statCard('견적 발송',t.quoteSent)+statCard('계약 완료',t.contracted)+'</div>';
   const rows=STATS[statTab]||[];
-  const head='<div class="strow sthead"><span class="stname">'+STAT_LABEL[statTab]+'</span><span>확정</span><span>요청</span><span>견적</span><span>계약</span></div>';
-  const body=rows.length?rows.map(r=>'<div class="strow"><span class="stname">'+esc(r.name)+'</span><span class="stnum hl">'+r.confirmed+'</span><span class="stnum">'+r.requests+'</span><span class="stnum">'+r.quoteSent+'</span><span class="stnum">'+r.contracted+'</span></div>').join(''):'<p class="small" style="margin:10px 0 2px">집계할 데이터가 없습니다.</p>';
+  const head='<div class="strow sthead"><span class="stname">'+STAT_LABEL[statTab]+(statTab==='agents'?' · 담당자':'')+'</span><span>확정</span><span>요청</span><span>견적</span><span>계약</span></div>';
+  const body=rows.length?rows.map(r=>'<div class="strow"><span class="stname">'+esc(r.name)+(statTab==='agents'&&r.manager?' <span class="small" style="color:var(--muted)">· '+esc(r.manager)+'</span>':'')+'</span><span class="stnum hl">'+r.confirmed+'</span><span class="stnum">'+r.requests+'</span><span class="stnum">'+r.quoteSent+'</span><span class="stnum">'+r.contracted+'</span></div>').join(''):'<p class="small" style="margin:10px 0 2px">집계할 데이터가 없습니다.</p>';
   const bd=document.getElementById('statBody');if(bd)bd.innerHTML=head+body;
   document.querySelectorAll('#statTab button').forEach(b=>{b.classList.toggle('on',b.dataset.st===statTab);b.onclick=()=>{statTab=b.dataset.st;renderStats();};});
 }
@@ -504,7 +506,9 @@ async function loadAgcList(){
   try{const r=await fetch('api/agencies?active=Y',{cache:'no-store'});if(!r.ok)return;const j=await r.json();
     const sel=document.getElementById('agcSel');if(!sel)return;
     const list=(j&&j.agencies)||[];
+    window.AGC_MAP={};list.forEach(a=>{if(a&&a.idx)window.AGC_MAP[a.idx]=a.name;}); /* idx→회사명 매핑 (회원 목록 표시용) */
     sel.innerHTML='<option value="">에이전시 선택 ('+list.length+'곳)</option>'+list.map(a=>'<option value="'+esc(a.idx)+'">'+esc(a.name)+'</option>').join('');
+    try{load();}catch(e){} /* 회사명 매핑 반영 위해 회원 목록 다시 그림 */
   }catch(e){}
 }
 (function(){const sel=document.getElementById('agcSel');if(!sel)return;

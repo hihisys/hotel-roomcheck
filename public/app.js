@@ -704,7 +704,9 @@ function listHead(req,forStaff){
   const lastOut=req.mode==='parallel'?addDays(req.startDate,totalN(req)):finalOut(req);
   const extra=ui.role==='sreq'?' · '+escT(nickOf(req.agent)||'-')+(req.agentManager?' / '+escT(req.agentManager):''):'';
   const dtag=(ui.role!=='agent'&&req.direct&&!(req.status==='requested'&&!req.quoteSent))?'<span class="badge b-direct">'+T('b_direct_s')+'</span>':'';
-  return '<div class="t1"><span class="mono small">'+reqNo(req)+' · '+escT(nickOf(req.registrant)||'심은선')+' · '+dotDateTime(req.createdAt)+'</span><span style="display:flex;gap:4px;flex:0 0 auto">'+dtag+reqBadge(req,forStaff)+'</span></div>'
+  /* 2026-07-31: 에이전트 페이지는 등록 당사자(담당자) 표시 — 없으면 기존 registrant */
+  const _who=(ui.role==='agent'?(req.agentManager||req.registrant):req.registrant);
+  return '<div class="t1"><span class="mono small">'+reqNo(req)+' · '+escT(nickOf(_who)||(ui.role==='agent'?'-':'심은선'))+' · '+dotDateTime(req.createdAt)+'</span><span style="display:flex;gap:4px;flex:0 0 auto">'+dtag+reqBadge(req,forStaff)+'</span></div>'
     +'<div class="t2">'+names+'</div>'
     +'<div class="t3">'+fdate(req.startDate)+' → '+fdate(lastOut)+' · '+totalN(req)+T('n_sfx')+extra+'</div>';
 }
@@ -819,7 +821,7 @@ function resultCardHTML(req,asReq){
     +'<div class="qc-sub" style="text-align:left;margin-top:3px">'+escT(reqNo(req))
       +(answered
         ?' · 담당 '+escT(req.manager||'-')+' · 확인일 '+dotDateTime(req.answeredAt||req.createdAt)
-        :' · 담당 '+escT(nickOf(req.registrant)||'심은선')+' 요청'+(req.agent?' · 에이전트 '+escT(nickOf(req.agent)):'')+' · 요청일 '+dotDateTime(req.createdAt))+'</div>'
+        :' · '+escT(nickOf(req.agent)||'-')+(req.agentManager?' · '+escT(req.agentManager):(req.registrant?' · '+escT(nickOf(req.registrant)):''))+' · 요청일 '+dotDateTime(req.createdAt))+'</div>' /* 2026-07-31: 에이전시 · 담당자 · 요청일 형식 */
     +legs
     +(req.notes?'<div class="reqbox">📝 '+escT(req.notes)+'</div>':'')+'</div>';
 }

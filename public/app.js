@@ -37,7 +37,15 @@ const isEN=()=>{if(FORCE_KO||typeof ui==='undefined')return false;
   if(ui.role!=='sreq'&&ui.role!=='schk')return false;
   try{const a=LANG_ALLOWED[ui.role]||[];let l=(typeof DB!=='undefined'&&DB&&DB.langs&&DB.langs[ui.role])||a[0];if(!a.includes(l))l=a[0];return l!=='ko';}catch(e){return true;}};
 const dHotel=n=>isEN()?(HOTEL_EN[n]||n):n;
-const dRoom=n=>isEN()?(RT_EN[n]||n):n;
+/* API 영문 룸타입의 한글 표기 변환 (표시용 · 저장은 원문 유지, 2026-07-30) */
+const RT_WORD_KO={Deluxe:"디럭스",Superior:"슈페리어",Suite:"스위트",Twin:"트윈",Double:"더블",Triple:"트리플",King:"킹",Queen:"퀸",Villa:"빌라",Pool:"풀",Family:"패밀리",Studio:"스튜디오",Premier:"프리미어",Premium:"프리미엄",Executive:"이그제큐티브",Grand:"그랜드",Junior:"주니어",Club:"클럽",Garden:"가든",Beach:"비치",Beachfront:"비치프론트",Oceanfront:"오션프론트",Penthouse:"펜트하우스",Residence:"레지던스",Room:"룸",Bungalow:"방갈로",Cottage:"코티지",Standard:"스탠다드",Classic:"클래식",Signature:"시그니처",Royal:"로얄",Presidential:"프레지덴셜"};
+const RT_PHRASE_KO=[["Sea View","씨뷰"],["Ocean View","오션뷰"],["Pool Access","풀액세스"],["Pool Villa","풀빌라"],["with Balcony","(발코니)"],["With Balcony","(발코니)"],["No Balcony","(발코니 없음)"],["City View","시티뷰"],["Mountain View","마운틴뷰"],["Garden View","가든뷰"]];
+const _rtKo2En={}; /* 한글 표기 → 원문(영문) 역매핑 (입력·선택 시 원문으로 저장) */
+function rtDispKo(n){if(!n||/[가-힣]/.test(n))return n;
+  let s=String(n);RT_PHRASE_KO.forEach(p=>{s=s.split(p[0]).join(p[1]);});
+  s=s.split(/\s+/).map(w=>RT_WORD_KO[w]||w).join(' ').trim();
+  if(s!==n)_rtKo2En[s]=n;return s;}
+const dRoom=n=>isEN()?(RT_EN[n]||n):rtDispKo(n);
 const dRegion=n=>isEN()?(RG_EN[n]||n):n;
 const fdate=iso=>isEN()?fmtD(iso):kdstr(iso);
 const fdshort=iso=>isEN()?fmtD(iso):kdshort(iso);
@@ -404,8 +412,9 @@ function checkerHTML(){
 
 /* ================= ① 요청자(에이전트) 폼 ================= */
 function agentSelOpts(cur){var opts='<option value="">'+escT(T('ph_sel_input'))+'</option>';var names=AGENTS.map(function(a){return a.name;});AGENTS.forEach(function(a){var lbl=(a.nickname&&a.nickname!==a.name)?(a.nickname+' ('+a.name+')'):a.name;opts+='<option value="'+esc(a.name)+'"'+(a.name===cur?' selected':'')+'>'+escT(lbl)+'</option>';});if(cur&&names.indexOf(cur)<0)opts+='<option value="'+esc(cur)+'" selected>'+escT(cur)+'</option>';return opts;}
-/* 에이전시 담당자 자동 로드 — 에이전트 선택 시 /api/agencies/{idx}의 managers를 담당자 목록에 반영 (2026-07-30) */
-async function loadAgencyManagers(name){
+/* 에이전시 담당자 자동 로드 — 에이전트 선택 시 /api/agencies/{idx}의 managers를 담당자 목록에 반영 (2026-07-30)
+   force=true(에이전트 확정 선택 시): 기존 담당자 값이 있어도 새 에이전시의 첫 담당자로 갱신 */
+async function loadAgencyManagers(name,force){
   const a=AGENTS.find(x=>x.name===name&&x.api&&x.idx);if(!a)return;
   if(!a._mgrs){
     try{const r=await fetch('api/agencies/'+a.idx,{cache:'no-store'});if(!r.ok)return;
@@ -417,9 +426,9 @@ async function loadAgencyManagers(name){
   if(dl)dl.innerHTML=a._mgrs.map(n=>'<option value="'+esc(n)+'">').join('')
     +(((DB.hist&&DB.hist.am)||[]).filter(n=>a._mgrs.indexOf(n)<0).map(n=>'<option value="'+esc(n)+'">').join(''));
   const am=document.getElementById('agentMgr');
-  if(a._mgrs.length&&draft.agent===name&&!draft.agentManager){
+  if(a._mgrs.length&&draft.agent===name&&(force||!draft.agentManager)){
     draft.agentManager=a._mgrs[0];
-    if(am&&!am.value)am.value=a._mgrs[0];
+    if(am)am.value=a._mgrs[0];
   }
 }
 /* 호텔 룸타입 자동 로드 — API 호텔 선택 시 /api/hotels/{idx}의 room_types를 룸타입 목록에 반영 (2026-07-30) */
@@ -466,8 +475,8 @@ function formHTML(){
     const rlist=REGIONS.map(r=>opt(r,RG_DISP(r),r===row.region)).join('');
     /* 호텔 datalist: 표시명 + 한/영 상호 검색 가능하도록 반대 언어 이름도 함께 등록 (2026-07-30) */
     const hdl=hotelsIn(row.region).map(h=>{let o='<option value="'+esc(dHotel(h.name))+'">';const alt=isEN()?h.name:HOTEL_EN[h.name];if(alt&&alt!==dHotel(h.name))o+='<option value="'+esc(alt)+'">';return o;}).join('');
-    /* 룸타입 datalist: 한/영 이름 모두 등록 — 입력한 그대로 저장됨 (2026-07-30) */
-    const rdl=roomsFor(row.hotel).map(r=>{let o='<option value="'+esc(r)+'">';const alt=RT_EN[r]||RT_KO[r];if(alt&&alt!==r)o+='<option value="'+esc(alt)+'">';return o;}).join('');
+    /* 룸타입 datalist: 지정 언어에 맞는 표기로 표시 (한국어=한글, 영어/태국어=영문, 2026-07-30) */
+    const rdl=roomsFor(row.hotel).map(r=>'<option value="'+esc(dRoom(r))+'">').join('');
     const dateRow = d.mode==='multi'
       ? '<div class="dategrid">'
         +'<div class="datewrap" style="grid-area:1/1"><span class="dlab">'+T('checkin')+'</span><input class="dateinput" readonly data-target="'+row.id+'" data-kind="in" value="'+fdate(dd.checkIn)+'"><button class="calico calOpen" data-target="'+row.id+'" data-kind="in" title="'+esc(T('cal_open'))+'">📅</button></div>'
@@ -480,7 +489,7 @@ function formHTML(){
       +'<div class="line lhotel" style="margin-top:8px">'
         +'<div><div class="label">'+T('region')+'</div><select class="selRegion">'+rlist+'</select></div>'
         +'<div><div class="label">'+T('hotel_sel')+'</div><input class="inHotel" list="hdl'+row.id+'" value="'+esc(dHotel(row.hotel))+'" placeholder="'+esc(T('ph_hotel'))+'"><datalist id="hdl'+row.id+'">'+hdl+'</datalist></div>'
-        +'<div><div class="label">'+T('room_sel')+'</div><input class="inRoom" list="rdl'+row.id+'" value="'+esc(row.roomType)+'" placeholder="'+esc(T('ph_room'))+'"><datalist id="rdl'+row.id+'">'+rdl+'</datalist></div></div>'
+        +'<div><div class="label">'+T('room_sel')+'</div><input class="inRoom" list="rdl'+row.id+'" value="'+esc(dRoom(row.roomType))+'" placeholder="'+esc(T('ph_room'))+'"><datalist id="rdl'+row.id+'">'+rdl+'</datalist></div></div>'
       +dateRow
       +'<div style="margin-top:10px"><div class="label">'+T('opt_label')+'</div>'
         +(row.options||[]).map(o=>{const custom=o._custom||(!!o.name&&!OPTLIST.includes(o.name));
@@ -529,7 +538,7 @@ function formHTML(){
 function bindForm(){
   const d=draft;
   document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{d.mode=b.dataset.v;renderApp();});
-  const ag=document.getElementById('agent');if(ag){ag.oninput=e=>{d.agent=e.target.value;loadAgencyManagers(d.agent);};ag.onchange=e=>{d.agent=e.target.value;loadAgencyManagers(d.agent);};}
+  const ag=document.getElementById('agent');if(ag){ag.oninput=e=>{d.agent=e.target.value;loadAgencyManagers(d.agent);};ag.onchange=e=>{d.agent=e.target.value;loadAgencyManagers(d.agent,true);};} /* 확정 선택 시 담당자 강제 갱신 */
   if(d.agent)loadAgencyManagers(d.agent); /* 이미 선택된 에이전트의 담당자 목록 미리 로드 */
   /* 입력창(기존 화살표) 클릭 시 전체 목록 표시: 포커스 때 값을 비워 datalist 전체를 열고,
      선택 없이 나가면 원래 값 복원 (2026-07-30) */
@@ -571,12 +580,13 @@ function bindForm(){
       renderApp();};
     if(row.hotel)loadHotelRooms(row.hotel); /* 이미 선택된 호텔의 룸타입 미리 로드 */
     const ri=el.querySelector('.inRoom');
-    /* 룸타입은 입력·선택한 그대로 저장/표시 — 한글 입력=한글, 영문 입력=영문 (2026-07-30) */
-    ri.oninput=e=>{row.roomType=e.target.value;};
-    ri.onchange=e=>{row.roomType=e.target.value;renderApp();};
+    /* 룸타입: 지정 언어 표기로 표시하되 저장은 표준값(정적=한글, API=영문 원문)으로 (2026-07-30) */
+    const rtStore=v=>RT_KO[v]||_rtKo2En[v]||v;
+    ri.oninput=e=>{row.roomType=rtStore(e.target.value);};
+    ri.onchange=e=>{row.roomType=rtStore(e.target.value);renderApp();};
     /* 기존 화살표(입력창) 클릭 시 전체 목록 다시 열기 (2026-07-30) */
     comboize(hi,()=>dHotel(row.hotel)||'');
-    comboize(ri,()=>row.roomType||'');
+    comboize(ri,()=>dRoom(row.roomType)||'');
     const n=el.querySelector('.inNights');if(n)n.onchange=e=>{row.nights=Math.max(1,Number(e.target.value)||1);renderApp();};
     const rm=el.querySelector('.inRooms');if(rm)rm.onchange=e=>{row.rooms=Math.max(1,Number(e.target.value)||1);};
     el.querySelectorAll('[data-optid]').forEach(o=>{const oid=Number(o.dataset.optid),op=(row.options||[]).find(x=>x.id===oid);

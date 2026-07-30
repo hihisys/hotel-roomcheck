@@ -206,9 +206,18 @@ function row(u,withDecide){
     if(IS_SUPER&&!u.super)btns+='<button class="bt-demote" data-a="demote" data-id="'+u.id+'">관리자 해제</button>';
     else if(!u.super){btns+='<button class="bt-ok" data-a="tglink" data-id="'+u.id+'">📲 텔레그램 연결</button>';if(u.tg)btns+='<button class="bt-no" data-a="tgreset" data-id="'+u.id+'">📲 텔레그램 연결 해제</button>';}
   }
+  /* 에이전시 부계정/회원 상세 정보 표시 (2026-07-30): 닉네임·연락처·계좌·부계정 아이디 */
+  const infoBits=[
+    u.agency_login_id?('📋 부계정 '+esc(u.agency_login_id)):'',
+    u.nickname?('닉네임 '+esc(u.nickname)):'',
+    u.phone?('☎ '+esc(u.phone)):'',
+    u.bank_account?('🏦 '+esc(u.bank_account)):''
+  ].filter(Boolean);
+  const infoLine=infoBits.length?'<div class="meta">'+infoBits.join(' · ')+'</div>':'';
   return '<div class="urow"><div class="u1"><div><div class="nm">'+esc(u.name)+' <span class="small">· '+roleTag+'</span></div>'
     +'<div class="em">'+esc(u.email)+'</div>'
-    +'<div class="meta">언어 '+(LANG_KO[u.lang]||u.lang)+' · 가입 '+when+(u.tg?' · 📲 텔레그램 연결됨':'')+'</div></div>'
+    +'<div class="meta">언어 '+(LANG_KO[u.lang]||u.lang)+' · 가입 '+when+(u.tg?' · 📲 텔레그램 연결됨':'')+'</div>'
+    +infoLine+'</div>'
     +'<span class="badge st-'+u.status+'">'+(ST_KO[u.status]||u.status)+'</span></div>'
     +(btns?'<div class="ubtns">'+btns+'</div>':'')
     +'</div>';

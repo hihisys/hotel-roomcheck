@@ -626,6 +626,8 @@ function bindForm(){
   function doSubmit(direct){
     if(!d.rows.some(r=>r.hotel.trim())){toast(T('t_need_hotel1'));return;}
     if(d.mode==='parallel')d.rows.forEach(r=>{r.rooms=Math.max(1,Number(d.sharedRooms)||1);});
+    /* 에이전트 페이지: agent 필드가 비면 본인 이름으로 자동 설정 — 비면 본인 리스트에서 안 보이는 문제 방지 (2026-07-30) */
+    if(ui.role==='agent'&&!(d.agent||'').trim())d.agent=meNick()||meName()||'';
     DB.agentName=d.agent;
     var _sk=direct?'seqD':'seqA';DB[_sk]=(DB[_sk]||0)+1;
     DB.hist=DB.hist||{ag:[],am:[],st:[]};

@@ -278,12 +278,14 @@ function route(string $path, string $method): void {
   /* ---------- 관리자 ---------- */
   if ($path === 'admin/users' && $method === 'GET') {
     requireAdmin();
-    $rows = $pdo->query("SELECT id,name,email,role,status,lang,telegram_chat_id,off_days,created_at FROM users ORDER BY status='pending' DESC, id DESC")->fetchAll();
+    // 2026-07-30: 부계정 회원 정보(닉네임·연락처·계좌·부계정 아이디)도 회원 관리에 표시
+    $rows = $pdo->query("SELECT id,name,email,role,status,lang,telegram_chat_id,off_days,created_at,phone,nickname,bank_account,agency_idx,agency_login_id FROM users ORDER BY status='pending' DESC, id DESC")->fetchAll();
     $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
     foreach ($rows as &$r) {
       $r['tg'] = !empty($r['telegram_chat_id']);
       $r['super'] = (strtolower((string)$r['email']) === $superEmail);
       $r['off_days'] = decodeOffDays($r['off_days'] ?? '');
+      $r['ext'] = !empty($r['agency_idx']);
       unset($r['telegram_chat_id']);
     }
     jsonOut(['users' => $rows]);

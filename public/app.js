@@ -225,11 +225,21 @@ async function srvInit(){
       draft.agentBank=j.user.bank_account||'';
     }
     try{const _ar=await fetch('api/agents',{cache:'no-store'});if(_ar.ok)AGENTS=(await _ar.json()).agents||[];}catch(e){}
-    /* 호텔 API 반영: 외부 호텔 목록을 기존 정적 목록에 병합 — main_hotel_yn='Y' 우선, 이름 ABC순 (2026-07-30, 기존 목록 유지) */
+    /* 에이전시 API 반영: 외부 에이전시 목록을 에이전트 선택 목록에 병합 (2026-07-30, 기존 서버 사용자 목록 유지) */
+    try{const _gr=await fetch('api/agencies?active=Y',{cache:'no-store'});
+      if(_gr.ok){const _gj=await _gr.json();const _gl=(_gj&&_gj.agencies)||[];
+        _gl.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'));
+        _gl.forEach(a=>{if(a&&a.name&&(a.active==null||a.active==='Y')&&!AGENTS.some(x=>x.name===a.name))AGENTS.push({name:a.name,nickname:'',api:true,idx:a.idx});});
+      }}catch(e){}
+    /* 호텔 API 반영: 외부 호텔 목록을 기존 정적 목록에 병합 — main_hotel_yn='Y' 우선 (2026-07-30, 기존 목록 유지)
+       표시명은 한글명(name_kr) 우선, 지역코드 매핑: KL=카오락 PK=푸켓 PT=파타야 KR=크라비, 그 외는 '전체'에서 표시 */
     try{const _hr=await fetch('api/hotels?active=Y',{cache:'no-store'});
       if(_hr.ok){const _hj=await _hr.json();const _hl=(_hj&&_hj.hotels)||[];
-        _hl.sort((a,b)=>((b.main_hotel_yn==='Y')-(a.main_hotel_yn==='Y'))||String(a.name||'').localeCompare(String(b.name||'')));
-        _hl.forEach(h=>{if(h&&h.name&&!HOTELS.some(x=>x.name===h.name))HOTELS.push({name:h.name,region:(REGIONS.includes(h.area)?h.area:'전체'),rooms:GENERIC.slice(),api:true,idx:h.idx,main:h.main_hotel_yn==='Y'});});
+        const _a2r={KL:'카오락',PK:'푸켓',PT:'파타야',KR:'크라비'};
+        _hl.sort((a,b)=>((b.main_hotel_yn==='Y')-(a.main_hotel_yn==='Y'))||String(a.name_kr||a.name||'').localeCompare(String(b.name_kr||b.name||''),'ko'));
+        _hl.forEach(h=>{if(!h)return;const _dn=h.name_kr||h.name;if(!_dn||HOTELS.some(x=>x.name===_dn))return;
+          if(h.name&&h.name!==_dn){if(!HOTEL_EN[_dn])HOTEL_EN[_dn]=h.name;if(!HOTEL_KO[h.name])HOTEL_KO[h.name]=_dn;}
+          HOTELS.push({name:_dn,region:_a2r[h.area]||'전체',rooms:GENERIC.slice(),api:true,idx:h.idx,main:h.main_hotel_yn==='Y'});});
       }}catch(e){}
     DB.langs=DB.langs||{};
     if(j.user.lang&&(LANG_ALLOWED[ui.role]||[]).includes(j.user.lang))DB.langs[ui.role]=j.user.lang;

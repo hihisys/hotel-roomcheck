@@ -11,7 +11,7 @@ const HOTELS=[
  {name:"아바니 파타야",region:"파타야",rooms:["디럭스","풀액세스"]},
 ];
 const GENERIC=["디럭스","슈페리어","풀액세스","풀빌라","주니어 스위트","스위트","씨뷰","비치프론트","오션뷰"];
-const REGIONS=["전체","카오락","푸켓","파타야","크라비"];
+const REGIONS=["전체","카오락","푸켓","파타야","크라비","방콕"];
 const OPTLIST=["올인","올인 2회","풀보드","하프보드","조식 포함","허니문 세팅","고층 요청","커넥팅룸","레이트 체크아웃","얼리 체크인","패스트 트랙","VIP 라운지","공항 픽업"];
 const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const WDK=["일","월","화","수","목","금","토"];
@@ -30,7 +30,7 @@ const kdshort=iso=>{const d=_utc(iso);return String(d.getUTCMonth()+1).padStart(
 /* 직원 요청자 페이지: 영문·호텔식 표기 */
 const HOTEL_EN={"마이카오락 비치 리조트":"My Khaolak Beach Resort","로빈슨 클럽 카오락":"Robinson Khao Lak","카오락 에메랄드 비치 리조트":"Khaolak Emerald Beach Resort","JW 메리어트 카오락":"JW Marriott Khao Lak Resort","카오락 메리어트 비치 리조트":"Khao Lak Marriott Beach Resort","카타타니 푸켓 비치 리조트":"Katathani Phuket Beach Resort","더 쇼어 앳 카타타니":"The Shore at Katathani","로얄 클리프 비치 호텔":"Royal Cliff Beach Hotel","아바니 파타야":"Avani Pattaya Resort"};
 const RT_EN={"디럭스":"Deluxe","슈페리어":"Superior","풀액세스":"Pool Access","풀빌라":"Pool Villa","주니어 스위트":"Junior Suite","스위트":"Suite","씨뷰":"Sea View","비치프론트":"Beachfront","오션뷰":"Ocean View","디럭스 풀액세스":"Deluxe Pool Access","프리미어 디럭스":"Premier Deluxe","이그제큐티브":"Executive","풀 스위트":"Pool Suite","오션프론트 풀빌라":"Oceanfront Pool Villa"};
-const RG_EN={"카오락":"Khao Lak","푸켓":"Phuket","파타야":"Pattaya","크라비":"Krabi"};
+const RG_EN={"카오락":"Khao Lak","푸켓":"Phuket","파타야":"Pattaya","크라비":"Krabi","방콕":"Bangkok"};
 let FORCE_KO=false; /* 전체 이미지(고객용) 렌더 시 한국어 강제 */
 const isEN=()=>!FORCE_KO&&typeof ui!=='undefined'&&(ui.role==='sreq'||ui.role==='schk');
 const dHotel=n=>isEN()?(HOTEL_EN[n]||n):n;
@@ -235,7 +235,7 @@ async function srvInit(){
        표시명은 한글명(name_kr) 우선, 지역코드 매핑: KL=카오락 PK=푸켓 PT=파타야 KR=크라비, 그 외는 '전체'에서 표시 */
     try{const _hr=await fetch('api/hotels?active=Y',{cache:'no-store'});
       if(_hr.ok){const _hj=await _hr.json();const _hl=(_hj&&_hj.hotels)||[];
-        const _a2r={KL:'카오락',PK:'푸켓',PT:'파타야',KR:'크라비'};
+        const _a2r={KL:'카오락',PK:'푸켓',PT:'파타야',KR:'크라비',BK:'방콕'};
         _hl.sort((a,b)=>((b.main_hotel_yn==='Y')-(a.main_hotel_yn==='Y'))||String(a.name_kr||a.name||'').localeCompare(String(b.name_kr||b.name||''),'ko'));
         _hl.forEach(h=>{if(!h)return;const _dn=h.name_kr||h.name;if(!_dn||HOTELS.some(x=>x.name===_dn))return;
           if(h.name&&h.name!==_dn){if(!HOTEL_EN[_dn])HOTEL_EN[_dn]=h.name;if(!HOTEL_KO[h.name])HOTEL_KO[h.name]=_dn;}
@@ -401,6 +401,37 @@ function checkerHTML(){
 
 /* ================= ① 요청자(에이전트) 폼 ================= */
 function agentSelOpts(cur){var opts='<option value="">'+escT(T('ph_sel_input'))+'</option>';var names=AGENTS.map(function(a){return a.name;});AGENTS.forEach(function(a){var lbl=(a.nickname&&a.nickname!==a.name)?(a.nickname+' ('+a.name+')'):a.name;opts+='<option value="'+esc(a.name)+'"'+(a.name===cur?' selected':'')+'>'+escT(lbl)+'</option>';});if(cur&&names.indexOf(cur)<0)opts+='<option value="'+esc(cur)+'" selected>'+escT(cur)+'</option>';return opts;}
+/* 에이전시 담당자 자동 로드 — 에이전트 선택 시 /api/agencies/{idx}의 managers를 담당자 목록에 반영 (2026-07-30) */
+async function loadAgencyManagers(name){
+  const a=AGENTS.find(x=>x.name===name&&x.api&&x.idx);if(!a)return;
+  if(!a._mgrs){
+    try{const r=await fetch('api/agencies/'+a.idx,{cache:'no-store'});if(!r.ok)return;
+      const j=await r.json();
+      a._mgrs=(((j&&j.agency)||{}).managers||[]).filter(m=>m&&m.mname&&(m.active==null||m.active==='Y')).map(m=>String(m.mname));
+    }catch(e){return;}
+  }
+  const dl=document.getElementById('dlAm');
+  if(dl)dl.innerHTML=a._mgrs.map(n=>'<option value="'+esc(n)+'">').join('')
+    +(((DB.hist&&DB.hist.am)||[]).filter(n=>a._mgrs.indexOf(n)<0).map(n=>'<option value="'+esc(n)+'">').join(''));
+  const am=document.getElementById('agentMgr');
+  if(a._mgrs.length&&draft.agent===name&&!draft.agentManager){
+    draft.agentManager=a._mgrs[0];
+    if(am&&!am.value)am.value=a._mgrs[0];
+  }
+}
+/* 호텔 룸타입 자동 로드 — API 호텔 선택 시 /api/hotels/{idx}의 room_types를 룸타입 목록에 반영 (2026-07-30) */
+async function loadHotelRooms(name){
+  const h=HOTELS.find(x=>x.name===name);if(!h||!h.api||!h.idx||h._rtLoaded)return;
+  h._rtLoaded=true;
+  try{const r=await fetch('api/hotels/'+h.idx,{cache:'no-store'});if(!r.ok){h._rtLoaded=false;return;}
+    const j=await r.json();
+    const rts=(((j&&j.hotel)||{}).room_types||[]).filter(rt=>rt&&rt.name&&(rt.active==null||rt.active==='Y')&&(rt.del==null||rt.del==='N'||rt.del===0||rt.del==='0')).map(rt=>String(rt.name));
+    if(rts.length){h.rooms=rts;
+      /* 열려 있는 폼의 해당 호텔 룸타입 목록만 즉시 갱신 (전체 재렌더 없이) */
+      (draft.rows||[]).forEach(row=>{if(row.hotel===name){const dl=document.getElementById('rdl'+row.id);if(dl)dl.innerHTML=rts.map(rt=>'<option value="'+esc(dRoom(rt))+'">').join('');}});
+    }
+  }catch(e){h._rtLoaded=false;}
+}
 function formHTML(){
   const d=draft;
   /* 에이전트 부계정 정보 섹션 — 부계정 로그인 시에만 표시, 수동 수정 가능 (2026-07-30) */
@@ -430,7 +461,8 @@ function formHTML(){
   const blocks=d.rows.map((row,i)=>{
     const dd=rDates(d,row,i);
     const rlist=REGIONS.map(r=>opt(r,RG_DISP(r),r===row.region)).join('');
-    const hdl=hotelsIn(row.region).map(h=>'<option value="'+esc(dHotel(h.name))+'">').join('');
+    /* 호텔 datalist: 표시명 + 한/영 상호 검색 가능하도록 반대 언어 이름도 함께 등록 (2026-07-30) */
+    const hdl=hotelsIn(row.region).map(h=>{let o='<option value="'+esc(dHotel(h.name))+'">';const alt=isEN()?h.name:HOTEL_EN[h.name];if(alt&&alt!==dHotel(h.name))o+='<option value="'+esc(alt)+'">';return o;}).join('');
     const rdl=roomsFor(row.hotel).map(r=>'<option value="'+esc(dRoom(r))+'">').join('');
     const dateRow = d.mode==='multi'
       ? '<div class="dategrid">'
@@ -465,7 +497,7 @@ function formHTML(){
     +'<div class="seg" id="mode"><button data-v="parallel"'+(d.mode==='parallel'?' class="on"':'')+'>'+T('mode_parallel')+'</button><button data-v="multi"'+(d.mode==='multi'?' class="on"':'')+'>'+T('mode_multi')+'</button></div>'
     +(ui.role==='sreq'
       ? '<div class="line l3">'
-        +'<div><div class="label">'+T('agent_select')+'</div><select id="agent">'+agentSelOpts(d.agent)+'</select></div>'
+        +'<div><div class="label">'+T('agent_select')+'</div><input id="agent" list="dlAg" value="'+esc(d.agent||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"><datalist id="dlAg">'+AGENTS.map(a=>'<option value="'+esc(a.name)+'">').join('')+'</datalist></div>'
         +'<div><div class="label">'+T('agent_mgr')+'</div><input id="agentMgr" list="dlAm" value="'+esc(d.agentManager||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"><datalist id="dlAm">'+((DB.hist&&DB.hist.am)||[]).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist></div>'
         +'<div><div class="label">'+T('mgr_nirvana')+'</div><input id="regName" list="dlSt" value="'+esc(d.registrant||'심은선')+'" placeholder="'+esc(T('ph_input'))+'"><datalist id="dlSt">'+((DB.hist&&DB.hist.st)||[]).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist></div></div>'
       : '')
@@ -493,7 +525,8 @@ function formHTML(){
 function bindForm(){
   const d=draft;
   document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{d.mode=b.dataset.v;renderApp();});
-  const ag=document.getElementById('agent');if(ag)ag.onchange=e=>{d.agent=e.target.value;};
+  const ag=document.getElementById('agent');if(ag){ag.oninput=e=>{d.agent=e.target.value;loadAgencyManagers(d.agent);};ag.onchange=e=>{d.agent=e.target.value;loadAgencyManagers(d.agent);};}
+  if(d.agent)loadAgencyManagers(d.agent); /* 이미 선택된 에이전트의 담당자 목록 미리 로드 */
   const am=document.getElementById('agentMgr');if(am)am.oninput=e=>{d.agentManager=e.target.value;};
   const rg=document.getElementById('regName');if(rg)rg.oninput=e=>{d.registrant=e.target.value;};
   /* 에이전트 부계정 정보 필드 바인딩 (2026-07-30) */
@@ -518,8 +551,9 @@ function bindForm(){
     const id=Number(el.dataset.id),row=d.rows.find(r=>r.id===id),i=d.rows.indexOf(row);
     el.querySelector('.selRegion').onchange=e=>{row.region=e.target.value;renderApp();};
     const hi=el.querySelector('.inHotel');
-    hi.oninput=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;};
-    hi.onchange=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;renderApp();};
+    hi.oninput=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;loadHotelRooms(row.hotel);};
+    hi.onchange=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;loadHotelRooms(row.hotel);renderApp();};
+    if(row.hotel)loadHotelRooms(row.hotel); /* 이미 선택된 호텔의 룸타입 미리 로드 */
     const ri=el.querySelector('.inRoom');
     ri.oninput=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;};
     ri.onchange=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;renderApp();};

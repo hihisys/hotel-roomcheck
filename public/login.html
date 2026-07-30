@@ -134,6 +134,15 @@ $('go').onclick=async()=>{
 $('pw').addEventListener('keydown',e=>{if(e.key==='Enter')$('go').click();});
 $('email').addEventListener('keydown',e=>{if(e.key==='Enter')$('go').click();});
 tr();
+/* 이미 로그인된 상태면 역할별 페이지로 바로 이동 (2026-07-31) — 자동 로그인(remember)과 함께 첫 화면에서 곧장 진입 */
+(async()=>{try{
+  const r=await fetch('api/me',{cache:'no-store'});const j=await r.json();
+  if(j&&j.user&&j.user.status==='approved'){
+    let page={agent:'agent.html',sreq:'request.html',schk:'check.html',admin:'admin.html'}[j.user.role]||'';
+    if(j.user.role==='admin'&&!j.user.super)page='request.html';
+    if(page)location.replace(page);
+  }
+}catch(e){}})();
 </script>
 </body>
 </html>

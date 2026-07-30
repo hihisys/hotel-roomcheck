@@ -1071,7 +1071,7 @@ let _tt;function toast(m){const t=document.getElementById('toast');t.textContent
   applyChrome();
   /* 에이전시/서버 로그인 시 에이전트·담당자 자동 채움 (2026-07-17) */
   if(SRV.on&&SRV.me){
-    if(ui.role==='agent'&&!draft.agent)draft.agent=meNick()||DB.agentName||'';
+    if((ui.role==='agent'||ui.role==='sreq')&&!draft.agent)draft.agent=meNick()||DB.agentName||'';
     if((ui.role==='agent'||ui.role==='sreq')&&meNick())draft.registrant=meNick();
   }
   sweep();

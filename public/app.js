@@ -471,7 +471,7 @@ function attachAC(inp,getItems,onPick){
     const nq=norm(q);
     const items=getItems().filter(it=>!nq||(it.s||[it.label]).some(x=>norm(x).includes(nq)));
     if(!items.length){box.style.display='none';return;}
-    box.innerHTML=items.slice(0,200).map(it=>'<div style="padding:9px 12px;cursor:pointer;font-size:13px">'+escT(it.label)+'</div>').join('');
+    box.innerHTML=items.slice(0,200).map(it=>'<div style="padding:9px 12px;cursor:pointer;font-size:13px">'+escT(it.label)+(it.sub?' <span style="color:var(--muted);font-size:11.5px">· '+escT(it.sub)+'</span>':'')+'</div>').join('');
     box.style.display='block';
     Array.prototype.forEach.call(box.children,(el,i)=>{
       el.onmouseenter=()=>{el.style.background='#F2F5FA';};el.onmouseleave=()=>{el.style.background='';};
@@ -632,8 +632,10 @@ function bindForm(){
     ri.onchange=e=>{row.roomType=rtStore(e.target.value);renderApp();};
     /* 호텔/룸타입 빠른검색 드롭다운 (2026-07-30): 한/영 부분 일치, 표시명은 지정 언어 1개 */
     attachAC(hi,
-      ()=>hotelsIn(row.region).map(h=>({label:dHotel(h.name),s:[h.name,HOTEL_EN[h.name]||''],main:!!h.main}))
-        .sort((a,b)=>((b.main?1:0)-(a.main?1:0))||a.label.localeCompare(b.label,isEN()?'en':'ko')), /* 2026-07-31: 표시 언어 기준 정렬 (한글=가나다, 영어=ABC), 메인 호텔 우선 */
+      ()=>{const _ro={'카오락':1,'푸켓':2,'파타야':3,'크라비':4,'방콕':5}; /* 지역 그룹 순서 */
+        return hotelsIn(row.region).map(h=>({label:dHotel(h.name),s:[h.name,HOTEL_EN[h.name]||''],main:!!h.main,
+            _r:_ro[h.region]||9,sub:(row.region==='전체'&&h.region&&h.region!=='전체')?dRegion(h.region):''}))
+          .sort((a,b)=>((b.main?1:0)-(a.main?1:0))||(a._r-b._r)||a.label.localeCompare(b.label,isEN()?'en':'ko'));}, /* 2026-07-31: 메인 우선 → 지역별 그룹 → 언어별 가나다/ABC */
       label=>{row.hotel=HOTEL_KO[label]||label;hi.value=label;loadHotelRooms(row.hotel);renderApp();});
     attachAC(ri,
       ()=>roomsFor(row.hotel).map(r=>({label:dRoom(r),s:[r,RT_EN[r]||'',dRoom(r)]})),

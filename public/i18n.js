@@ -16,6 +16,7 @@ ko:{sub_agent:"에이전트 콘솔",sub_sreq:"요청자 콘솔",sub_schk:"확인
   name:"이름",nickname:"닉네임",phone:"연락처 (전화번호)",bank:"은행 계좌",
   ph_name:"이름 (한글이름)",ph_nickname:"표시용 닉네임 (선택사항)",ph_bank:"은행명 + 계좌번호 (선택사항)",
   agency_acct:"에이전시 부계정 정보",agency_acct_help:"부계정의 기본 정보를 표시합니다. 필드를 수정하면 저장됩니다.",
+  t_pick_hotel:"호텔은 목록에서 선택해주세요.",cmb_open:"목록 열기",
   /* 헤더 */
   hdr_title:"룸 체크",chip_agent:"에이전트",chip_sreq:"직원 · 요청자",chip_schk:"직원 · 확인자",
   lede_agent:"룸첵 문의를 등록하고, 결과와 견적을 확인합니다.",
@@ -146,6 +147,7 @@ en:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"Checker Con
   name:"Name",nickname:"Nickname",phone:"Phone",bank:"Bank Account",
   ph_name:"Name (Korean name)",ph_nickname:"Display nickname (optional)",ph_bank:"Bank name + Account number (optional)",
   agency_acct:"Agency sub-account info",agency_acct_help:"Shows the sub-account's basic info. Edited fields are saved.",
+  t_pick_hotel:"Please choose a hotel from the list.",cmb_open:"Open list",
   hdr_title:"Room Check",chip_agent:"Agent",chip_sreq:"Staff · Requester",chip_schk:"Staff · Checker",
   lede_agent:"Register room-check inquiries and see results & quotes.",
   lede_sreq:"Register agent inquiries and track progress.",
@@ -262,6 +264,7 @@ th:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"คอน�
   name:"ชื่อ",nickname:"ชื่อเล่น",phone:"เบอร์โทร",bank:"บัญชีธนาคาร",
   ph_name:"ชื่อ (ชื่อเกาหลี)",ph_nickname:"ชื่อเล่น (ไม่บังคับ)",ph_bank:"ชื่อธนาคาร + หมายเลขบัญชี (ไม่บังคับ)",
   agency_acct:"ข้อมูลบัญชีย่อยเอเจนซี",agency_acct_help:"แสดงข้อมูลพื้นฐานของบัญชีย่อย แก้ไขแล้วจะถูกบันทึก",
+  t_pick_hotel:"กรุณาเลือกโรงแรมจากรายการ",cmb_open:"เปิดรายการ",
   hdr_title:"Room Check",chip_agent:"เอเจนต์",chip_sreq:"พนักงาน · ผู้ขอ",chip_schk:"พนักงาน · ผู้ตรวจสอบ",
   lede_agent:"ลงทะเบียนคำขอเช็คห้องและดูผลลัพธ์กับใบเสนอราคา",
   lede_sreq:"ลงทะเบียนคำขอจากเอเจนต์และติดตามความคืบหน้า",

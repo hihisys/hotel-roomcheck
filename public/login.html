@@ -49,7 +49,7 @@ body{background:#F3F5FA}
 <body>
 <div class="wrap">
   <div class="lg-head">
-    <img src="logo.png?v=20260730" alt="THE NIRVANA">
+    <img src="logo.png??v=20260718200000" alt="THE NIRVANA">
     <div>
       <div class="lg-brand">THE NIRVANA</div>
       <p class="lg-sub" data-i="lede">로그인 후 이용할 수 있습니다.</p>
@@ -117,7 +117,9 @@ $('go').onclick=async()=>{
     const r=await fetch('api/login',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({email:email,password:pw,remember:$('remember').checked})});
     const j=await r.json();
-    if(j.ok){const page={agent:'agent.html',sreq:'request.html',schk:'check.html',admin:'admin.html'}[j.user.role]||'index.html';
+    if(j.ok){let page={agent:'agent.html',sreq:'request.html',schk:'check.html',admin:'admin.html'}[j.user.role]||'index.html';
+      /* 일반 관리자(요청자→관리자 승격, 최고관리자 아님)는 요청자 페이지가 기본 (2026-07-30) */
+      if(j.user.role==='admin'&&!j.user.super)page='request.html';
       location.href=page;return;}
     if(j.error==='pending'){showMsg('err','pending');return;}
     if(j.error==='rejected'){showMsg('err','rejected');return;}

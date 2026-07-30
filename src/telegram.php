@@ -24,9 +24,17 @@ function tgSend(string $chatId, string $text): bool {
 /* 역할 대상 전원에게 전송 (승인 + chat_id 연결된 sreq/schk만) */
 function tgSendRole(PDO $pdo, string $role, callable $textForLang, ?int $excludeUser = null): void {
   if (!in_array($role, ['sreq', 'schk'], true)) return; // 텔레그램은 요청자·확인자만
-  $st = $pdo->prepare("SELECT id,lang,telegram_chat_id,off_days FROM users WHERE role=? AND status='approved' AND telegram_chat_id IS NOT NULL");
-  $st->execute([$role]);
+  /* 2026-07-30: 일반 관리자(요청자→관리자 승격, 최고관리자 제외)는 요청자(sreq)로 취급해 함께 수신 */
+  if ($role === 'sreq') {
+    $st = $pdo->prepare("SELECT id,lang,telegram_chat_id,off_days,email,role FROM users WHERE role IN ('sreq','admin') AND status='approved' AND telegram_chat_id IS NOT NULL");
+    $st->execute();
+  } else {
+    $st = $pdo->prepare("SELECT id,lang,telegram_chat_id,off_days,email,role FROM users WHERE role=? AND status='approved' AND telegram_chat_id IS NOT NULL");
+    $st->execute([$role]);
+  }
+  $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
   foreach ($st->fetchAll() as $u) {
+    if (($u['role'] ?? '') === 'admin' && strtolower((string)($u['email'] ?? '')) === $superEmail) continue; // 최고관리자 제외
     if ($excludeUser && (int)$u['id'] === $excludeUser) continue;
     if (isOffDayToday($u['off_days'] ?? null)) continue; // skip on off-day
     tgSend($u['telegram_chat_id'], $textForLang($u['lang'] ?: 'ko'));

@@ -199,11 +199,14 @@ function route(string $path, string $method): void {
         $pdo->prepare("INSERT INTO requests (id,no,payload,deleted,created_by,updated_at,updated_by) VALUES (?,?,?,0,?,?,?)")
             ->execute([$id, (int)$req['no'], json_encode($req, JSON_UNESCAPED_UNICODE), $u['id'], nowMs(), $u['id']]);
       } else {
-        /* 동시 편집 안전장치 (2026-07-20):
-           - 명명 잠금(GET_LOCK)으로 같은 요청의 동시 UPDATE를 직렬화
+        /* 동시 편집 안전장치 (2026-07-20, 2026-07-31 SQLite 호환 수정):
+           - MySQL: 명명 잠금(GET_LOCK)으로 같은 요청의 동시 UPDATE를 직렬화
+           - SQLite: GET_LOCK이 없어 500 오류로 답변 저장이 통째로 실패하던 치명 버그 → 트랜잭션으로 직렬화
            - ws는 필드 단위로 병합해, 다른 기기가 보낸 오래된(빈) payload가 확인자의 답변을 지우지 못하게 함
            - status는 뒤로 가지 않음(answered → requested 강등 방지) */
-        $pdo->prepare("SELECT GET_LOCK(?, 5)")->execute(["rc_" . $id]);
+        $isMyLock = isMySQL($pdo);
+        if ($isMyLock) $pdo->prepare("SELECT GET_LOCK(?, 5)")->execute(["rc_" . $id]);
+        else if (!$pdo->inTransaction()) $pdo->beginTransaction();
         try {
           $st2 = $pdo->prepare("SELECT payload FROM requests WHERE id=? AND deleted=0");
           $st2->execute([$id]);
@@ -229,8 +232,12 @@ function route(string $path, string $method): void {
           }
           $pdo->prepare("UPDATE requests SET no=?, payload=?, updated_at=?, updated_by=? WHERE id=?")
               ->execute([(int)$req['no'], json_encode($req, JSON_UNESCAPED_UNICODE), nowMs(), $u['id'], $id]);
+          if (!$isMyLock && $pdo->inTransaction()) $pdo->commit();
+        } catch (Throwable $e) {
+          if (!$isMyLock && $pdo->inTransaction()) $pdo->rollBack();
+          throw $e;
         } finally {
-          $pdo->prepare("SELECT RELEASE_LOCK(?)")->execute(["rc_" . $id]);
+          if ($isMyLock) $pdo->prepare("SELECT RELEASE_LOCK(?)")->execute(["rc_" . $id]);
         }
       }
       detectEvents($pdo, $old, $req, $u);

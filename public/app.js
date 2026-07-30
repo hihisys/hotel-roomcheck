@@ -234,7 +234,7 @@ function myAgencyName(){
 function applyAgentDefaults(){
   if(ui.role!=='agent'||!SRV.on||!SRV.me)return;
   const comp=myAgencyName();
-  if(comp&&(!draft.agent||draft.agent===meNick()||draft.agent===SRV.me.name))draft.agent=comp;
+  if(comp)draft.agent=comp; /* 에이전트 페이지는 항상 본인 소속 에이전시로 고정 (다른 사용자 localStorage 잔값 무시, 2026-07-31) */
   if(!draft.agentManager)draft.agentManager=meNick()||'';
 }
 /* 외부 API 목록 반영 (2026-07-30): 캐시 즉시 표시 후 백그라운드 갱신 */
@@ -704,9 +704,10 @@ function listHead(req,forStaff){
   const lastOut=req.mode==='parallel'?addDays(req.startDate,totalN(req)):finalOut(req);
   const extra=ui.role==='sreq'?' · '+escT(nickOf(req.agent)||'-')+(req.agentManager?' / '+escT(req.agentManager):''):'';
   const dtag=(ui.role!=='agent'&&req.direct&&!(req.status==='requested'&&!req.quoteSent))?'<span class="badge b-direct">'+T('b_direct_s')+'</span>':'';
-  /* 2026-07-31: 에이전트 페이지는 등록 당사자(담당자) 표시 — 없으면 기존 registrant */
-  const _who=(ui.role==='agent'?(req.agentManager||req.registrant):req.registrant);
-  return '<div class="t1"><span class="mono small">'+reqNo(req)+' · '+escT(nickOf(_who)||(ui.role==='agent'?'-':'심은선'))+' · '+dotDateTime(req.createdAt)+'</span><span style="display:flex;gap:4px;flex:0 0 auto">'+dtag+reqBadge(req,forStaff)+'</span></div>'
+  /* 2026-07-31: 에이전트 페이지 상단은 확인자 닉네임 표시 — 답변 전이면 빈칸 */
+  const _who=(ui.role==='agent'?(req.manager||''):(req.registrant||'심은선'));
+  const _whoTxt=escT(nickOf(_who)||'');
+  return '<div class="t1"><span class="mono small">'+reqNo(req)+(_whoTxt?' · '+_whoTxt:'')+' · '+dotDateTime(req.createdAt)+'</span><span style="display:flex;gap:4px;flex:0 0 auto">'+dtag+reqBadge(req,forStaff)+'</span></div>'
     +'<div class="t2">'+names+'</div>'
     +'<div class="t3">'+fdate(req.startDate)+' → '+fdate(lastOut)+' · '+totalN(req)+T('n_sfx')+extra+'</div>';
 }
@@ -820,7 +821,7 @@ function resultCardHTML(req,asReq){
   return '<div class="quotecard '+(answered?'rescard':'reqcard')+'" id="rescard'+req.id+'"><div class="qc-title">The Nirvana · 룸체크 '+(answered?'결과':'요청')+'</div>'
     +'<div class="qc-sub" style="text-align:left;margin-top:3px">'+escT(reqNo(req))
       +(answered
-        ?' · 담당 '+escT(req.manager||'-')+' · 확인일 '+dotDateTime(req.answeredAt||req.createdAt)
+        ?' · 담당 '+escT(nickOf(req.manager)||'-')+' · 확인일 '+dotDateTime(req.answeredAt||req.createdAt) /* 2026-07-31: 확인자 닉네임 표시 */
         :' · '+escT(nickOf(req.agent)||'-')+(req.agentManager?' · '+escT(req.agentManager):(req.registrant?' · '+escT(nickOf(req.registrant)):''))+' · 요청일 '+dotDateTime(req.createdAt))+'</div>' /* 2026-07-31: 에이전시 · 담당자 · 요청일 형식 */
     +legs
     +(req.notes?'<div class="reqbox">📝 '+escT(req.notes)+'</div>':'')+'</div>';

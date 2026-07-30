@@ -269,7 +269,12 @@ async function loadExternalLists(){
 }
 async function srvInit(){
   try{
-    const r=await fetch('api/me',{cache:'no-store'});
+    /* 로딩 속도 개선 (2026-07-31): me/agents/state 3개 요청을 동시에 시작 —
+       순차 호출 시 왕복지연(RTT)×3이 걸리던 것을 1회분으로 단축 */
+    const pMe=fetch('api/me',{cache:'no-store'});
+    const pAg=fetch('api/agents',{cache:'no-store'}).catch(()=>null);
+    const pSt=fetch('api/state?rev=-1',{cache:'no-store'}).catch(()=>null);
+    const r=await pMe;
     if(!r.ok)throw 0;
     const j=await r.json();
     if(!j||typeof j!=='object'||!('user' in j))throw 0;
@@ -277,13 +282,12 @@ async function srvInit(){
     const pageOf={agent:'agent.html',sreq:'request.html',schk:'check.html',admin:'admin.html'};
     if(j.user.role!==ui.role&&j.user.role!=='admin'){location.href=pageOf[j.user.role]||'index.html';return false;}
     SRV.on=true;SRV.me=j.user;
-    try{const _ar=await fetch('api/agents',{cache:'no-store'});if(_ar.ok)AGENTS=(await _ar.json()).agents||[];}catch(e){}
-    /* 로딩 속도 개선 (2026-07-30): 외부 API(에이전시·호텔)는 첫 화면을 막지 않고
-       백그라운드로 로드 + 10분 localStorage 캐시로 즉시 표시 */
+    /* 외부 API(에이전시·호텔)는 첫 화면을 막지 않고 백그라운드 로드 + 10분 캐시 */
     loadExternalLists();
+    try{const _ar=await pAg;if(_ar&&_ar.ok)AGENTS=(await _ar.json()).agents||[];}catch(e){}
     DB.langs=DB.langs||{};
     if(j.user.lang&&(LANG_ALLOWED[ui.role]||[]).includes(j.user.lang))DB.langs[ui.role]=j.user.lang;
-    await srvPull();
+    try{const rs=await pSt;if(rs&&rs.ok)srvApplyState(await rs.json());}catch(e){}
     setInterval(srvPull,12000);
   }catch(e){SRV.on=false;} /* 서버 없음 → 로컬 모드 */
   return true;

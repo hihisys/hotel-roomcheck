@@ -13,7 +13,15 @@ function db(): PDO {
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
   ]);
   if (str_starts_with($dsn, 'sqlite:')) $pdo->exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=3000;');
-  migrate($pdo);
+  /* 마이그레이션 1회 실행 가드 (2026-07-31): 스키마 버전이 같으면 매 요청 DDL 수십 개 실행을 건너뜀
+     ⚠️ migrate()에 컬럼/테이블을 추가하면 아래 버전 문자열을 반드시 올릴 것 */
+  $SCHEMA_VER = '2026-07-31a';
+  $need = true;
+  try {
+    $st = $pdo->query("SELECT v FROM meta WHERE k='schema_ver'");
+    if ($st && $st->fetchColumn() === json_encode($SCHEMA_VER)) $need = false;
+  } catch (Throwable $e) { /* meta 테이블 없음 → 최초 실행 */ }
+  if ($need) { migrate($pdo); metaSet($pdo, 'schema_ver', $SCHEMA_VER); }
   return $pdo;
 }
 function isMySQL(PDO $pdo): bool { return $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql'; }

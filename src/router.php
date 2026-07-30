@@ -429,10 +429,11 @@ function route(string $path, string $method): void {
   }
   /* 관리자 통계 (2026-07-18): 요청 payload 집계. 확정 = 확인자 답변 완료 건 */
   if ($path === 'admin/stats' && $method === 'GET') {
-    requireAdmin();
+    $u = requireAdmin();
     $byAgent = []; $byAgentMgr = []; $byRequester = []; $byChecker = [];
     $tot = ['requests' => 0, 'confirmed' => 0, 'quoteSent' => 0, 'contracted' => 0];
-    foreach (allRequests($pdo) as $p) {
+    // 2026-07-30 버그 수정: 사용자 정보 없이 호출하면 지역 필터에 걸려 항상 0건이 되던 문제 → 관리자 정보 전달
+    foreach (allRequests($pdo, $u) as $p) {
       $answered = (($p['status'] ?? '') === 'answered');
       $confirmed = $answered && !empty($p['answerComplete']); // 확인자 답변 완료 = 확정
       $quoteSent = !empty($p['quoteSent']);

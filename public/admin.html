@@ -188,7 +188,7 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function row(u,withDecide){
   const dt=new Date(u.created_at);
   const when=dt.getFullYear()+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+String(dt.getDate()).padStart(2,'0');
-  const roleTag=(ROLE_KO[u.role]||u.role)+(u.super?' <span class="rolechip">최고관리자</span>':(u.role==='admin'?' <span class="rolechip">관리자</span>':''));
+  const roleTag=(ROLE_KO[u.role]||u.role)+(u.ext?' <span class="rolechip">에이전시 부계정</span>':'')+(u.super?' <span class="rolechip">최고관리자</span>':(u.role==='admin'?' <span class="rolechip">관리자</span>':''));
   let btns='';
   if(withDecide){
     btns='<button class="bt-ok" data-a="approve" data-id="'+u.id+'">✓ 승인</button><button class="bt-no" data-a="reject" data-id="'+u.id+'">거절</button><button class="bt-del" data-a="delete" data-id="'+u.id+'">삭제</button>';

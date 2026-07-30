@@ -110,8 +110,10 @@ function isPendingForRequester(array $p): bool {
    - 에이전트: 모든 요청 (지역 제한 없음) */
 function allRequests(PDO $pdo, ?array $currentUser = null): array {
   $out = [];
-  $isSuperAdmin = $currentUser && $currentUser['role'] === 'admin' &&
-                  (strtolower((string)($currentUser['email'] ?? '')) === strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local')));
+  // 2026-07-30: 사용자 없이 호출(시스템 컨텍스트 — 통계·다이제스트)이면 전체 조회
+  $isSuperAdmin = ($currentUser === null) ||
+                  ($currentUser && $currentUser['role'] === 'admin' &&
+                  (strtolower((string)($currentUser['email'] ?? '')) === strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'))));
   $userRegion = $currentUser['region'] ?? null;
   $userId = (int)($currentUser['id'] ?? 0);
   $userRole = $currentUser['role'] ?? '';

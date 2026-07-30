@@ -632,7 +632,8 @@ function bindForm(){
     ri.onchange=e=>{row.roomType=rtStore(e.target.value);renderApp();};
     /* 호텔/룸타입 빠른검색 드롭다운 (2026-07-30): 한/영 부분 일치, 표시명은 지정 언어 1개 */
     attachAC(hi,
-      ()=>hotelsIn(row.region).map(h=>({label:dHotel(h.name),s:[h.name,HOTEL_EN[h.name]||'']})),
+      ()=>hotelsIn(row.region).map(h=>({label:dHotel(h.name),s:[h.name,HOTEL_EN[h.name]||''],main:!!h.main}))
+        .sort((a,b)=>((b.main?1:0)-(a.main?1:0))||a.label.localeCompare(b.label,isEN()?'en':'ko')), /* 2026-07-31: 표시 언어 기준 정렬 (한글=가나다, 영어=ABC), 메인 호텔 우선 */
       label=>{row.hotel=HOTEL_KO[label]||label;hi.value=label;loadHotelRooms(row.hotel);renderApp();});
     attachAC(ri,
       ()=>roomsFor(row.hotel).map(r=>({label:dRoom(r),s:[r,RT_EN[r]||'',dRoom(r)]})),

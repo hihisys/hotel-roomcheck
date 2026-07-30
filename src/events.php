@@ -29,10 +29,12 @@ function detectEvents(PDO $pdo, ?array $old, array $new, array $actor): void {
     foreach ($targets as $targetRole) {
       $st = $pdo->prepare("SELECT id FROM users WHERE role=? AND status='approved' AND (role='admin' OR region IS NULL OR region=?)");
       $st->execute([$targetRole, $reqRegion]);
-      foreach ($st->fetchAll() as $u) {
-        $notifSt = $pdo->prepare("INSERT INTO notifications (role,exclude_user,type,req_no,params,created_at) VALUES (?,?,?,?,?,?)");
-        $notifSt->execute([$targetRole, $uid, 'new_request', $no, json_encode(['hotels' => $hotels, 'dates' => reqDates($new), 'agent' => $new['agent'] ?? ''], JSON_UNESCAPED_UNICODE), nowMs()]);
-      }
+      $matched = $st->fetchAll();
+      $notifSt = $pdo->prepare("INSERT INTO notifications (role,exclude_user,type,req_no,params,created_at) VALUES (?,?,?,?,?,?)");
+      $payload = json_encode(['hotels' => $hotels, 'dates' => reqDates($new), 'agent' => $new['agent'] ?? ''], JSON_UNESCAPED_UNICODE);
+      foreach ($matched as $u) $notifSt->execute([$targetRole, $uid, 'new_request', $no, $payload, nowMs()]);
+      // 대상 사용자가 없어도 알림 1건 기록 (관리자 전체 열람용, 2026-07-30)
+      if (!$matched) $notifSt->execute([$targetRole, $uid, 'new_request', $no, $payload, nowMs()]);
     }
     tgSendRole($pdo, 'schk', fn($lang) => tgT($lang, 'new_request', array_merge(['no' => $no, 'hotels' => $hotels, 'dates' => reqDates($new)], ['agent' => $new['agent'] ?? ''])), $uid);
     if ($role === 'agent') tgSendRole($pdo, 'sreq', fn($lang) => tgT($lang, 'new_request', array_merge(['no' => $no, 'hotels' => $hotels, 'dates' => reqDates($new)], ['agent' => $new['agent'] ?? ''])), $uid);
@@ -61,10 +63,11 @@ function detectEvents(PDO $pdo, ?array $old, array $new, array $actor): void {
         $st->execute([$targetRole]);
       }
 
-      foreach ($st->fetchAll() as $u) {
-        $notifSt = $pdo->prepare("INSERT INTO notifications (role,exclude_user,type,req_no,params,created_at) VALUES (?,?,?,?,?,?)");
-        $notifSt->execute([$targetRole, $uid, $notifyType, $no, json_encode($params, JSON_UNESCAPED_UNICODE), nowMs()]);
-      }
+      $matched = $st->fetchAll();
+      $notifSt = $pdo->prepare("INSERT INTO notifications (role,exclude_user,type,req_no,params,created_at) VALUES (?,?,?,?,?,?)");
+      $payload = json_encode($params, JSON_UNESCAPED_UNICODE);
+      foreach ($matched as $u) $notifSt->execute([$targetRole, $uid, $notifyType, $no, $payload, nowMs()]);
+      if (!$matched) $notifSt->execute([$targetRole, $uid, $notifyType, $no, $payload, nowMs()]); // 대상 없어도 기록 (2026-07-30)
     }
   }
 
@@ -72,28 +75,31 @@ function detectEvents(PDO $pdo, ?array $old, array $new, array $actor): void {
   if (empty($old['quoteRequested']) && !empty($new['quoteRequested']) && empty($new['quoteSent'])) {
     $st = $pdo->prepare("SELECT id FROM users WHERE role='sreq' AND status='approved' AND (region IS NULL OR region=? OR id=?)");
     $st->execute([$reqRegion, $createdBy]);
-    foreach ($st->fetchAll() as $u) {
-      $notifSt = $pdo->prepare("INSERT INTO notifications (role,exclude_user,type,req_no,params,created_at) VALUES (?,?,?,?,?,?)");
-      $notifSt->execute(['sreq', $uid, 'quote_requested', $no, json_encode(['hotels' => $hotels], JSON_UNESCAPED_UNICODE), nowMs()]);
-    }
+    $matched = $st->fetchAll();
+    $notifSt = $pdo->prepare("INSERT INTO notifications (role,exclude_user,type,req_no,params,created_at) VALUES (?,?,?,?,?,?)");
+    $payload = json_encode(['hotels' => $hotels], JSON_UNESCAPED_UNICODE);
+    foreach ($matched as $u) $notifSt->execute(['sreq', $uid, 'quote_requested', $no, $payload, nowMs()]);
+    if (!$matched) $notifSt->execute(['sreq', $uid, 'quote_requested', $no, $payload, nowMs()]); // 대상 없어도 기록 (2026-07-30)
   }
 
   // 4) 견적 발송됨 (요청자 → 에이전트)
   if (empty($old['quoteSent']) && !empty($new['quoteSent'])) {
     $st = $pdo->prepare("SELECT id FROM users WHERE role='agent' AND status='approved'");
     $st->execute();
-    foreach ($st->fetchAll() as $u) {
-      $notifSt = $pdo->prepare("INSERT INTO notifications (role,exclude_user,type,req_no,params,created_at) VALUES (?,?,?,?,?,?)");
-      $notifSt->execute(['agent', $uid, 'quote_sent', $no, json_encode(['hotels' => $hotels, 'agent' => trim($new['agent'] ?? '')], JSON_UNESCAPED_UNICODE), nowMs()]);
-    }
+    $matched = $st->fetchAll();
+    $notifSt = $pdo->prepare("INSERT INTO notifications (role,exclude_user,type,req_no,params,created_at) VALUES (?,?,?,?,?,?)");
+    $payload = json_encode(['hotels' => $hotels, 'agent' => trim($new['agent'] ?? '')], JSON_UNESCAPED_UNICODE);
+    foreach ($matched as $u) $notifSt->execute(['agent', $uid, 'quote_sent', $no, $payload, nowMs()]);
+    if (!$matched) $notifSt->execute(['agent', $uid, 'quote_sent', $no, $payload, nowMs()]); // 대상 없어도 기록 (2026-07-30)
   }
 
   if (!empty($new['direct']) && empty($old['forwardedAt']) && !empty($new['forwardedAt'])) {
     $st = $pdo->prepare("SELECT id FROM users WHERE role='agent' AND status='approved'");
     $st->execute();
-    foreach ($st->fetchAll() as $u) {
-      $notifSt = $pdo->prepare("INSERT INTO notifications (role,exclude_user,type,req_no,params,created_at) VALUES (?,?,?,?,?,?)");
-      $notifSt->execute(['agent', $uid, 'answered', $no, json_encode(['hotels' => $hotels, 'agent' => trim($new['agent'] ?? '')], JSON_UNESCAPED_UNICODE), nowMs()]);
-    }
+    $matched = $st->fetchAll();
+    $notifSt = $pdo->prepare("INSERT INTO notifications (role,exclude_user,type,req_no,params,created_at) VALUES (?,?,?,?,?,?)");
+    $payload = json_encode(['hotels' => $hotels, 'agent' => trim($new['agent'] ?? '')], JSON_UNESCAPED_UNICODE);
+    foreach ($matched as $u) $notifSt->execute(['agent', $uid, 'answered', $no, $payload, nowMs()]);
+    if (!$matched) $notifSt->execute(['agent', $uid, 'answered', $no, $payload, nowMs()]); // 대상 없어도 기록 (2026-07-30)
   }
 }

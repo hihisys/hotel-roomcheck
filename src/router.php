@@ -139,10 +139,16 @@ function route(string $path, string $method): void {
       $out['seqA'] = (int)metaGet($pdo, 'seqA', 0);
       $out['seqD'] = (int)metaGet($pdo, 'seqD', 0);
     }
-    // 알림 (역할 대상, 본인 행동 제외)
-    $st = $pdo->prepare("SELECT type,req_no,params,created_at,exclude_user FROM notifications
-      WHERE role=? AND (exclude_user IS NULL OR exclude_user<>?) ORDER BY id DESC LIMIT 20");
-    $st->execute([$u['role'], $u['id']]);
+    // 알림 (역할 대상, 본인 행동 제외 · 관리자는 모든 역할의 알림을 본인 행동 포함 전체 열람, 2026-07-30)
+    if (($u['role'] ?? '') === 'admin') {
+      $st = $pdo->prepare("SELECT type,req_no,params,created_at,exclude_user FROM notifications
+        GROUP BY type,req_no,params ORDER BY MAX(id) DESC LIMIT 20");
+      $st->execute();
+    } else {
+      $st = $pdo->prepare("SELECT type,req_no,params,created_at,exclude_user FROM notifications
+        WHERE role=? AND (exclude_user IS NULL OR exclude_user<>?) ORDER BY id DESC LIMIT 20");
+      $st->execute([$u['role'], $u['id']]);
+    }
     $items = [];
     $unread = 0;
     foreach ($st->fetchAll() as $n) {

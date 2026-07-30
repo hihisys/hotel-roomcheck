@@ -430,6 +430,35 @@ function checkerHTML(){
 
 /* ================= ① 요청자(에이전트) 폼 ================= */
 function agentSelOpts(cur){var opts='<option value="">'+escT(T('ph_sel_input'))+'</option>';var names=AGENTS.map(function(a){return a.name;});AGENTS.forEach(function(a){var lbl=(a.nickname&&a.nickname!==a.name)?(a.nickname+' ('+a.name+')'):a.name;opts+='<option value="'+esc(a.name)+'"'+(a.name===cur?' selected':'')+'>'+escT(lbl)+'</option>';});if(cur&&names.indexOf(cur)<0)opts+='<option value="'+esc(cur)+'" selected>'+escT(cur)+'</option>';return opts;}
+/* 커스텀 빠른검색 드롭다운 (2026-07-30)
+   - 표시: 지정 언어 이름 1개만 (한글 없으면 영문)
+   - 검색: 한글/영문 어느 쪽이든 부분 일치 (공백 무시) — "마이"→마이카오락, "다이"→DYNAMIC
+   - 포커스/클릭 시 전체 목록, 입력 시 즉시 필터 */
+function attachAC(inp,getItems,onPick){
+  if(!inp||inp._ac)return;inp._ac=true;
+  const wrap=inp.parentElement;if(!wrap)return;
+  if(getComputedStyle(wrap).position==='static')wrap.style.position='relative';
+  const box=document.createElement('div');
+  box.style.cssText='display:none;position:absolute;top:100%;left:0;right:0;margin-top:4px;max-height:240px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:10px;z-index:70;box-shadow:0 10px 24px rgba(0,0,0,.14)';
+  wrap.appendChild(box);
+  const norm=s=>String(s||'').toLowerCase().replace(/\s+/g,'');
+  const render=q=>{
+    const nq=norm(q);
+    const items=getItems().filter(it=>!nq||(it.s||[it.label]).some(x=>norm(x).includes(nq)));
+    if(!items.length){box.style.display='none';return;}
+    box.innerHTML=items.slice(0,200).map(it=>'<div style="padding:9px 12px;cursor:pointer;font-size:13px">'+escT(it.label)+'</div>').join('');
+    box.style.display='block';
+    Array.prototype.forEach.call(box.children,(el,i)=>{
+      el.onmouseenter=()=>{el.style.background='#F2F5FA';};el.onmouseleave=()=>{el.style.background='';};
+      el.onmousedown=ev=>{ev.preventDefault();box.style.display='none';onPick(items[i].label,items[i]);};
+    });
+  };
+  inp.addEventListener('focus',()=>{render('');});
+  inp.addEventListener('click',()=>{if(box.style.display==='none')render(inp._acTyped?inp.value:'');});
+  inp.addEventListener('input',()=>{inp._acTyped=true;render(inp.value);});
+  inp.addEventListener('blur',()=>{setTimeout(()=>{box.style.display='none';inp._acTyped=false;},150);});
+  inp.addEventListener('keydown',e=>{if(e.key==='Escape')box.style.display='none';});
+}
 /* 에이전시 담당자 자동 로드 — 에이전트 선택 시 /api/agencies/{idx}의 managers를 담당자 목록에 반영 (2026-07-30)
    force=true(에이전트 확정 선택 시): 기존 담당자 값이 있어도 새 에이전시의 첫 담당자로 갱신 */
 async function loadAgencyManagers(name,force){
@@ -456,10 +485,7 @@ async function loadHotelRooms(name){
   try{const r=await fetch('api/hotels/'+h.idx,{cache:'no-store'});if(!r.ok){h._rtLoaded=false;return;}
     const j=await r.json();
     const rts=(((j&&j.hotel)||{}).room_types||[]).filter(rt=>rt&&rt.name&&(rt.active==null||rt.active==='Y')&&(rt.del==null||rt.del==='N'||rt.del===0||rt.del==='0')).map(rt=>String(rt.name));
-    if(rts.length){h.rooms=rts;
-      /* 열려 있는 폼의 해당 호텔 룸타입 목록만 즉시 갱신 (전체 재렌더 없이) */
-      (draft.rows||[]).forEach(row=>{if(row.hotel===name){const dl=document.getElementById('rdl'+row.id);if(dl)dl.innerHTML=rts.map(rt=>'<option value="'+esc(dRoom(rt))+'">').join('');}});
-    }
+    if(rts.length)h.rooms=rts; /* 빠른검색 목록은 열 때마다 roomsFor()를 다시 읽으므로 즉시 반영됨 */
   }catch(e){h._rtLoaded=false;}
 }
 function formHTML(){
@@ -491,10 +517,7 @@ function formHTML(){
   const blocks=d.rows.map((row,i)=>{
     const dd=rDates(d,row,i);
     const rlist=REGIONS.map(r=>opt(r,RG_DISP(r),r===row.region)).join('');
-    /* 호텔 datalist: 표시명 + 한/영 상호 검색 가능하도록 반대 언어 이름도 함께 등록 (2026-07-30) */
-    const hdl=hotelsIn(row.region).map(h=>{let o='<option value="'+esc(dHotel(h.name))+'">';const alt=isEN()?h.name:HOTEL_EN[h.name];if(alt&&alt!==dHotel(h.name))o+='<option value="'+esc(alt)+'">';return o;}).join('');
-    /* 룸타입 datalist: 지정 언어에 맞는 표기로 표시 (한국어=한글, 영어/태국어=영문, 2026-07-30) */
-    const rdl=roomsFor(row.hotel).map(r=>'<option value="'+esc(dRoom(r))+'">').join('');
+    /* 호텔/룸타입 목록은 커스텀 빠른검색 드롭다운(attachAC)으로 표시 — 표시명은 지정 언어 1개만 (2026-07-30) */
     const dateRow = d.mode==='multi'
       ? '<div class="dategrid">'
         +'<div class="datewrap" style="grid-area:1/1"><span class="dlab">'+T('checkin')+'</span><input class="dateinput" readonly data-target="'+row.id+'" data-kind="in" value="'+fdate(dd.checkIn)+'"><button class="calico calOpen" data-target="'+row.id+'" data-kind="in" title="'+esc(T('cal_open'))+'">📅</button></div>'
@@ -506,8 +529,8 @@ function formHTML(){
       +'<div class="flex between aic"><span class="bnum">'+T('hotel_n')+' '+(i+1)+'</span><button class="del btnDel" title="'+esc(T('del_hotel'))+'">−</button></div>'
       +'<div class="line lhotel" style="margin-top:8px">'
         +'<div><div class="label">'+T('region')+'</div><select class="selRegion">'+rlist+'</select></div>'
-        +'<div><div class="label">'+T('hotel_sel')+'</div><input class="inHotel" list="hdl'+row.id+'" value="'+esc(dHotel(row.hotel))+'" placeholder="'+esc(T('ph_hotel'))+'"><datalist id="hdl'+row.id+'">'+hdl+'</datalist></div>'
-        +'<div><div class="label">'+T('room_sel')+'</div><input class="inRoom" list="rdl'+row.id+'" value="'+esc(dRoom(row.roomType))+'" placeholder="'+esc(T('ph_room'))+'"><datalist id="rdl'+row.id+'">'+rdl+'</datalist></div></div>'
+        +'<div><div class="label">'+T('hotel_sel')+'</div><input class="inHotel" autocomplete="off" value="'+esc(dHotel(row.hotel))+'" placeholder="'+esc(T('ph_hotel'))+'"></div>'
+        +'<div><div class="label">'+T('room_sel')+'</div><input class="inRoom" autocomplete="off" value="'+esc(dRoom(row.roomType))+'" placeholder="'+esc(T('ph_room'))+'"></div></div>'
       +dateRow
       +'<div style="margin-top:10px"><div class="label">'+T('opt_label')+'</div>'
         +(row.options||[]).map(o=>{const custom=o._custom||(!!o.name&&!OPTLIST.includes(o.name));
@@ -528,7 +551,7 @@ function formHTML(){
     +'<div class="seg" id="mode"><button data-v="parallel"'+(d.mode==='parallel'?' class="on"':'')+'>'+T('mode_parallel')+'</button><button data-v="multi"'+(d.mode==='multi'?' class="on"':'')+'>'+T('mode_multi')+'</button></div>'
     +(ui.role==='sreq'
       ? '<div class="line l3">'
-        +'<div><div class="label">'+T('agent_select')+'</div><input id="agent" list="dlAg" value="'+esc(d.agent||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"><datalist id="dlAg">'+AGENTS.map(a=>'<option value="'+esc(a.name)+'">').join('')+'</datalist></div>'
+        +'<div><div class="label">'+T('agent_select')+'</div><input id="agent" autocomplete="off" value="'+esc(d.agent||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"></div>'
         +'<div><div class="label">'+T('agent_mgr')+'</div><input id="agentMgr" list="dlAm" value="'+esc(d.agentManager||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"><datalist id="dlAm">'+((DB.hist&&DB.hist.am)||[]).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist></div>'
         +'<div><div class="label">'+T('mgr_nirvana')+'</div><input id="regName" list="dlSt" value="'+esc(d.registrant||'심은선')+'" placeholder="'+esc(T('ph_input'))+'"><datalist id="dlSt">'+((DB.hist&&DB.hist.st)||[]).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist></div></div>'
       : '')
@@ -558,15 +581,10 @@ function bindForm(){
   document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{d.mode=b.dataset.v;renderApp();});
   const ag=document.getElementById('agent');if(ag){ag.oninput=e=>{d.agent=e.target.value;loadAgencyManagers(d.agent);};ag.onchange=e=>{d.agent=e.target.value;loadAgencyManagers(d.agent,true);};} /* 확정 선택 시 담당자 강제 갱신 */
   if(d.agent)loadAgencyManagers(d.agent); /* 이미 선택된 에이전트의 담당자 목록 미리 로드 */
-  /* 입력창(기존 화살표) 클릭 시 전체 목록 표시: 포커스 때 값을 비워 datalist 전체를 열고,
-     선택 없이 나가면 원래 값 복원 (2026-07-30) */
-  const comboize=(inp,getDisp)=>{if(!inp||inp._cmb)return;inp._cmb=true;
-    inp.addEventListener('focus',()=>{inp.dataset.prev=inp.value;if(inp.value)inp.value='';});
-    /* 이미 포커스 상태에서 다시 클릭해도 전체 목록이 열리도록 값 비우기 (2026-07-30) */
-    inp.addEventListener('mousedown',()=>{if(document.activeElement===inp&&inp.value){inp.dataset.prev=inp.value;inp.value='';}});
-    inp.addEventListener('blur',()=>{setTimeout(()=>{if(document.body.contains(inp)&&!inp.value)inp.value=getDisp()||inp.dataset.prev||'';},120);});
-  };
-  if(ag)comboize(ag,()=>d.agent||'');
+  /* 에이전트 빠른검색 드롭다운 (2026-07-30): 이름/닉네임 부분 일치 */
+  if(ag)attachAC(ag,
+    ()=>AGENTS.map(a=>({label:a.name,s:[a.name,a.nickname||'']})),
+    label=>{d.agent=label;ag.value=label;loadAgencyManagers(label,true);});
   const am=document.getElementById('agentMgr');if(am)am.oninput=e=>{d.agentManager=e.target.value;};
   const rg=document.getElementById('regName');if(rg)rg.oninput=e=>{d.registrant=e.target.value;};
   /* 에이전트 부계정 정보 필드 바인딩 (2026-07-30) */
@@ -604,9 +622,13 @@ function bindForm(){
     const rtStore=v=>RT_KO[v]||_rtKo2En[v]||v;
     ri.oninput=e=>{row.roomType=rtStore(e.target.value);};
     ri.onchange=e=>{row.roomType=rtStore(e.target.value);renderApp();};
-    /* 기존 화살표(입력창) 클릭 시 전체 목록 다시 열기 (2026-07-30) */
-    comboize(hi,()=>dHotel(row.hotel)||'');
-    comboize(ri,()=>dRoom(row.roomType)||'');
+    /* 호텔/룸타입 빠른검색 드롭다운 (2026-07-30): 한/영 부분 일치, 표시명은 지정 언어 1개 */
+    attachAC(hi,
+      ()=>hotelsIn(row.region).map(h=>({label:dHotel(h.name),s:[h.name,HOTEL_EN[h.name]||'']})),
+      label=>{row.hotel=HOTEL_KO[label]||label;hi.value=label;loadHotelRooms(row.hotel);renderApp();});
+    attachAC(ri,
+      ()=>roomsFor(row.hotel).map(r=>({label:dRoom(r),s:[r,RT_EN[r]||'',dRoom(r)]})),
+      label=>{row.roomType=rtStore(label);ri.value=label;renderApp();});
     const n=el.querySelector('.inNights');if(n)n.onchange=e=>{row.nights=Math.max(1,Number(e.target.value)||1);renderApp();};
     const rm=el.querySelector('.inRooms');if(rm)rm.onchange=e=>{row.rooms=Math.max(1,Number(e.target.value)||1);};
     el.querySelectorAll('[data-optid]').forEach(o=>{const oid=Number(o.dataset.optid),op=(row.options||[]).find(x=>x.id===oid);

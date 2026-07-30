@@ -38,12 +38,16 @@ const isEN=()=>{if(FORCE_KO||typeof ui==='undefined')return false;
   try{const a=LANG_ALLOWED[ui.role]||[];let l=(typeof DB!=='undefined'&&DB&&DB.langs&&DB.langs[ui.role])||a[0];if(!a.includes(l))l=a[0];return l!=='ko';}catch(e){return true;}};
 const dHotel=n=>isEN()?(HOTEL_EN[n]||n):n;
 /* API 영문 룸타입의 한글 표기 변환 (표시용 · 저장은 원문 유지, 2026-07-30) */
-const RT_WORD_KO={Deluxe:"디럭스",Superior:"슈페리어",Suite:"스위트",Twin:"트윈",Double:"더블",Triple:"트리플",King:"킹",Queen:"퀸",Villa:"빌라",Pool:"풀",Family:"패밀리",Studio:"스튜디오",Premier:"프리미어",Premium:"프리미엄",Executive:"이그제큐티브",Grand:"그랜드",Junior:"주니어",Club:"클럽",Garden:"가든",Beach:"비치",Beachfront:"비치프론트",Oceanfront:"오션프론트",Penthouse:"펜트하우스",Residence:"레지던스",Room:"룸",Bungalow:"방갈로",Cottage:"코티지",Standard:"스탠다드",Classic:"클래식",Signature:"시그니처",Royal:"로얄",Presidential:"프레지덴셜"};
+const RT_WORD_KO={Deluxe:"디럭스",Superior:"슈페리어",Suite:"스위트",Twin:"트윈",Double:"더블",Triple:"트리플",King:"킹",Queen:"퀸",Villa:"빌라",Pool:"풀",Family:"패밀리",Studio:"스튜디오",Premier:"프리미어",Premium:"프리미엄",Executive:"이그제큐티브",Grand:"그랜드",Junior:"주니어",Club:"클럽",Garden:"가든",Beach:"비치",Beachfront:"비치프론트",Oceanfront:"오션프론트",Penthouse:"펜트하우스",Residence:"레지던스",Room:"룸",Bungalow:"방갈로",Cottage:"코티지",Standard:"스탠다드",Classic:"클래식",Signature:"시그니처",Royal:"로얄",Presidential:"프레지덴셜",
+  /* 약어/추가 단어 (2026-07-30) */
+  PV:"풀빌라","S/V":"씨뷰",SV:"씨뷰",DLX:"디럭스",STD:"스탠다드",SUP:"슈페리어",EXE:"이그제큐티브",JR:"주니어",BF:"비치프론트",OV:"오션뷰",GV:"가든뷰",CV:"시티뷰",MV:"마운틴뷰",
+  View:"뷰",Sea:"씨",Ocean:"오션",Mountain:"마운틴",City:"시티",Lake:"레이크",River:"리버",Lagoon:"라군",Access:"액세스",Wing:"윙",Corner:"코너",Terrace:"테라스",Balcony:"발코니",Connecting:"커넥팅",Honeymoon:"허니문",Romance:"로맨스",Romantic:"로맨틱",Love:"러브",In:"인",Bedroom:"베드룸",Loft:"로프트",Duplex:"듀플렉스",Cabana:"카바나",Chalet:"샬레",Tent:"텐트",Apartment:"아파트먼트",Jacuzzi:"자쿠지",Plunge:"플런지",Cliff:"클리프",Hillside:"힐사이드",Seaside:"씨사이드",Sunset:"선셋",Sunrise:"선라이즈",One:"원",Two:"투",Three:"쓰리"};
 const RT_PHRASE_KO=[["Sea View","씨뷰"],["Ocean View","오션뷰"],["Pool Access","풀액세스"],["Pool Villa","풀빌라"],["with Balcony","(발코니)"],["With Balcony","(발코니)"],["No Balcony","(발코니 없음)"],["City View","시티뷰"],["Mountain View","마운틴뷰"],["Garden View","가든뷰"]];
+const _rtWordKoMap={};Object.keys(RT_WORD_KO).forEach(k=>{_rtWordKoMap[k.toLowerCase()]=RT_WORD_KO[k];});
 const _rtKo2En={}; /* 한글 표기 → 원문(영문) 역매핑 (입력·선택 시 원문으로 저장) */
 function rtDispKo(n){if(!n||/[가-힣]/.test(n))return n;
   let s=String(n);RT_PHRASE_KO.forEach(p=>{s=s.split(p[0]).join(p[1]);});
-  s=s.split(/\s+/).map(w=>RT_WORD_KO[w]||w).join(' ').trim();
+  s=s.split(/\s+/).map(w=>{const hit=_rtWordKoMap[w.toLowerCase()];return hit||w;}).join(' ').trim();
   if(s!==n)_rtKo2En[s]=n;return s;}
 const dRoom=n=>isEN()?(RT_EN[n]||n):rtDispKo(n);
 const dRegion=n=>isEN()?(RG_EN[n]||n):n;
@@ -326,9 +330,23 @@ function applyChrome(){
   const sub={agent:'sub_agent',sreq:'sub_sreq',schk:'sub_schk'}[ui.role];const sb=document.querySelector('.brandsub');if(sb&&sub)sb.textContent=T(sub);
   document.title='너바나 · '+T(chip);
 }
+/* 호텔 연락처 자동 로드 — API 호텔이면 /api/hotels/{idx}의 telnumber를 연락처 목록에 자동 등록 (2026-07-30) */
+async function ensureHotelPhone(name){
+  const h=HOTELS.find(x=>x.name===name&&x.api&&x.idx);if(!h||h._telLoaded)return;h._telLoaded=true;
+  try{const r=await fetch('api/hotels/'+h.idx,{cache:'no-store'});if(!r.ok){h._telLoaded=false;return;}
+    const j=await r.json();const tel=String((((j&&j.hotel)||{}).hotel||{}).telnumber||'').trim();
+    if(!tel)return;
+    DB.phones=DB.phones||{};DB.phones[name]=DB.phones[name]||[];
+    if(DB.phones[name].indexOf(tel)<0){DB.phones[name].unshift(tel);saveDB();if(typeof srvSchedule==='function')srvSchedule();
+      const editing=document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
+      if(!editing)renderApp();
+    }
+  }catch(e){h._telLoaded=false;}
+}
 function phoneHTML(req,row){
   if(!(ui.role==='schk'||ui.role==='sreq'))return '';
   DB.phones=DB.phones||{};
+  if(row.hotel)ensureHotelPhone(row.hotel);
   const nums=(row.hotel&&DB.phones[row.hotel])||[];
   const sel=row.phone&&nums.includes(row.phone)?row.phone:(nums[0]||'');
   let os=nums.map(n=>opt(n,'📞 '+n,n===sel)).join('');
@@ -544,6 +562,8 @@ function bindForm(){
      선택 없이 나가면 원래 값 복원 (2026-07-30) */
   const comboize=(inp,getDisp)=>{if(!inp||inp._cmb)return;inp._cmb=true;
     inp.addEventListener('focus',()=>{inp.dataset.prev=inp.value;if(inp.value)inp.value='';});
+    /* 이미 포커스 상태에서 다시 클릭해도 전체 목록이 열리도록 값 비우기 (2026-07-30) */
+    inp.addEventListener('mousedown',()=>{if(document.activeElement===inp&&inp.value){inp.dataset.prev=inp.value;inp.value='';}});
     inp.addEventListener('blur',()=>{setTimeout(()=>{if(document.body.contains(inp)&&!inp.value)inp.value=getDisp()||inp.dataset.prev||'';},120);});
   };
   if(ag)comboize(ag,()=>d.agent||'');

@@ -222,6 +222,51 @@ let NOTIF={unread:0,items:[]};
 const meName=()=>((SRV.on&&SRV.me&&SRV.me.name)||'');
 const nickOf=n=>(n&&SRV.nicks&&SRV.nicks[n])||n||''; /* 서버 로그인 사용자 이름 (에이전시 부계정 포함) */
 const meNick=()=>{if(!SRV.on||!SRV.me)return '';const a=SRV.me.agency;return SRV.me.nickname||(a&&a.nickname)||SRV.me.name||'';}; /* 표시용: 닉네임 우선, 없으면 이름 */
+/* 부계정의 소속 에이전시(회사) 이름 (2026-07-30): 회원정보에서 수정한 값 우선, 없으면 API 목록에서 idx로 조회 */
+function myAgencyName(){
+  if(!SRV.on||!SRV.me)return '';
+  if(SRV.me.agent_company)return String(SRV.me.agent_company);
+  const ag=SRV.me.agency;if(!ag||!ag.idx)return '';
+  const a=(typeof AGENTS!=='undefined'?AGENTS:[]).find(x=>x&&x.api&&x.idx===ag.idx);
+  return a?a.name:'';
+}
+/* 에이전트 페이지 기본값 (2026-07-30): 에이전트=소속 에이전시(회사), 담당자=본인 — 통계가 '에이전트 담당자'로 잡히도록 */
+function applyAgentDefaults(){
+  if(ui.role!=='agent'||!SRV.on||!SRV.me)return;
+  const comp=myAgencyName();
+  if(comp&&(!draft.agent||draft.agent===meNick()||draft.agent===SRV.me.name))draft.agent=comp;
+  if(!draft.agentManager)draft.agentManager=meNick()||'';
+}
+/* 외부 API 목록 반영 (2026-07-30): 캐시 즉시 표시 후 백그라운드 갱신 */
+function applyAgencies(_gl){
+  (_gl||[]).slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'))
+    .forEach(a=>{if(a&&a.name&&(a.active==null||a.active==='Y')&&!AGENTS.some(x=>x.name===a.name))AGENTS.push({name:a.name,nickname:'',api:true,idx:a.idx});});
+}
+function applyHotels(_hl){
+  _hl=(_hl||[]).slice();if(!_hl.length)return;
+  const _a2r={KL:'카오락',PK:'푸켓',PT:'파타야',KR:'크라비',BK:'방콕'};
+  _hl.sort((a,b)=>((b.main_hotel_yn==='Y')-(a.main_hotel_yn==='Y'))||String(a.name_kr||a.name||'').localeCompare(String(b.name_kr||b.name||''),'ko'));
+  const keep={};HOTELS.forEach(h=>{if(h.api&&(h._rtLoaded||h._telLoaded))keep[h.name]=h;}); /* 로드된 룸타입 캐시 보존 */
+  HOTELS.length=0; /* 너바나 호텔만 표시 — 정적/중복 목록 제거 */
+  _hl.forEach(h=>{if(!h)return;const _dn=h.name_kr||h.name;if(!_dn||HOTELS.some(x=>x.name===_dn))return;
+    if(h.name&&h.name!==_dn){if(!HOTEL_EN[_dn])HOTEL_EN[_dn]=h.name;if(!HOTEL_KO[h.name])HOTEL_KO[h.name]=_dn;}
+    HOTELS.push(keep[_dn]||{name:_dn,region:_a2r[h.area]||'전체',rooms:GENERIC.slice(),api:true,idx:h.idx,main:h.main_hotel_yn==='Y'});});
+}
+async function loadExternalLists(){
+  try{const c=JSON.parse(localStorage.getItem('rc_extcache')||'null');
+    if(c&&Date.now()-c.at<600000){applyAgencies(c.agencies);applyHotels(c.hotels);applyAgentDefaults();}}catch(e){}
+  let _ags=null,_hts=null;
+  await Promise.all([
+    fetch('api/agencies?active=Y',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{_ags=(j&&j.agencies)||null;}).catch(()=>{}),
+    fetch('api/hotels?active=Y',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{_hts=(j&&j.hotels)||null;}).catch(()=>{})
+  ]);
+  if(_ags)applyAgencies(_ags);
+  if(_hts)applyHotels(_hts);
+  if(_ags||_hts){try{localStorage.setItem('rc_extcache',JSON.stringify({at:Date.now(),agencies:_ags||[],hotels:_hts||[]}));}catch(e){}}
+  applyAgentDefaults();
+  const editing=document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
+  if(!editing)renderApp();
+}
 async function srvInit(){
   try{
     const r=await fetch('api/me',{cache:'no-store'});
@@ -232,32 +277,10 @@ async function srvInit(){
     const pageOf={agent:'agent.html',sreq:'request.html',schk:'check.html',admin:'admin.html'};
     if(j.user.role!==ui.role&&j.user.role!=='admin'){location.href=pageOf[j.user.role]||'index.html';return false;}
     SRV.on=true;SRV.me=j.user;
-    /* 에이전트 부계정 API 반영: 부계정 정보(이름/닉네임/전화/계좌)로 draft 자동 채우기 (2026-07-30) */
-    if(ui.role==='agent'&&j.user.agency){
-      draft.agentName=j.user.name||'';
-      draft.agentNickname=j.user.nickname||(j.user.agency&&j.user.agency.nickname)||'';
-      draft.agentPhone=j.user.phone||'';
-      draft.agentBank=j.user.bank_account||'';
-    }
     try{const _ar=await fetch('api/agents',{cache:'no-store'});if(_ar.ok)AGENTS=(await _ar.json()).agents||[];}catch(e){}
-    /* 에이전시 API 반영: 외부 에이전시 목록을 에이전트 선택 목록에 병합 (2026-07-30, 기존 서버 사용자 목록 유지) */
-    try{const _gr=await fetch('api/agencies?active=Y',{cache:'no-store'});
-      if(_gr.ok){const _gj=await _gr.json();const _gl=(_gj&&_gj.agencies)||[];
-        _gl.sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'ko'));
-        _gl.forEach(a=>{if(a&&a.name&&(a.active==null||a.active==='Y')&&!AGENTS.some(x=>x.name===a.name))AGENTS.push({name:a.name,nickname:'',api:true,idx:a.idx});});
-      }}catch(e){}
-    /* 호텔 API 반영 (2026-07-30 개편): 너바나 API 호텔만 표시 — API 성공 시 기존 정적 목록을 대체(중복·불필요 항목 제거),
-       API 실패/빈 응답 시에만 기존 목록을 예비로 유지. 표시명은 한글명(name_kr) 우선, 없으면 영문명.
-       지역코드 매핑: KL=카오락 PK=푸켓 PT=파타야 KR=크라비 BK=방콕, 그 외는 '전체'에서 표시 */
-    try{const _hr=await fetch('api/hotels?active=Y',{cache:'no-store'});
-      if(_hr.ok){const _hj=await _hr.json();const _hl=(_hj&&_hj.hotels)||[];
-        const _a2r={KL:'카오락',PK:'푸켓',PT:'파타야',KR:'크라비',BK:'방콕'};
-        _hl.sort((a,b)=>((b.main_hotel_yn==='Y')-(a.main_hotel_yn==='Y'))||String(a.name_kr||a.name||'').localeCompare(String(b.name_kr||b.name||''),'ko'));
-        if(_hl.length)HOTELS.length=0; /* 너바나 호텔만 표시 — 정적(캐시) 목록 제거 */
-        _hl.forEach(h=>{if(!h)return;const _dn=h.name_kr||h.name;if(!_dn||HOTELS.some(x=>x.name===_dn))return; /* 이름 중복 제거 */
-          if(h.name&&h.name!==_dn){if(!HOTEL_EN[_dn])HOTEL_EN[_dn]=h.name;if(!HOTEL_KO[h.name])HOTEL_KO[h.name]=_dn;}
-          HOTELS.push({name:_dn,region:_a2r[h.area]||'전체',rooms:GENERIC.slice(),api:true,idx:h.idx,main:h.main_hotel_yn==='Y'});});
-      }}catch(e){}
+    /* 로딩 속도 개선 (2026-07-30): 외부 API(에이전시·호텔)는 첫 화면을 막지 않고
+       백그라운드로 로드 + 10분 localStorage 캐시로 즉시 표시 */
+    loadExternalLists();
     DB.langs=DB.langs||{};
     if(j.user.lang&&(LANG_ALLOWED[ui.role]||[]).includes(j.user.lang))DB.langs[ui.role]=j.user.lang;
     await srvPull();
@@ -492,19 +515,7 @@ async function loadHotelRooms(name){
 }
 function formHTML(){
   const d=draft;
-  /* 에이전트 부계정 정보 섹션 — 부계정 로그인 시에만 표시, 수동 수정 가능 (2026-07-30) */
-  const agentInfoSection = ui.role==='agent'&&SRV.on&&SRV.me&&SRV.me.agency
-    ? '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--line)">'
-      +'<div class="label" style="margin-bottom:12px;font-size:13px;font-weight:800;color:var(--brand)">📋 '+T('agency_acct')+'</div>'
-      +'<div class="line l3">'
-      +'<div><div class="label">'+T('name')+'</div><input id="agentName" value="'+esc(d.agentName||'')+'" placeholder="'+esc(T('ph_name'))+'"></div>'
-      +'<div><div class="label">'+T('nickname')+'</div><input id="agentNickname" value="'+esc(d.agentNickname||'')+'" placeholder="'+esc(T('ph_nickname'))+'"></div>'
-      +'<div><div class="label">'+T('phone')+'</div><input id="agentPhone" value="'+esc(d.agentPhone||'')+'" placeholder="+66 ..."></div>'
-      +'</div>'
-      +'<div style="margin-top:10px"><div class="label">'+T('bank')+'</div><input id="agentBank" value="'+esc(d.agentBank||'')+'" placeholder="'+esc(T('ph_bank'))+'"></div>'
-      +'<div class="note" style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5">'+T('agency_acct_help')+'</div>'
-      +'</div>'
-    : '';
+  /* 2026-07-30: 에이전시 부계정 정보 섹션은 룸첵 요청 페이지에서 제거 — 회원정보(profile.html)에서만 표시 */
   const dateArea = d.mode==='parallel'
     ? '<div class="dategrid">'
       +'<div class="datewrap" style="grid-area:1/1"><span class="dlab">'+T('checkin')+'</span><input class="dateinput" readonly data-target="global" data-kind="in" value="'+fdate(d.startDate)+'"><button class="calico calOpen" data-target="global" data-kind="in" title="'+esc(T('cal_open'))+'">📅</button></div>'
@@ -562,7 +573,6 @@ function formHTML(){
     +'<button id="addRow" class="addbtn">'+T('add_hotel')+'</button>'
     +'<div class="memo"><div class="memohead" id="notesHead"><span class="chev'+(ui.notesOpen?' open':'')+'">▶</span> '+T('notes')+'</div>'
     +'<div class="memobody" id="notesBody" style="display:'+(ui.notesOpen?'block':'none')+'"><textarea id="notes" placeholder="'+esc(T('ph_notes'))+'">'+escT(d.notes)+'</textarea></div></div>'
-    +agentInfoSection
     +(ui.role==='sreq'
       ? '<div style="display:flex;gap:8px;margin-top:14px">'
         +'<button id="run" class="cta" style="margin-top:0;flex:1;font-size:13.5px;padding:13px 6px;word-break:keep-all;line-height:1.35">'+T('btn_send_staff')+'</button>'
@@ -589,11 +599,7 @@ function bindForm(){
     label=>{d.agent=label;ag.value=label;loadAgencyManagers(label,true);});
   const am=document.getElementById('agentMgr');if(am)am.oninput=e=>{d.agentManager=e.target.value;};
   const rg=document.getElementById('regName');if(rg)rg.oninput=e=>{d.registrant=e.target.value;};
-  /* 에이전트 부계정 정보 필드 바인딩 (2026-07-30) */
-  const agn=document.getElementById('agentName');if(agn)agn.oninput=e=>{d.agentName=e.target.value;};
-  const agnn=document.getElementById('agentNickname');if(agnn)agnn.oninput=e=>{d.agentNickname=e.target.value;};
-  const agp=document.getElementById('agentPhone');if(agp)agp.oninput=e=>{d.agentPhone=e.target.value;};
-  const agb=document.getElementById('agentBank');if(agb)agb.oninput=e=>{d.agentBank=e.target.value;};
+  /* (2026-07-30) 부계정 정보 필드는 회원정보 페이지로 이동 — 요청 페이지 바인딩 제거 */
   const nt=document.getElementById('notes');nt.oninput=e=>{d.notes=e.target.value;};
   document.getElementById('notesHead').onclick=()=>{ui.notesOpen=!ui.notesOpen;renderApp();};
   var _qk=document.getElementById('qkind');if(_qk)_qk.onchange=function(e){d.quoteKind=Number(e.target.value)||0;};
@@ -650,8 +656,11 @@ function bindForm(){
   function doSubmit(direct){
     if(!d.rows.some(r=>r.hotel.trim())){toast(T('t_need_hotel1'));return;}
     if(d.mode==='parallel')d.rows.forEach(r=>{r.rooms=Math.max(1,Number(d.sharedRooms)||1);});
-    /* 에이전트 페이지: agent 필드가 비면 본인 이름으로 자동 설정 — 비면 본인 리스트에서 안 보이는 문제 방지 (2026-07-30) */
-    if(ui.role==='agent'&&!(d.agent||'').trim())d.agent=meNick()||meName()||'';
+    /* 에이전트 페이지 (2026-07-30): 에이전트=소속 에이전시(회사), 담당자=본인 자동 설정 */
+    if(ui.role==='agent'){
+      if(!(d.agent||'').trim())d.agent=myAgencyName()||meNick()||meName()||'';
+      if(!(d.agentManager||'').trim())d.agentManager=meNick()||meName()||'';
+    }
     DB.agentName=d.agent;
     var _sk=direct?'seqD':'seqA';DB[_sk]=(DB[_sk]||0)+1;
     DB.hist=DB.hist||{ag:[],am:[],st:[]};
@@ -659,7 +668,7 @@ function bindForm(){
     pushHist(DB.hist.ag,d.agent);pushHist(DB.hist.am,d.agentManager);pushHist(DB.hist.st,d.registrant);
     const req={id:Date.now(),no:DB[_sk],createdAt:Date.now(),status:'requested',direct:!!direct,
       quoteRequested:direct?false:((d.quoteKind||0)>0),quoteOnly:(d.quoteKind===1),quoteSent:false,answeredAt:null,
-      registrant:(d.registrant||'심은선').trim()||'심은선',agentManager:(d.agentManager||'').trim(),
+      registrant:(ui.role==='agent'?'':((d.registrant||'심은선').trim()||'심은선')),agentManager:(d.agentManager||'').trim(), /* 2026-07-30: 에이전트 등록 건은 요청자 미지정 — 통계 오귀속 방지 */
       mode:d.mode,startDate:d.startDate,sharedNights:d.sharedNights,agent:d.agent,manager:d.manager,notes:d.notes,
       rows:JSON.parse(JSON.stringify(d.rows)),ws:{},
       quote:d._quote?JSON.parse(JSON.stringify(d._quote)):{rate:40,pax:2,addl:[],override:null}};
@@ -764,7 +773,8 @@ function sectionsHTML(itemFn,sub){
       +(tab==='done'?'<button class="addbtn sm" id="backupBtn" style="margin-top:12px">'+T('backup_btn')+'</button>':'')
       +'</section>';
   }
-  const vis=r=>{if(ui.role!=='agent')return true;var me=[meName(),meNick()].filter(Boolean).map(function(x){return String(x).trim();});return me.indexOf(String(r.agent||'').trim())>=0;};
+  const vis=r=>{if(ui.role!=='agent')return true;var me=[meName(),meNick(),myAgencyName()].filter(Boolean).map(function(x){return String(x).trim();});
+    return me.indexOf(String(r.agent||'').trim())>=0||me.indexOf(String(r.agentManager||'').trim())>=0;}; /* 2026-07-30: 소속 에이전시명·담당자명으로도 매칭 */
   const act=activeList().filter(vis),past=pastList().filter(vis),con=contractList().filter(vis);
   const tab=ui.listTab||'act';
   const cur=tab==='past'?past:(tab==='con'?con:act);
@@ -1224,8 +1234,10 @@ let _tt;function toast(m){const t=document.getElementById('toast');t.textContent
   applyChrome();
   /* 에이전시/서버 로그인 시 에이전트·담당자 자동 채움 (2026-07-17) */
   if(SRV.on&&SRV.me){
-    if((ui.role==='agent'||ui.role==='sreq')&&!draft.agent)draft.agent=meNick()||DB.agentName||'';
-    if((ui.role==='agent'||ui.role==='sreq')&&meNick())draft.registrant=meNick();
+    /* 2026-07-30: 에이전트=소속 에이전시(회사명), 담당자=본인 — 통계가 '에이전트 담당자'로 잡히도록 */
+    if(ui.role==='agent'){applyAgentDefaults();if(!draft.agent)draft.agent=meNick()||DB.agentName||'';}
+    if(ui.role==='sreq'&&!draft.agent)draft.agent=meNick()||DB.agentName||'';
+    if(ui.role==='sreq'&&meNick())draft.registrant=meNick();
   }
   sweep();
   const imp=loadHash();

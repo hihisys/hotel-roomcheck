@@ -90,6 +90,12 @@ function route(string $path, string $method): void {
       if (mb_strlen($bank) > 255) jsonOut(['error' => 'invalid_bank_account'], 422);
       $pdo->prepare("UPDATE users SET bank_account=? WHERE id=?")->execute([$bank ?: null, $u['id']]);
     }
+    /* 소속 에이전시(회사) — 부계정/에이전트가 이직 시 변경 (2026-07-30) */
+    if (isset($in['agent_company']) && $u['role'] === 'agent') {
+      $ac = trim((string)$in['agent_company']);
+      if (mb_strlen($ac) > 120) jsonOut(['error' => 'invalid_agent_company'], 422);
+      $pdo->prepare("UPDATE users SET agent_company=? WHERE id=?")->execute([$ac ?: null, $u['id']]);
+    }
     /* 관할지역 수정 (2026-07-22): 직원(sreq/schk)과 관리자(admin)가 저장 가능, krabi 또는 bangkok */
     if (isset($in['region']) && in_array($u['role'], ['sreq', 'schk', 'admin'], true)) {
       $region = $in['region'] ?: null;

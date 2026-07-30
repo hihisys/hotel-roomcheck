@@ -69,6 +69,7 @@ function migrate(PDO $pdo): void {
   ensureColumn($pdo, 'users', 'orig_role', 'VARCHAR(10) NULL'); // 관리자 승격 전 원래 역할 (해제 시 복원)
   ensureColumn($pdo, 'users', 'off_days', 'LONGTEXT NULL'); // 휴무일 JSON {"dates":["YYYY-MM-DD"],"weekdays":[0..6]} (2026-07-18)
   ensureColumn($pdo, 'users', 'region', 'VARCHAR(20) NULL'); // 관할지역 (2026-07-22): 'krabi' | 'bangkok' | null
+  ensureColumn($pdo, 'users', 'agent_company', 'VARCHAR(120) NULL'); // 부계정 소속 에이전시(회사) — 이직 시 회원정보에서 변경 (2026-07-30)
   ensureColumn($pdo, 'requests', 'created_by', 'BIGINT NULL'); // 요청 생성자 ID (2026-07-22, 지역 필터링용)
   // 최초 관리자 계정 + env 변경 시 아이디·비밀번호 동기화 (2026-07-17)
   $adminEmail = env('ADMIN_EMAIL', 'admin@nirvana.local');

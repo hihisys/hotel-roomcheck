@@ -43,6 +43,7 @@
     <div class="field" id="fEmail"><div class="label" data-i="email">이메일</div><input id="email" type="email" autocomplete="email"></div>
     <div class="field"><div class="label" data-i="phone">연락처 (전화번호)</div><input id="phone" autocomplete="tel" placeholder="+66 ..."></div>
     <div class="field"><div class="label" data-i="bank">은행 계좌</div><input id="bank" placeholder="은행명 + 계좌번호 (선택사항)"></div>
+    <div class="field" id="fAgentCompany" style="display:none"><div class="label" data-i="agent_company">소속 에이전트 (회사)</div><input id="agentCompany" placeholder="에이전시 회사명 — 이직 시 변경하세요"></div>
     <div class="field" id="regionField" style="display:none"><div class="label" data-i="region">관할지역</div><select id="region"><option value="">선택 안 함</option><option value="krabi">카오락 + 푸켓</option><option value="bangkok">방콕 + 파타야</option></select></div>
     <button class="cta" id="save" data-i="save">저장</button>
     <div class="msg" id="msg1"></div>
@@ -75,6 +76,7 @@
 const LD={
 ko:{back:"← 돌아가기",lede:"회원정보를 확인하고 수정합니다.",title:"회원정보",name:"이름",acct:"계정",nickname:"닉네임",email:"이메일",phone:"연락처 (전화번호)",bank:"은행 계좌",region:"관할지역",save:"저장",
  ph_name:"이름 (한글이름)",ph_nickname:"표시용 닉네임 (선택사항)",ph_bank:"은행명 + 계좌번호 (선택사항)",region_none:"선택 안 함",region_krabi:"카오락 + 푸켓",region_bangkok:"방콕 + 파타야",
+ agent_company:"소속 에이전트 (회사)",
  pw_title:"비밀번호 변경",cur_pw:"현재 비밀번호",new_pw:"새 비밀번호 (6자 이상)",pw_btn:"비밀번호 변경",
  ext_note:"부계정도 이 사이트의 비밀번호를 변경할 수 있습니다. 처음 변경할 때 '현재 비밀번호'는 너바나에서 발급받은 비밀번호를 입력하세요. (이메일은 에이전시 시스템에서 관리)",
  saved:"저장되었습니다.",pw_saved:"비밀번호가 변경되었습니다.",bad_password:"현재 비밀번호가 올바르지 않습니다.",weak_password:"새 비밀번호는 6자 이상이어야 합니다.",
@@ -83,6 +85,7 @@ ko:{back:"← 돌아가기",lede:"회원정보를 확인하고 수정합니다."
  tg_title:"📲 텔레그램 연결",tg_desc:"Telegram을 통해 알림을 받을 수 있습니다.",tg_link:"텔레그램 연결 링크 생성",tg_connected:"✓ 텔레그램이 연결되었습니다.",tg_disconnect:"연결 해제",tg_not_connected:"아직 연결되지 않았습니다.",tg_link_copied:"텔레그램 링크를 복사했습니다.",tg_link_desc:"아래 링크를 Telegram에서 열어서 연결하세요:",tg_link_failed:"링크 생성에 실패했습니다",tg_confirm_disconnect:"텔레그램 연결을 해제할까요?",tg_disconnect_failed:"해제하지 못했습니다"},
 en:{back:"← Back",lede:"View and update your account info.",title:"My Info",name:"Name",acct:"Account",nickname:"Nickname",email:"Email",phone:"Phone",bank:"Bank Account",region:"Region",save:"Save",
  ph_name:"Name (Korean name)",ph_nickname:"Display nickname (optional)",ph_bank:"Bank name + Account number (optional)",region_none:"Not selected",region_krabi:"Krabi + Phuket",region_bangkok:"Bangkok + Pattaya",
+ agent_company:"Agency (company)",
  pw_title:"Change Password",cur_pw:"Current password",new_pw:"New password (6+ chars)",pw_btn:"Change password",
  ext_note:"Sub-accounts can change this site's password too. For the first change, enter the password issued by Nirvana as the current password. (Email is managed in the agency system.)",
  saved:"Saved.",pw_saved:"Password changed.",bad_password:"Current password is incorrect.",weak_password:"New password must be 6+ characters.",
@@ -91,6 +94,7 @@ en:{back:"← Back",lede:"View and update your account info.",title:"My Info",na
  tg_title:"📲 Connect Telegram",tg_desc:"Get notifications via Telegram.",tg_link:"Create connection link",tg_connected:"✓ Telegram connected.",tg_disconnect:"Disconnect",tg_not_connected:"Not connected yet.",tg_link_copied:"Telegram link copied.",tg_link_desc:"Open the link in Telegram to connect:",tg_link_failed:"Failed to generate link",tg_confirm_disconnect:"Disconnect Telegram?",tg_disconnect_failed:"Failed to disconnect"},
 th:{back:"← กลับ",lede:"ดูและแก้ไขข้อมูลบัญชีของคุณ",title:"ข้อมูลของฉัน",name:"ชื่อ",acct:"บัญชี",nickname:"ชื่อเล่น",email:"อีเมล",phone:"เบอร์โทร",bank:"บัญชีธนาคาร",region:"ภูมิภาค",save:"บันทึก",
  ph_name:"ชื่อ (ชื่อเกาหลี)",ph_nickname:"ชื่อเล่น (ไม่บังคับ)",ph_bank:"ชื่อธนาคาร + หมายเลขบัญชี (ไม่บังคับ)",region_none:"ไม่เลือก",region_krabi:"กระบี่ + ภูเก็ต",region_bangkok:"กรุงเทพ + พัทยา",
+ agent_company:"เอเจนซีต้นสังกัด (บริษัท)",
  pw_title:"เปลี่ยนรหัสผ่าน",cur_pw:"รหัสผ่านปัจจุบัน",new_pw:"รหัสผ่านใหม่ (6 ตัวขึ้นไป)",pw_btn:"เปลี่ยนรหัสผ่าน",
  ext_note:"บัญชีย่อยสามารถเปลี่ยนรหัสผ่านของเว็บไซต์นี้ได้ ครั้งแรกให้ใส่รหัสผ่านที่ได้รับจาก Nirvana เป็นรหัสผ่านปัจจุบัน (อีเมลจัดการในระบบเอเจนซี)",
  saved:"บันทึกแล้ว",pw_saved:"เปลี่ยนรหัสผ่านแล้ว",bad_password:"รหัสผ่านปัจจุบันไม่ถูกต้อง",weak_password:"รหัสผ่านใหม่ต้อง 6 ตัวขึ้นไป",
@@ -175,6 +179,17 @@ document.querySelectorAll('.langbtn').forEach(btn=>{
     $('phone').value=ME.phone||'';
     $('nickname').value=ME.nickname||'';
     $('bank').value=ME.bank_account||'';
+    /* 소속 에이전트 (2026-07-30): 에이전트 역할에만 표시 — 기본값은 API 소속, 이직 시 직접 변경 */
+    if(ME.role==='agent'){
+      $('fAgentCompany').style.display='';
+      $('agentCompany').value=ME.agent_company||'';
+      if(!ME.agent_company&&ME.agency&&ME.agency.idx){
+        fetch('api/agencies/'+ME.agency.idx,{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
+          const nm=j&&j.agency&&j.agency.agency&&j.agency.agency.name;
+          if(nm&&!$('agentCompany').value)$('agentCompany').value=nm;
+        }).catch(()=>{});
+      }
+    }
     // 직원(sreq/schk)과 관리자는 지역 선택 가능 (에이전트만 표시 안 함)
     if(ME.role==='sreq'||ME.role==='schk'||ME.role==='admin'){
       $('regionField').style.display='';
@@ -206,6 +221,7 @@ document.querySelectorAll('.langbtn').forEach(btn=>{
 })();
 $('save').onclick=async()=>{
   const body={phone:$('phone').value.trim(),nickname:$('nickname').value.trim(),bank_account:$('bank').value.trim()};
+  if(ME.role==='agent')body.agent_company=$('agentCompany').value.trim(); /* 소속 에이전트 저장 (2026-07-30) */
   if(ME.role==='admin'){const nm=$('nameInput').value.trim();if(nm)body.name=nm;} // 관리자 이름 수정
   if(!ME.ext){const em=$('email').value.trim();if(em&&em!==ME.email)body.email=em;}
   // 직원·관리자: 지역 정보도 함께 저장

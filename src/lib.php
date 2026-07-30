@@ -36,7 +36,7 @@ function currentUser(): ?array {
   startSession();
   $uid = $_SESSION['uid'] ?? null;
   if (!$uid) return null;
-  $st = db()->prepare("SELECT id,name,email,role,status,lang,telegram_chat_id,notif_read_at,phone,nickname,bank_account,agency_idx,agency_login_id,off_days,region FROM users WHERE id=?");
+  $st = db()->prepare("SELECT id,name,email,role,status,lang,telegram_chat_id,notif_read_at,phone,nickname,bank_account,agency_idx,agency_login_id,agent_company,off_days,region FROM users WHERE id=?");
   $st->execute([$uid]);
   $u = $st->fetch();
   return $u ?: null;
@@ -71,6 +71,7 @@ function publicUser(?array $u): ?array {
     'phone' => $u['phone'] ?? '', 'nickname' => $u['nickname'] ?? '', 'bank_account' => $u['bank_account'] ?? '', 'region' => $u['region'] ?? null,
     'super' => (strtolower((string)($u['email'] ?? '')) === strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'))),
     'ext' => !empty($u['agency_idx']),
+    'agent_company' => $u['agent_company'] ?? '',
     'off_days' => decodeOffDays($u['off_days'] ?? '')];
   // 에이전시 부계정으로 로그인한 세션이면 인증 정보 노출 (비밀번호 관련 값 없음)
   if (!empty($_SESSION['agency'])) $out['agency'] = $_SESSION['agency'];

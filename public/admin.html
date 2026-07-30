@@ -119,6 +119,12 @@
     <p class="small" style="margin:8px 0 0">발행 즉시 승인 상태로 로그인할 수 있습니다. 아이디·비밀번호를 직원에게 전달하세요. 비밀번호는 직원이 회원정보에서 직접 변경할 수 있습니다.</p>
   </section>
   <section class="card"><h3 style="margin:0 0 4px;font-size:16px;font-weight:800">전체 계정</h3><div class="seg" id="acctTabs" style="margin:8px 0"><button data-t="staff" class="on">직원</button><button data-t="agent">에이전시</button></div><div id="all"></div></section>
+
+  <section class="card"><h3 style="margin:0 0 4px;font-size:16px;font-weight:800">에이전시별 담당자</h3>
+    <div class="small" style="color:var(--muted);margin:4px 0 8px;line-height:1.5">너바나 시스템에 등록된 에이전시 담당자 목록입니다. 담당자 등록·삭제는 너바나 시스템에서 관리합니다.<br>이 사이트에 로그인한 부계정 계정의 <b>거래정지(이용 중지)·활성화(승인)·삭제</b>는 위 "전체 계정 → 에이전시" 탭에서 처리하세요.</div>
+    <select id="agcSel"><option value="">에이전시 선택</option></select>
+    <div id="agcMgrs" style="margin-top:8px"></div>
+  </section>
   </div>
   <div id="pgStats" class="apage">
   <section class="card"><h3 style="margin:0 0 6px;font-size:16px;font-weight:800">통계</h3>
@@ -493,6 +499,27 @@ var obs=null,pend=false;
 function walk(){var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,null,false);var nodes=[],n;while(n=w.nextNode())nodes.push(n);for(var q=0;q<nodes.length;q++){var node=nodes[q];if(node.__ko===undefined){if(!hasKo(node.nodeValue))continue;node.__ko=node.nodeValue;}var p=lt(node.__ko);if(!p[1])continue;var nv=p[0]+tr(p[1])+p[2];if(node.nodeValue!==nv)node.nodeValue=nv;}var els=document.body.querySelectorAll('[placeholder]');for(var j=0;j<els.length;j++){var el=els[j];if(el.__ko===undefined){if(!hasKo(el.placeholder))continue;el.__ko=el.placeholder;}var p2=lt(el.__ko);var v=p2[0]+tr(p2[1])+p2[2];if(el.placeholder!==v)el.placeholder=v;}}
 function retrans(){if(pend)return;pend=true;setTimeout(function(){pend=false;try{if(obs)obs.disconnect();}catch(e){}try{walk();}catch(e){}try{if(obs)obs.observe(document.body,{childList:true,subtree:true,characterData:true});}catch(e){}},80);}
 function chips(){var host=document.querySelector('header');var toBody=false;if(!host){host=document.body;toBody=true;}if(document.getElementById('admLang'))return;var d=document.createElement('div');d.id='admLang';d.style.cssText='display:flex;gap:6px;justify-content:flex-end;margin:8px 0 0';['ko','en','th'].forEach(function(l){var b=document.createElement('button');b.type='button';b.textContent=LN[l];b.setAttribute('data-l',l);b.style.cssText='font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;border:1px solid var(--line,#DDD5CC);cursor:pointer';d.appendChild(b);});if(toBody)host.insertBefore(d,host.firstChild);else host.appendChild(d);function paint(){var bs=d.querySelectorAll('button');for(var x=0;x<bs.length;x++){var on=bs[x].getAttribute('data-l')===AL;bs[x].style.background=on?'var(--brand,#A9562F)':'#fff';bs[x].style.color=on?'#fff':'var(--ink,#333)';}}d.addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target.closest('button'):null;if(!t)return;AL=t.getAttribute('data-l');paint();retrans();});paint();}
+/* 에이전시별 담당자 (2026-07-30): 너바나 API에서 에이전시 목록·담당자 조회 (읽기 전용) */
+async function loadAgcList(){
+  try{const r=await fetch('api/agencies?active=Y',{cache:'no-store'});if(!r.ok)return;const j=await r.json();
+    const sel=document.getElementById('agcSel');if(!sel)return;
+    const list=(j&&j.agencies)||[];
+    sel.innerHTML='<option value="">에이전시 선택 ('+list.length+'곳)</option>'+list.map(a=>'<option value="'+esc(a.idx)+'">'+esc(a.name)+'</option>').join('');
+  }catch(e){}
+}
+(function(){const sel=document.getElementById('agcSel');if(!sel)return;
+  sel.onchange=async e=>{
+    const idx=e.target.value;const box=document.getElementById('agcMgrs');
+    if(!idx){box.innerHTML='';return;}
+    box.innerHTML='<div class="small" style="color:var(--muted)">불러오는 중…</div>';
+    try{const r=await fetch('api/agencies/'+idx,{cache:'no-store'});const j=await r.json();
+      const ms=(j&&j.agency&&j.agency.managers)||[];
+      box.innerHTML=ms.length?ms.map(m=>'<div class="urow"><div class="u1"><div><div class="nm">'+esc(m.mname||'')+'</div><div class="meta">'+esc(m.tel||'-')+(m.email?' · '+esc(m.email):'')+(m.memo?' · '+esc(m.memo):'')+'</div></div><span class="badge st-'+(m.active==='Y'?'approved':'rejected')+'">'+(m.active==='Y'?'활성':'중지')+'</span></div></div>').join('')
+        :'<div class="small" style="color:var(--muted)">등록된 담당자가 없습니다.</div>';
+    }catch(e){box.innerHTML='<div class="small" style="color:var(--muted)">불러오지 못했습니다.</div>';}
+  };
+  loadAgcList();
+})();
 function init(){try{chips();}catch(e){}try{obs=new MutationObserver(function(){retrans();});}catch(e){}retrans();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(init,250);});else setTimeout(init,250);
 }catch(e){}})();

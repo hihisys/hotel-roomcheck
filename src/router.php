@@ -46,8 +46,10 @@ function route(string $path, string $method): void {
   }
   if ($path === 'login' && $method === 'POST') {
     startSession();
-    $st = $pdo->prepare("SELECT * FROM users WHERE email=?");
-    $st->execute([strtolower(trim($in['email'] ?? ''))]);
+    /* 2026-07-30: 부계정이 이 사이트 전용 비밀번호를 설정한 경우 부계정 아이디로도 로컬 로그인 허용 */
+    $loginId = strtolower(trim($in['email'] ?? ''));
+    $st = $pdo->prepare("SELECT * FROM users WHERE email=? OR (agency_login_id IS NOT NULL AND lower(agency_login_id)=?)");
+    $st->execute([$loginId, $loginId]);
     $u = $st->fetch();
     if (!$u || !password_verify($in['password'] ?? '', $u['pass_hash'])) jsonOut(['error' => 'bad_credentials'], 401);
     if ($u['status'] === 'rejected') jsonOut(['error' => 'rejected'], 403);
@@ -107,12 +109,18 @@ function route(string $path, string $method): void {
       catch (PDOException $e) { jsonOut(['error' => 'email_exists'], 409); }
     }
     if (!empty($in['new_password'])) {
-      if (!empty($u['agency_idx'])) jsonOut(['error' => 'external_account'], 403);
-      $st = $pdo->prepare("SELECT pass_hash FROM users WHERE id=?");
+      if (strlen((string)$in['new_password']) < 6) jsonOut(['error' => 'weak_password'], 422);
+      $st = $pdo->prepare("SELECT pass_hash,agency_login_id FROM users WHERE id=?");
       $st->execute([$u['id']]);
       $row = $st->fetch();
-      if (!$row || !password_verify((string)($in['cur_password'] ?? ''), $row['pass_hash'])) jsonOut(['error' => 'bad_password'], 403);
-      if (strlen((string)$in['new_password']) < 6) jsonOut(['error' => 'weak_password'], 422);
+      $curOk = $row && password_verify((string)($in['cur_password'] ?? ''), (string)$row['pass_hash']);
+      /* 부계정 (2026-07-30): 로컬 비밀번호 미설정(또는 불일치) 상태면 현재 비밀번호를 너바나 외부 인증으로 검증
+         → 최초 변경 시 너바나 발급 비밀번호로 본인 확인 후 이 사이트 전용 비밀번호 저장 */
+      if (!$curOk && !empty($u['agency_idx']) && !empty($row['agency_login_id'])) {
+        $chk = agencyAuthenticate((string)$row['agency_login_id'], (string)($in['cur_password'] ?? ''));
+        $curOk = !empty($chk['ok']);
+      }
+      if (!$curOk) jsonOut(['error' => 'bad_password'], 403);
       $pdo->prepare("UPDATE users SET pass_hash=? WHERE id=?")
           ->execute([password_hash((string)$in['new_password'], PASSWORD_DEFAULT), $u['id']]);
     }

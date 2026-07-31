@@ -42,15 +42,16 @@ jobs:
           gcloud run deploy hotel-roomcheck \
             --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/hotel-roomcheck:latest \
             --platform managed \
-            --region us-central1 \
+            --region asia-southeast1 \
             --project ${{ secrets.GCP_PROJECT_ID }} \
             --port 8080 \
             --memory 512Mi \
+            --min-instances=1 \
             --allow-unauthenticated
 
       - name: Display service URL
         run: |
           gcloud run services describe hotel-roomcheck \
-            --region us-central1 \
+            --region asia-southeast1 \
             --project ${{ secrets.GCP_PROJECT_ID }} \
             --format='value(status.url)'

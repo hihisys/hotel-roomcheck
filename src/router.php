@@ -445,6 +445,12 @@ function route(string $path, string $method): void {
     $u = requireAdmin();
     $byAgent = []; $byAgentMgr = []; $byRequester = []; $byChecker = [];
     $tot = ['requests' => 0, 'confirmed' => 0, 'quoteSent' => 0, 'contracted' => 0];
+    /* 에이전트 탭은 실제 에이전시만 집계 (2026-07-31): 내부 직원·관리자 이름이 agent에 들어간 건 제외
+       (관리자·직원이 등록한 건은 요청자 탭에서 집계됨) */
+    $staffNames = [];
+    foreach ($pdo->query("SELECT name,nickname FROM users WHERE role IN ('admin','sreq','schk')")->fetchAll() as $su) {
+      foreach (['name', 'nickname'] as $f) { $v = trim((string)($su[$f] ?? '')); if ($v !== '') $staffNames[$v] = true; }
+    }
     // 2026-07-30 버그 수정: 사용자 정보 없이 호출하면 지역 필터에 걸려 항상 0건이 되던 문제 → 관리자 정보 전달
     foreach (allRequests($pdo, $u) as $p) {
       $answered = (($p['status'] ?? '') === 'answered');
@@ -456,8 +462,12 @@ function route(string $path, string $method): void {
       if ($quoteSent) $tot['quoteSent']++;
       if ($contracted) $tot['contracted']++;
       $none = '(미지정)';
-      /* 2026-07-31: 에이전트 통계는 에이전시+담당자 쌍으로 집계 (예: Awesome · 최선우) */
-      statBump($byAgent, (trim((string)($p['agent'] ?? '')) ?: $none) . '||' . trim((string)($p['agentManager'] ?? '')), $confirmed, $quoteSent, $contracted);
+      /* 2026-07-31: 에이전트 통계는 에이전시+담당자 쌍으로 집계 (예: Awesome · 최선우)
+         — 내부 직원/관리자 이름이거나 미지정이면 에이전트 탭에서 제외 */
+      $agName = trim((string)($p['agent'] ?? ''));
+      if ($agName !== '' && empty($staffNames[$agName])) {
+        statBump($byAgent, $agName . '||' . trim((string)($p['agentManager'] ?? '')), $confirmed, $quoteSent, $contracted);
+      }
       statBump($byAgentMgr, trim((string)($p['agentManager'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);
       statBump($byRequester, trim((string)($p['registrant'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);
       if ($answered) statBump($byChecker, trim((string)($p['manager'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);

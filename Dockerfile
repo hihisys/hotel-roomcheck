@@ -4,6 +4,7 @@ FROM php:8.4-apache
 RUN apt-get update && apt-get install -y \
     sqlite3 \
     libsqlite3-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions - SQLite support
@@ -21,6 +22,11 @@ WORKDIR /var/www/html
 
 # Copy all project files
 COPY . /var/www/html/
+
+# html2canvas 라이브러리를 빌드 시 내장 (2026-07-31) — 브라우저의 외부 CDN 의존 제거 (이미지 저장 실패 수정)
+RUN mkdir -p /var/www/html/public/vendor && \
+    curl -fsSL https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js \
+      -o /var/www/html/public/vendor/html2canvas.min.js
 
 # Create data directory and set proper permissions
 RUN mkdir -p /var/www/html/data && \

@@ -516,6 +516,48 @@ function route(string $path, string $method): void {
     jsonOut(['ok' => true, 'off_days' => ['dates' => $dates, 'weekdays' => $weekdays, 'work_overrides' => $workOvr]]);
   }
 
+  /* ===== 견적서 샘플 (2026-07-31): 요청자 전체 공유 ===== */
+  if ($path === 'quote-samples' && $method === 'GET') {
+    requireApproved();
+    $type = trim((string)($_GET['type'] ?? '')); $loc = trim((string)($_GET['location'] ?? '')); $q = trim((string)($_GET['search'] ?? ''));
+    $sql = "SELECT id,name,tour_type,location,hotels,created_by,created_name,created_at FROM quote_samples WHERE 1=1"; $args = [];
+    if ($type !== '') { $sql .= " AND tour_type=?"; $args[] = $type; }
+    if ($loc !== '') { $sql .= " AND location=?"; $args[] = $loc; }
+    if ($q !== '') { $sql .= " AND (name LIKE ? OR hotels LIKE ?)"; $args[] = "%$q%"; $args[] = "%$q%"; }
+    $sql .= " ORDER BY id DESC LIMIT 200";
+    $st = $pdo->prepare($sql); $st->execute($args);
+    jsonOut(['ok' => true, 'samples' => $st->fetchAll()]);
+  }
+  if ($path === 'quote-samples' && $method === 'POST') {
+    $u = requireApproved();
+    if (!in_array($u['role'], ['sreq', 'admin'], true)) jsonOut(['error' => 'forbidden'], 403);
+    $name = trim((string)($in['name'] ?? ''));
+    if ($name === '' || mb_strlen($name) > 200) jsonOut(['error' => 'invalid_name'], 422);
+    $payload = $in['payload'] ?? null;
+    if (!is_array($payload)) jsonOut(['error' => 'invalid_payload'], 422);
+    $st = $pdo->prepare("INSERT INTO quote_samples (name,tour_type,location,hotels,payload,created_by,created_name,created_at) VALUES (?,?,?,?,?,?,?,?)");
+    $st->execute([$name, trim((string)($in['tour_type'] ?? '')) ?: null, trim((string)($in['location'] ?? '')) ?: null,
+      mb_substr(trim((string)($in['hotels'] ?? '')), 0, 500) ?: null,
+      json_encode($payload, JSON_UNESCAPED_UNICODE), (int)$u['id'], ($u['nickname'] ?: $u['name']), nowMs()]);
+    jsonOut(['ok' => true, 'id' => (int)$pdo->lastInsertId()]);
+  }
+  if (preg_match('#^quote-samples/(\d+)$#', $path, $mSmp)) {
+    $u = requireApproved(); $sid = (int)$mSmp[1];
+    if ($method === 'GET') {
+      $st = $pdo->prepare("SELECT * FROM quote_samples WHERE id=?"); $st->execute([$sid]); $r = $st->fetch();
+      if (!$r) jsonOut(['error' => 'not_found'], 404);
+      $r['payload'] = json_decode((string)$r['payload'], true);
+      jsonOut(['ok' => true, 'sample' => $r]);
+    }
+    if ($method === 'DELETE') {
+      $st = $pdo->prepare("SELECT created_by FROM quote_samples WHERE id=?"); $st->execute([$sid]); $r = $st->fetch();
+      if (!$r) jsonOut(['error' => 'not_found'], 404);
+      if ((int)$r['created_by'] !== (int)$u['id'] && $u['role'] !== 'admin') jsonOut(['error' => 'forbidden'], 403);
+      $pdo->prepare("DELETE FROM quote_samples WHERE id=?")->execute([$sid]);
+      jsonOut(['ok' => true]);
+    }
+  }
+
   /* ===== 외부 에이전시 API 연동 (2026-07-22) ===== */
   // 에이전시 목록 조회: GET /api/agencies?type=...&active=...&search=...
   if ($path === 'agencies' && $method === 'GET') {

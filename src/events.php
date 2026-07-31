@@ -23,6 +23,17 @@ function detectEvents(PDO $pdo, ?array $old, array $new, array $actor): void {
 
   // 1) 새 요청 (직접 등록 제외 → 확인자에게 / 에이전트가 만들면 요청자에게도)
   if ($old === null) {
+    /* 견적서 에이전트 전송 (2026-07-31): 견적 발송 상태로 생성된 복제 요청 →
+       확인자 새요청 알림 대신 에이전트에게 '견적 발송' 알림만 보냄 */
+    if (!empty($new['quoteSent'])) {
+      $st = $pdo->prepare("SELECT id FROM users WHERE role='agent' AND status='approved'");
+      $st->execute(); $matched = $st->fetchAll();
+      $notifSt = $pdo->prepare("INSERT INTO notifications (role,exclude_user,type,req_no,params,created_at) VALUES (?,?,?,?,?,?)");
+      $payload = json_encode(['hotels' => $hotels, 'agent' => trim($new['agent'] ?? '')], JSON_UNESCAPED_UNICODE);
+      foreach ($matched as $u2) $notifSt->execute(['agent', $uid, 'quote_sent', $no, $payload, nowMs()]);
+      if (!$matched) $notifSt->execute(['agent', $uid, 'quote_sent', $no, $payload, nowMs()]);
+      return;
+    }
     $targets = ['schk'];
     if ($role === 'agent') $targets[] = 'sreq';
     // 지역 필터링: 해당 역할 중 본인 지역 + 최고관리자는 모두

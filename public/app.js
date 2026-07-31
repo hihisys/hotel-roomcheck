@@ -748,7 +748,7 @@ function agentItemHTML(req){
       if(ui.role==='sreq'){
         detail+='<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:2px">'
           +'<button class="linkbtn" data-mkquote="'+req.id+'">'+(ui.qbOpen===req.id?'▾ 견적서 만들기 접기':'🧾 견적서 만들기')+'</button>'
-          +(ui.qbOpen===req.id? quoteBuilderHTML(req)+'<div class="qbtns"><button class="qcopy" id="qbSend">'+(req.quoteSent?'견적 다시 발송':'견적 발송')+'</button></div>':'')
+          +(ui.qbOpen===req.id? quoteBuilderHTML(req)+'<div class="qbtns"><button class="qcopy" id="qbSend">'+(req.quoteSent?'견적 다시 발송':'견적 발송')+'</button><button class="qimg" id="qbSendTo">➤ '+T('btn_send_agent')+'</button></div>':'')
           +'</div>';
       }
       detail+='<div class="qbtns"><button class="qgray" data-recheck="'+req.id+'">🔁 다시 룸체크</button>'
@@ -798,9 +798,12 @@ function sectionsHTML(itemFn,sub){
     +'<div class="seg" id="listTab">'
       +'<button data-t="act"'+(tab==='act'?' class="on"':'')+'>'+T('tab_act')+' ('+act.length+')</button>'
       +'<button data-t="past"'+(tab==='past'?' class="on"':'')+'>'+T('tab_past')+' ('+past.length+')</button>'
-      +'<button data-t="con"'+(tab==='con'?' class="on"':'')+'>'+T('tab_con')+' ('+con.length+')</button></div>'
-    +'<p class="small" style="margin:7px 2px 0">'+caption+'</p>'
-    +(cur.length?cur.map(itemFn).join(''):'<p class="small" style="margin:10px 0 2px">'+empty+'</p>')
+      +'<button data-t="con"'+(tab==='con'?' class="on"':'')+'>'+T('tab_con')+' ('+con.length+')</button>'
+      +(ui.role==='sreq'?'<button data-t="smp"'+(tab==='smp'?' class="on"':'')+'>📑 '+T('tab_samples')+'</button>':'')+'</div>'
+    +(tab==='smp'
+      ?samplesHTML() /* 견적서 샘플 탭 (2026-07-31) */
+      :('<p class="small" style="margin:7px 2px 0">'+caption+'</p>'
+        +(cur.length?cur.map(itemFn).join(''):'<p class="small" style="margin:10px 0 2px">'+empty+'</p>')))
     +'</section>';
 }
 function agentListHTML(){
@@ -841,8 +844,146 @@ function resultText(req){
     if(av.k==='part'||av.k==='rq'||av.k==='un')dd.dates.forEach(iso=>{const c=(req.ws||{})[row.id+'|'+iso]||{};t+='   '+fdshort(iso)+' '+statusLabel(c.status)+'\n';});});
   return t;
 }
+/* ===== 견적서 샘플 (2026-07-31): 요청자 전체 공유, 투어 종류·로케이션 검색 ===== */
+let SAMPLES=null,SMP_F={type:'',loc:'',q:''};
+const SMP_TYPES=['허니문','골프','가족','커플','일반'];
+const SMP_LOCS=['카오락','푸켓','파타야','크라비','방콕','기타'];
+async function fetchSamples(){
+  try{const r=await fetch('api/quote-samples',{cache:'no-store'});
+    SAMPLES=r.ok?(((await r.json()).samples)||[]):[];
+  }catch(e){SAMPLES=[];}
+  if((ui.listTab||'')==='smp')renderApp();
+}
+function smpReq(s){const p=s._p;if(!p)return null;
+  return {id:'smp'+s.id,no:0,mode:p.mode||'multi',startDate:p.startDate||todayISO(),sharedNights:p.sharedNights||1,
+    rows:p.rows||[],notes:p.notes||'',quote:p.quote||{rate:40,pax:2,addl:[],override:null},status:'requested',ws:{},createdAt:Number(s.created_at)||0};}
+function smpPreviewHTML(s){const rq=smpReq(s);if(!rq)return '';FORCE_KO=true;let h='';try{h=quoteCardHTML(rq);}catch(e){h='';}finally{FORCE_KO=false;}return h;}
+function samplesHTML(){
+  if(SAMPLES===null){fetchSamples();return '<p class="small" style="margin:10px 0 2px">샘플을 불러오는 중…</p>';}
+  const f=SMP_F,nq=String(f.q||'').toLowerCase();
+  const list=SAMPLES.filter(s=>(!f.type||s.tour_type===f.type)&&(!f.loc||s.location===f.loc)
+    &&(!nq||String(s.name||'').toLowerCase().includes(nq)||String(s.hotels||'').toLowerCase().includes(nq)));
+  const head='<div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap">'
+    +'<input id="smpQ" placeholder="🔍 샘플·호텔 검색 (Enter)" value="'+esc(f.q)+'" style="flex:1;min-width:150px">'
+    +'<select id="smpFT" style="width:auto">'+['',...SMP_TYPES].map(x=>'<option value="'+esc(x)+'"'+(f.type===x?' selected':'')+'>'+(x||'종류 전체')+'</option>').join('')+'</select>'
+    +'<select id="smpFL" style="width:auto">'+['',...SMP_LOCS].map(x=>'<option value="'+esc(x)+'"'+(f.loc===x?' selected':'')+'>'+(x||'지역 전체')+'</option>').join('')+'</select></div>';
+  const cards=list.map(s=>{
+    const mine=SRV.me&&(((+s.created_by)===SRV.me.id)||SRV.me.role==='admin');
+    const open=ui.smpOpen===s.id;
+    return '<div class="hblock" style="margin-top:8px">'
+      +'<div class="flex between aic" data-smp="'+s.id+'" style="cursor:pointer">'
+        +'<div><div style="font-weight:800;font-size:14px">📑 '+escT(s.name)+'</div>'
+        +'<div class="small" style="margin-top:2px;color:var(--muted)">'+[s.tour_type,s.location,s.hotels].filter(Boolean).map(escT).join(' · ')+'</div>'
+        +'<div class="small" style="color:var(--muted)">'+escT(s.created_name||'')+' · '+dotDateTime(Number(s.created_at))+'</div></div>'
+        +'<span class="chev'+(open?' open':'')+'">▶</span></div>'
+      +(open?('<div style="margin-top:8px">'+(s._p?smpPreviewHTML(s):'<p class="small">불러오는 중…</p>')+'</div>'
+        +'<div class="qbtns"><button class="qcopy" data-smpload="'+s.id+'">📋 새 요청으로 불러오기</button>'
+        +(s._p?'<button class="qimg" data-smpimg="'+s.id+'">🖼 이미지 저장</button>':'')
+        +(mine?'<button class="qgray" data-smpdel="'+s.id+'">🗑 삭제</button>':'')+'</div>'):'')
+      +'</div>';}).join('');
+  return head+(list.length?cards:'<p class="small" style="margin:10px 0 2px">저장된 샘플이 없습니다.</p>');
+}
+function loadSampleToDraft(s){
+  const p=s._p;if(!p){toast('샘플 내용을 불러오는 중입니다 — 잠시 후 다시 눌러주세요');return;}
+  draft=newDraft();
+  draft.mode=p.mode||'multi';
+  draft.sharedNights=p.sharedNights||1;
+  draft.rows=(p.rows||[]).map((row,i)=>({id:Date.now()+i,region:row.region||'전체',hotel:row.hotel||'',roomType:row.roomType||'',
+    rooms:row.rooms||1,nights:row.nights||1,note:row.note||'',options:JSON.parse(JSON.stringify(row.options||[]))}));
+  if(!draft.rows.length)draft.rows=[{id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[]}];
+  draft.notes=p.notes||'';
+  draft._quote=p.quote?JSON.parse(JSON.stringify(p.quote)):null;
+  if(ui.role==='sreq'&&meNick())draft.registrant=meNick();
+  ui.listTab='act';ui.sel=null;ui.ssel=null;
+  renderApp();window.scrollTo({top:0,behavior:'smooth'});
+  toast('샘플을 불러왔습니다 — 날짜를 선택하고 등록하세요');
+}
+function openSampleSave(req){
+  let ov=document.getElementById('smpOv');if(ov)ov.remove();
+  ov=document.createElement('div');ov.id='smpOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:120;display:flex;align-items:center;justify-content:center;padding:16px';
+  const defName=(req.rows||[]).map(r=>r.hotel).filter(Boolean).slice(0,2).join(' · ')||'견적서 샘플';
+  const defLoc=(((req.rows||[])[0]||{}).region);
+  ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:420px;width:100%;padding:18px 16px;box-shadow:0 20px 50px rgba(0,0,0,.25)">'
+    +'<h3 style="margin:0 0 10px;font-size:15px;font-weight:800">💾 견적서 샘플로 저장</h3>'
+    +'<div class="label">샘플 이름</div><input id="smpName" value="'+esc(defName)+'" style="width:100%">'
+    +'<div class="label" style="margin-top:10px">투어 종류</div><select id="smpType" style="width:100%">'+SMP_TYPES.map(t=>'<option>'+t+'</option>').join('')+'<option value="__c">직접 입력…</option></select>'
+    +'<input id="smpTypeC" placeholder="투어 종류 입력" style="width:100%;margin-top:6px;display:none">'
+    +'<div class="label" style="margin-top:10px">로케이션</div><select id="smpLoc" style="width:100%">'+SMP_LOCS.map(l=>'<option'+(l===defLoc?' selected':'')+'>'+l+'</option>').join('')+'</select>'
+    +'<div style="display:flex;gap:8px;margin-top:14px"><button class="qcopy" id="smpSave" style="flex:1">저장</button><button class="qimg" id="smpCancel" style="flex:1">취소</button></div>'
+    +'</div>';
+  document.body.appendChild(ov);
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  const ts=ov.querySelector('#smpType'),tc=ov.querySelector('#smpTypeC');
+  ts.onchange=()=>{tc.style.display=ts.value==='__c'?'':'none';};
+  ov.querySelector('#smpCancel').onclick=()=>ov.remove();
+  ov.querySelector('#smpSave').onclick=async()=>{
+    const name=ov.querySelector('#smpName').value.trim();
+    if(!name){toast('샘플 이름을 입력해주세요');return;}
+    const type=ts.value==='__c'?tc.value.trim():ts.value;
+    const loc=ov.querySelector('#smpLoc').value;
+    try{
+      const hotels=(req.rows||[]).map(r=>r.hotel).filter(Boolean).join(' · ');
+      const payload={mode:req.mode,startDate:req.startDate,sharedNights:req.sharedNights,rows:req.rows,notes:req.notes,quote:req.quote};
+      const r=await fetch('api/quote-samples',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name,tour_type:type,location:loc,hotels,payload:JSON.parse(JSON.stringify(payload))})});
+      const j=await r.json();
+      if(j.ok){ov.remove();SAMPLES=null;toast('견적서 샘플이 저장되었습니다');}
+      else toast('저장 실패: '+(j.error||''));
+    }catch(e){toast('서버에 연결할 수 없습니다');}
+  };
+}
+/* 다른 에이전트에게 견적서 전송 (2026-07-31): 원본 유지, 복제본을 새 에이전트로 발송 */
+function openSendToAgent(req){
+  let ov=document.getElementById('sndOv');if(ov)ov.remove();
+  ov=document.createElement('div');ov.id='sndOv';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:120;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:420px;width:100%;padding:18px 16px;box-shadow:0 20px 50px rgba(0,0,0,.25)">'
+    +'<h3 style="margin:0 0 10px;font-size:15px;font-weight:800">➤ 다른 에이전트에게 견적서 전송</h3>'
+    +'<div class="small" style="color:var(--muted);margin-bottom:8px">원본 요청('+escT(reqNo(req))+')은 그대로 두고, 복제본을 선택한 에이전트에게 발송합니다.</div>'
+    +'<div class="label">에이전트 선택</div><div style="position:relative"><input id="sndAgent" autocomplete="off" placeholder="에이전트 검색" style="width:100%"></div>'
+    +'<div style="display:flex;gap:8px;margin-top:14px"><button class="qcopy" id="sndGo" style="flex:1">전송</button><button class="qimg" id="sndCancel" style="flex:1">취소</button></div></div>';
+  document.body.appendChild(ov);
+  ov.onclick=e=>{if(e.target===ov)ov.remove();};
+  const inp=ov.querySelector('#sndAgent');
+  attachAC(inp,()=>AGENTS.map(a=>({label:a.name,s:[a.name,a.nickname||'']})),label=>{inp.value=label;});
+  ov.querySelector('#sndCancel').onclick=()=>ov.remove();
+  ov.querySelector('#sndGo').onclick=()=>{
+    const name=inp.value.trim();
+    if(!name){toast('에이전트를 선택해주세요');return;}
+    const copy=JSON.parse(JSON.stringify(req));
+    copy.id=Date.now();
+    DB.seqA=(DB.seqA||0)+1;copy.no=DB.seqA;
+    copy.direct=false;
+    copy.agent=name;copy.agentManager='';
+    copy.quoteSent=true;copy.quoteRequested=false;copy.quoteSentAt=Date.now();
+    copy.quoteBy=copy.quoteBy||DB.checker||((SRV.me&&(SRV.me.nickname||SRV.me.name))||'');
+    copy.createdAt=Date.now();
+    DB.requests.unshift(copy);saveDB();if(typeof srvSchedule==='function')srvSchedule();
+    ov.remove();renderApp();toast('견적서를 "'+name+'" 에이전트에게 전송했습니다');
+  };
+}
 function bindCommonList(){
   document.querySelectorAll('#listTab button').forEach(b=>b.onclick=()=>{ui.listTab=b.dataset.t;ui.sel=null;ui.ssel=null;renderApp();});
+  /* 견적서 샘플 탭 바인딩 (2026-07-31) */
+  document.querySelectorAll('[data-smp]').forEach(el2=>{el2.onclick=async()=>{
+    const id=Number(el2.dataset.smp);ui.smpOpen=ui.smpOpen===id?null:id;
+    const s=(SAMPLES||[]).find(x=>x.id===id);
+    if(s&&!s._p&&ui.smpOpen===id){
+      renderApp();
+      try{const r=await fetch('api/quote-samples/'+id,{cache:'no-store'});if(r.ok)s._p=(((await r.json()).sample)||{}).payload;}catch(e){}
+    }
+    renderApp();};});
+  const sq=document.getElementById('smpQ');if(sq)sq.onchange=e=>{SMP_F.q=e.target.value;renderApp();};
+  const sft=document.getElementById('smpFT');if(sft)sft.onchange=e=>{SMP_F.type=e.target.value;renderApp();};
+  const sfl=document.getElementById('smpFL');if(sfl)sfl.onchange=e=>{SMP_F.loc=e.target.value;renderApp();};
+  document.querySelectorAll('[data-smpload]').forEach(b=>b.onclick=e=>{e.stopPropagation();const s=(SAMPLES||[]).find(x=>x.id===Number(b.dataset.smpload));if(s)loadSampleToDraft(s);});
+  document.querySelectorAll('[data-smpimg]').forEach(b=>b.onclick=e=>{e.stopPropagation();saveImg('qcardsmp'+b.dataset.smpimg,'견적샘플.png');});
+  document.querySelectorAll('[data-smpdel]').forEach(b=>b.onclick=async e=>{e.stopPropagation();
+    if(!confirm('이 샘플을 삭제할까요?'))return;
+    try{const r=await fetch('api/quote-samples/'+b.dataset.smpdel,{method:'DELETE'});const j=await r.json();
+      if(j.ok){SAMPLES=(SAMPLES||[]).filter(x=>x.id!==Number(b.dataset.smpdel));toast('삭제되었습니다');renderApp();}
+      else toast('삭제 실패: '+(j.error||''));}catch(e){toast('서버에 연결할 수 없습니다');}});
   const rt=document.getElementById('ruleTog');if(rt)rt.onclick=()=>{ui.ruleOpen=!ui.ruleOpen;renderApp();};
   document.querySelectorAll('[data-contract]').forEach(b=>b.onclick=()=>{const r=byId(Number(b.dataset.contract));if(!r)return;
     if(r.contractedAt){r.contractedAt=null;toast(T('t_contract_x'));}
@@ -862,19 +1003,30 @@ function bindAgentList(){
     const r=byId(ui.qbOpen);
     if(r){bindQuoteBuilder(r);
       const s=document.getElementById('qbSend');
-      if(s)s.onclick=()=>{r.quoteSent=true;r.quoteRequested=false;r.quoteSentAt=Date.now();r.quoteBy=r.registrant||'심은선';saveDB();renderApp();toast(T('t_quote_sent')+reqNo(r));};}
+      if(s)s.onclick=()=>{r.quoteSent=true;r.quoteRequested=false;r.quoteSentAt=Date.now();r.quoteBy=r.registrant||'심은선';saveDB();renderApp();toast(T('t_quote_sent')+reqNo(r));};
+      const st2=document.getElementById('qbSendTo');
+      if(st2)st2.onclick=()=>openSendToAgent(r); /* 다른 에이전트에게 복제 전송 (2026-07-31) */}
   }
   document.querySelectorAll('[data-sel]').forEach(el=>el.onclick=()=>{const id=Number(el.dataset.sel);ui.sel=ui.sel===id?null:id;renderApp();});
   document.querySelectorAll('[data-askquote]').forEach(b=>b.onclick=()=>{const r=byId(Number(b.dataset.askquote));if(r){r.quoteRequested=true;saveDB();renderApp();toast(T('t_askq'));}});
   document.querySelectorAll('[data-qtext]').forEach(b=>b.onclick=()=>{const r=byId(Number(b.dataset.qtext));if(r)copyText(quoteText(r),T('t_qcopied'));});
   document.querySelectorAll('[data-qimg]').forEach(b=>b.onclick=()=>{saveImg('qcard'+b.dataset.qimg,'견적.png');});
 }
-function saveImg(id,name){const node=document.getElementById(id);
+/* html2canvas 로더 (2026-07-31): 내장 파일 우선, 실패 시 CDN 예비 — 이미지 저장 미동작 수정 */
+function ensureH2C(){return new Promise(res=>{
+  if(typeof html2canvas!=='undefined')return res(true);
+  const tryLoad=(src,next)=>{const s=document.createElement('script');s.src=src;
+    s.onload=()=>{(typeof html2canvas!=='undefined')?res(true):(next?next():res(false));};
+    s.onerror=()=>{next?next():res(false);};
+    document.head.appendChild(s);};
+  tryLoad('vendor/html2canvas.min.js?v=20260731',()=>tryLoad('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',null));
+});}
+async function saveImg(id,name){const node=document.getElementById(id);
   if(!node)return;
-  if(typeof html2canvas==='undefined'){toast(T('t_img_need_net'));return;}
-  html2canvas(node,{scale:2,backgroundColor:'#ffffff'}).then(cv=>{const a=document.createElement('a');a.download=name;a.href=cv.toDataURL('image/png');a.click();toast(T('t_img_saved'));});}
-function saveFullImg(req){
-  if(typeof html2canvas==='undefined'){toast(T('t_img_need_net'));return;}
+  if(!await ensureH2C()){toast(T('t_img_need_net'));return;}
+  html2canvas(node,{scale:2,backgroundColor:'#ffffff'}).then(cv=>{const a=document.createElement('a');a.download=name;a.href=cv.toDataURL('image/png');a.click();toast(T('t_img_saved'));}).catch(()=>{toast(T('t_img_need_net'));});}
+async function saveFullImg(req){
+  if(!await ensureH2C()){toast(T('t_img_need_net'));return;}
   FORCE_KO=true;let html='';
   try{html=resultCardHTML(req)+(req.quoteSent||ui.qOpen?quoteCardHTML(req):'');}finally{FORCE_KO=false;}
   const tmp=document.createElement('div');
@@ -1119,7 +1271,7 @@ function quoteBuilderHTML(req){
     +'<div style="margin-top:12px"><div class="label">'+T('qb_remark')+'</div>'
       +'<textarea id="qRemark" placeholder="'+esc(T('qb_remark_ph'))+'">'+escT(q.remark||'')+'</textarea></div>'
     +'<div class="label" style="margin-top:12px">'+T('qb_preview')+'</div>'+quoteCardHTML(req)
-    +'<div class="qbtns"><button class="qcopy" id="qbCopy">'+T('qb_copy')+'</button><button class="qimg" id="qbImg">'+T('btn_qimg')+'</button></div>'
+    +'<div class="qbtns"><button class="qcopy" id="qbCopy">'+T('qb_copy')+'</button><button class="qimg" id="qbImg">'+T('btn_qimg')+'</button><button class="qimg" id="qbSample">💾 '+T('btn_sample')+'</button></div>'
     +'<div class="qbtns"><button class="qmgr" id="fullImg">'+T('btn_fullimg')+'</button><button class="qmgr" id="fullUrl">'+T('btn_fullurl')+'</button></div>'
     +'<p class="foot">'+T('qb_foot')+'</p>'
     +'</div>';
@@ -1148,6 +1300,7 @@ function bindQuoteBuilder(req){
   const qr=el('qRemark');if(qr){qr.oninput=e=>{req.quote.remark=e.target.value;saveDB();};qr.onchange=()=>renderApp();}
   el('qbCopy').onclick=()=>copyText(quoteText(req),T('t_qtcopied'));
   el('qbImg').onclick=()=>saveImg('qcard'+req.id,'견적.png');
+  const smB=el('qbSample');if(smB)smB.onclick=()=>openSampleSave(req); /* 샘플로 저장 (2026-07-31) */
   const fi=el('fullImg');if(fi)fi.onclick=()=>saveFullImg(req);
   const fu=el('fullUrl');if(fu)fu.onclick=()=>copyText(reqURL(req),T('t_fullurl'));
 }

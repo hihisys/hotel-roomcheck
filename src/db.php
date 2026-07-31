@@ -15,7 +15,7 @@ function db(): PDO {
   if (str_starts_with($dsn, 'sqlite:')) $pdo->exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=3000;');
   /* 마이그레이션 1회 실행 가드 (2026-07-31): 스키마 버전이 같으면 매 요청 DDL 수십 개 실행을 건너뜀
      ⚠️ migrate()에 컬럼/테이블을 추가하면 아래 버전 문자열을 반드시 올릴 것 */
-  $SCHEMA_VER = '2026-07-31a';
+  $SCHEMA_VER = '2026-07-31b'; /* quote_samples 테이블 추가 */
   $need = true;
   try {
     $st = $pdo->query("SELECT v FROM meta WHERE k='schema_ver'");
@@ -63,6 +63,18 @@ function migrate(PDO $pdo): void {
     type VARCHAR(30) NOT NULL,
     req_no VARCHAR(12) NULL,
     params $TXT NULL,
+    created_at BIGINT NOT NULL
+  )");
+  /* 견적서 샘플 (2026-07-31): 요청자 전체 공유, 투어 종류·로케이션으로 검색 */
+  $pdo->exec("CREATE TABLE IF NOT EXISTS quote_samples (
+    id $AI,
+    name VARCHAR(200) NOT NULL,
+    tour_type VARCHAR(60) NULL,
+    location VARCHAR(60) NULL,
+    hotels $TXT NULL,                        -- 표시용 호텔 요약
+    payload $TXT NOT NULL,                   -- 요청+견적 스냅샷 JSON
+    created_by BIGINT NULL,
+    created_name VARCHAR(120) NULL,
     created_at BIGINT NOT NULL
   )");
   /* 에이전시 부계정 연동 컬럼 (2026-07-17): 외부 인증 사용자 식별 */

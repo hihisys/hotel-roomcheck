@@ -48,6 +48,7 @@ const _rtKo2En={}; /* 한글 표기 → 원문(영문) 역매핑 (입력·선택
 function rtDispKo(n){if(!n||/[가-힣]/.test(n))return n;
   let s=String(n);RT_PHRASE_KO.forEach(p=>{s=s.split(p[0]).join(p[1]);});
   s=s.split(/\s+/).map(w=>{const hit=_rtWordKoMap[w.toLowerCase()];return hit||w;}).join(' ').trim();
+  if(/[A-Za-z]/.test(s))return n; /* 2026-08-01: 한글로 완전히 변환되지 않는 룸타입은 영문 원문 그대로 표시 (부분 번역 혼용 방지) */
   if(s!==n)_rtKo2En[s]=n;return s;}
 const dRoom=n=>isEN()?(RT_EN[n]||n):rtDispKo(n);
 const dRegion=n=>isEN()?(RG_EN[n]||n):n;

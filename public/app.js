@@ -1175,12 +1175,45 @@ function staffItemHTML(req){
 function staffListHTML(){
   return sectionsHTML(staffItemHTML,T('sub_staff'));
 }
+/* ===== 룸 가능여부·요금: '저장'을 눌러야 반영 (2026-08-02) =====
+   변경 즉시 서버로 나가면 다른 사용자 화면에 바로 보이므로, 저장 전까지는 PEND에만 담아 둔다.
+   PEND[요청id][ws키] = {status?, price?}  — 저장 시 req.ws에 반영하고 비운다. */
+let PEND={};
+function pendOf(req){return PEND[req.id]||(PEND[req.id]={});}
+function pendSet(req,key,field,val){const p=pendOf(req);(p[key]||(p[key]={}))[field]=val;}
+/* 화면 표시값: 저장 전 변경분이 있으면 그 값을, 없으면 저장된 값을 사용 */
+function wsView(req,key){
+  const p=(PEND[req.id]||{})[key]||{},c=(req.ws||{})[key]||{};
+  return {status:('status' in p)?p.status:(c.status||''),price:('price' in p)?p.price:(c.price||'')};
+}
+function rowPendKeys(req,rowId){
+  const p=PEND[req.id]||{};
+  return Object.keys(p).filter(k=>String(k).split('|')[0]===String(rowId));
+}
+function rowDirty(req,rowId){return rowPendKeys(req,rowId).length>0;}
+/* 저장: 해당 호텔의 변경분을 확정하고, 룸첵 확인자(로그인 사용자)와 시각을 기록 */
+function wsSaveRow(req,rowId,silent){
+  const keys=rowPendKeys(req,rowId);
+  const row=(req.rows||[]).find(r=>String(r.id)===String(rowId));
+  if(!row)return;
+  req.ws=req.ws||{};
+  keys.forEach(k=>{const v=(PEND[req.id]||{})[k]||{};
+    req.ws[k]=req.ws[k]||{};
+    if('status' in v)req.ws[k].status=v.status;
+    if('price' in v)req.ws[k].price=v.price;
+    delete PEND[req.id][k];});
+  row.checkedBy=meStaffName();        /* 룸첵 확인한 사람 (닉네임 우선) */
+  row.checkedAt=Date.now();
+  row.savedAt=row.checkedAt;
+  saveDB();
+  if(!silent){renderApp();toast(T('t_ws_saved')+' · '+(dHotel(row.hotel)||''));}
+}
 function staffWorkInner(req){
   if(!req)return '';
   const cards=req.rows.map((row,i)=>{
     const dd=rDates(req,row,i);
-    const sts=dd.dates.map(iso=>((req.ws||{})[row.id+'|'+iso]||{}).status||'');
-    const prs=dd.dates.map(iso=>((req.ws||{})[row.id+'|'+iso]||{}).price||'');
+    const sts=dd.dates.map(iso=>wsView(req,row.id+'|'+iso).status);
+    const prs=dd.dates.map(iso=>wsView(req,row.id+'|'+iso).price);
     const uSt=[...new Set(sts)],uPr=[...new Set(prs)];
     const mSt=uSt.length>1,mPr=uPr.length>1;
     const isOpen=ui.open.has(row.id);
@@ -1192,7 +1225,12 @@ function staffWorkInner(req){
       +'<div class="flex aic" style="gap:5px;flex-wrap:wrap;margin-bottom:5px">'
       +(row.region&&row.region!=='전체'?'<span class="rq-region" style="margin-bottom:0">'+escT(dRegion(row.region))+'</span>':'')
       +phoneHTML(req,row)
-      +(row.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+(row.confirmedBy?escT(nickOf(row.confirmedBy))+' · ':'')+dotDateTime(row.savedAt)+'</span>':'')+'</div>' /* 2026-08-01: '저장' 글씨 제거 — 확인 담당자·시간만 표시 */ /* 2026-08-01: 저장 옆에 룸첵 확인자 이름 */
+      +(row.checkedBy?'<span class="small" style="color:var(--av);font-weight:700;flex:0 0 auto">'+T('ws_checked')+' '+escT(nickOf(row.checkedBy))+' · '+dotDateTime(row.checkedAt||row.savedAt)+'</span>'
+        :(row.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+(row.confirmedBy?escT(nickOf(row.confirmedBy))+' · ':'')+dotDateTime(row.savedAt)+'</span>':''))
+      +((ui.role==='schk'||ui.role==='sreq')?'<span style="flex:0 0 auto;margin-left:auto;display:flex;gap:6px;align-items:center">'
+        +(rowDirty(req,row.id)?'<span class="small" style="color:var(--so);font-weight:700">'+T('ws_unsaved')+'</span>':'')
+        +'<button class="chip'+(rowDirty(req,row.id)?' on':'')+' wsSave" data-wssave="'+row.id+'" style="padding:5px 12px">'+T('btn_ws_save')+'</button></span>':'')
+      +'</div>' /* 2026-08-01: '저장' 글씨 제거 — 확인 담당자·시간만 표시 */ /* 2026-08-01: 저장 옆에 룸첵 확인자 이름 */
       +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(row.hotel)||T('no_hotel'))+'</span><span class="rq-type">'+escT(dRoom(row.roomType)||'-')+' <span class="sm">· '+row.rooms+T('r_sfx')+'</span></span></span>'
       +'<span style="display:flex;gap:5px;align-items:center;flex:0 0 auto">'+stSel('stsel',mSt?'__none':uSt[0],'data-all="'+row.id+'"',mSt)
       +'<span class="pbox"><span>฿</span><input type="number" class="pall" data-all="'+row.id+'" placeholder="'+esc(mPr?T('ws_mixed'):T('ws_price_ph'))+'" value="'+(mPr?'':(uPr[0]||''))+'"></span></span></div>'
@@ -1202,7 +1240,7 @@ function staffWorkInner(req){
     if(isOpen){
       const hasOpt=(row.options||[]).length>0,optOpen=hasOpt||ui.optOpen.has(row.id);
       detail='<div class="detail"><div class="dhdr">In '+fdate(dd.checkIn)+' / Out '+fdate(dd.checkOut)+' · '+dd.nights+T('n_sfx')+' · '+T('ws_day_edit')+'</div>'
-        +dd.dates.map(iso=>{const c=(req.ws||{})[row.id+'|'+iso]||{};
+        +dd.dates.map(iso=>{const c=wsView(req,row.id+'|'+iso);
           return '<div class="drow"><span class="ddate">'+fdshort(iso)+'</span>'
             +stSel('stsel',c.status||'','data-key="'+row.id+'|'+iso+'"',false)
             +'<div class="pbox"><span>฿</span><input type="number" class="pone" data-key="'+row.id+'|'+iso+'" placeholder="'+esc(T('ws_price_ph'))+'" value="'+(c.price||'')+'"></div></div>';}).join('')
@@ -1259,20 +1297,23 @@ function bindStaff(){
   document.querySelectorAll('[data-toggle]').forEach(el=>el.onclick=e=>{
     if(e.target.closest('select,input,textarea,button,a'))return;
     const id=Number(el.dataset.toggle);ui.open.has(id)?ui.open.delete(id):ui.open.add(id);renderApp();});
-  const stampRow=rid=>{const r=req.rows.find(x=>x.id===Number(rid));if(r)r.savedAt=Date.now();};
+  /* 2026-08-02: 가능여부·요금 변경은 저장 전까지 PEND에만 담는다 (저장 눌러야 서버·타 사용자 반영) */
   document.querySelectorAll('select.stsel[data-all]').forEach(sel=>sel.onchange=e=>{
     const id=Number(e.target.dataset.all),v=e.target.value;if(v==='__mix')return;
     const row=req.rows.find(r=>r.id===id),i=req.rows.indexOf(row);
-    rDates(req,row,i).dates.forEach(iso=>{const k=id+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].status=v;});stampRow(id);saveDB();renderApp();});
+    rDates(req,row,i).dates.forEach(iso=>pendSet(req,id+'|'+iso,'status',v));renderApp();});
   document.querySelectorAll('input.pall').forEach(inp=>inp.onchange=e=>{
     const id=Number(e.target.dataset.all),v=e.target.value;
     const row=req.rows.find(r=>r.id===id),i=req.rows.indexOf(row);
-    rDates(req,row,i).dates.forEach(iso=>{const k=id+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].price=v;});stampRow(id);saveDB();renderApp();});
+    rDates(req,row,i).dates.forEach(iso=>pendSet(req,id+'|'+iso,'price',v));renderApp();});
   document.querySelectorAll('select.stsel[data-key]').forEach(sel=>sel.onchange=e=>{
-    const k=e.target.dataset.key;req.ws[k]=req.ws[k]||{};req.ws[k].status=e.target.value;stampRow(k.split('|')[0]);saveDB();renderApp();});
+    pendSet(req,e.target.dataset.key,'status',e.target.value);renderApp();});
   document.querySelectorAll('input.pone').forEach(inp=>{
-    inp.oninput=e=>{const k=e.target.dataset.key;req.ws[k]=req.ws[k]||{};req.ws[k].price=e.target.value;};
-    inp.onchange=e=>{stampRow(e.target.dataset.key.split('|')[0]);saveDB();renderApp();};});
+    inp.oninput=e=>{pendSet(req,e.target.dataset.key,'price',e.target.value);};
+    inp.onchange=e=>{pendSet(req,e.target.dataset.key,'price',e.target.value);renderApp();};});
+  /* 호텔별 저장 버튼 */
+  document.querySelectorAll('[data-wssave]').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();wsSaveRow(req,Number(b.dataset.wssave));});
   document.querySelectorAll('.phSel').forEach(s=>s.onchange=e=>{const rid=Number(s.dataset.prid),row=req.rows.find(x=>x.id===rid);if(!row)return;
     const v=e.target.value;
     if(v==='__add'){ui.phAdd.add(rid);renderApp();return;}
@@ -1284,7 +1325,7 @@ function bindStaff(){
     if(!DB.phones[row.hotel].includes(v))DB.phones[row.hotel].push(v);
     row.phone=v;ui.phAdd.delete(rid);saveDB();renderApp();toast(T('t_contact_saved'));});
   document.querySelectorAll('.phWho').forEach(inp=>{inp.oninput=e=>{const rid=Number(inp.dataset.prid),row=req.rows.find(x=>x.id===rid);if(row)row.confirmedBy=e.target.value;};
-    inp.onchange=e=>{stampRow(inp.dataset.prid);saveDB();renderApp();};});
+    inp.onchange=e=>{saveDB();renderApp();};});
   document.querySelectorAll('.optTog').forEach(b=>b.onclick=()=>{ui.optOpen.add(Number(b.dataset.id));renderApp();});
   document.querySelectorAll('.optitem[data-woid]').forEach(rowEl=>{const rid=Number(rowEl.dataset.wrid),oid=Number(rowEl.dataset.woid);
     const r=req.rows.find(x=>x.id===rid),o=r&&(r.options||[]).find(x=>x.id===oid);if(!o)return;
@@ -1296,12 +1337,12 @@ function bindStaff(){
     r.options=r.options||[];r.options.push({id:Date.now(),name:'',qty:1,amt:0,show:true,memo:''});saveDB();renderApp();});
   const qt=document.getElementById('qTog');if(qt)qt.onclick=()=>{ui.qOpen=!ui.qOpen;renderApp();};
   if(ui.qOpen)bindQuoteBuilder(req);
-  const sa=document.getElementById('sendA');if(sa)sa.onclick=()=>{buildWsFromDOM(req);req.status='answered';req.answeredAt=Date.now();req.manager=meStaffName();req.answerComplete=allDone(req);recordFullbook(req);saveDB();renderApp();
+  const sa=document.getElementById('sendA');if(sa)sa.onclick=()=>{(req.rows||[]).forEach(r=>{if(rowDirty(req,r.id))wsSaveRow(req,r.id,true);});buildWsFromDOM(req);req.status='answered';req.answeredAt=Date.now();req.manager=meStaffName();req.answerComplete=allDone(req);recordFullbook(req);saveDB();renderApp();
     toast(isFullbookReq(req)?T('t_fullbook')+reqNo(req)
       :(!allDone(req)?TF('t_partial',{n:doneCount(req),t:req.rows.length})+reqNo(req)
       :T('t_answered')+reqNo(req)));};
   const fa=document.getElementById('fwdAgent');if(fa)fa.onclick=()=>{req.forwardedAt=Date.now();saveDB();renderApp();toast('에이전트에 전송 · '+reqNo(req));};
-  const sq=document.getElementById('sendQ');if(sq)sq.onclick=()=>{buildWsFromDOM(req);req.status='answered';req.answeredAt=Date.now();req.manager=meStaffName();req.answerComplete=allDone(req);req.quoteSent=true;req.quoteRequested=false;req.quoteSentAt=Date.now();req.quoteBy=meStaffName();recordFullbook(req);saveDB();renderApp();toast(T('t_qsent')+reqNo(req));};
+  const sq=document.getElementById('sendQ');if(sq)sq.onclick=()=>{(req.rows||[]).forEach(r=>{if(rowDirty(req,r.id))wsSaveRow(req,r.id,true);});buildWsFromDOM(req);req.status='answered';req.answeredAt=Date.now();req.manager=meStaffName();req.answerComplete=allDone(req);req.quoteSent=true;req.quoteRequested=false;req.quoteSentAt=Date.now();req.quoteBy=meStaffName();recordFullbook(req);saveDB();renderApp();toast(T('t_qsent')+reqNo(req));};
 }
 
 /* ================= ④ 간단 견적 ================= */

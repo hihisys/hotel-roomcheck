@@ -72,6 +72,7 @@ ko:{sub_agent:"에이전트 콘솔",sub_sreq:"요청자 콘솔",sub_schk:"확인
   b_quote_staff:"견적 발송됨",b_quote:"견적 도착",b_direct:"📋 직접 등록",b_direct_s:"직접",
   b_wait_staff:"답변 대기",b_wait:"확인 중",b_qreq_staff:"견적 요청 옴",b_qreq:"견적 요청됨",
   b_partial:"부분 답변",b_resend:"답변 전송 필요",b_done:"답변 완료",
+  btn_ws_save:"저장",ws_unsaved:"변경됨",ws_checked:"룸첵",t_ws_saved:"저장되었습니다",
   chip_done:"✓ 완료",chip_wait:"대기",
   /* 가용 상태 */
   av_ok:"예약 가능",av_no:"예약 불가 (마감)",av_part:"일부 날짜 불가",av_un:"확인 중",av_rq:"가능 · 당일 확정 (RQ)",
@@ -198,6 +199,7 @@ en:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"Checker Con
   b_quote_staff:"Quote Sent",b_quote:"Quote Ready",b_direct:"📋 Direct Entry",b_direct_s:"Direct",
   b_wait_staff:"Awaiting Answer",b_wait:"Checking",b_qreq_staff:"Quote Requested",b_qreq:"Quote Requested",
   b_partial:"Partial",b_resend:"Send Answer",b_done:"Answered",
+  btn_ws_save:"Save",ws_unsaved:"Unsaved",ws_checked:"Checked",t_ws_saved:"Saved",
   chip_done:"✓ Done",chip_wait:"Pending",
   av_ok:"Available",av_no:"Unavailable (S/O)",av_part:"Some dates unavailable",av_un:"Checking",av_rq:"Available · same-day confirm (RQ)",
   n_sfx:"N",r_sfx:"R",no_hotel:"(no hotel)",no_input:"(none)",
@@ -316,6 +318,7 @@ th:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"คอน�
   b_quote_staff:"ส่งใบเสนอราคาแล้ว",b_quote:"มีใบเสนอราคา",b_direct:"📋 เพิ่มโดยตรง",b_direct_s:"ตรง",
   b_wait_staff:"รอคำตอบ",b_wait:"กำลังตรวจสอบ",b_qreq_staff:"ขอใบเสนอราคา",b_qreq:"ขอใบเสนอราคา",
   b_partial:"ตอบบางส่วน",b_resend:"ต้องส่งคำตอบ",b_done:"ตอบแล้ว",
+  btn_ws_save:"บันทึก",ws_unsaved:"ยังไม่บันทึก",ws_checked:"ตรวจแล้ว",t_ws_saved:"บันทึกแล้ว",
   chip_done:"✓ เสร็จ",chip_wait:"รอ",
   av_ok:"ว่าง",av_no:"ไม่ว่าง (S/O)",av_part:"บางวันไม่ว่าง",av_un:"กำลังตรวจสอบ",av_rq:"ว่าง · ยืนยันวันนี้ (RQ)",
   n_sfx:"N",r_sfx:"R",no_hotel:"(ไม่มีโรงแรม)",no_input:"(ว่าง)",

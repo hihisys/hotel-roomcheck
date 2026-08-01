@@ -135,8 +135,23 @@ function route(string $path, string $method): void {
 
   if ($path === 'agents' && $method === 'GET') {
     requireApproved();
-    $rows = $pdo->query("SELECT name, nickname FROM users WHERE role='agent' AND status='approved' ORDER BY name")->fetchAll();
-    jsonOut(['agents' => $rows]);
+    /* 2026-08-01: 소속 회사·부계정 정보 포함 — 요청자 화면에서 '에이전트(회사)'와 '담당자(부계정)'를 구분해
+       표시하고, 담당자 선택이 실제 부계정 계정과 연결되어야 웹 알림이 전달되기 때문 */
+    $rows = $pdo->query("SELECT name, nickname, agent_company, agency_idx, agency_parent_idx, agency_login_id
+      FROM users WHERE role='agent' AND status='approved' ORDER BY name")->fetchAll();
+    $out2 = [];
+    foreach ($rows as $r) {
+      $out2[] = [
+        'name' => $r['name'],
+        'nickname' => $r['nickname'] ?? '',
+        'company' => $r['agent_company'] ?? '',
+        'idx' => (int)($r['agency_idx'] ?? 0),
+        'parent_idx' => (int)($r['agency_parent_idx'] ?? 0),
+        'login_id' => $r['agency_login_id'] ?? '',
+        'sub' => !empty($r['agency_idx']),          // 부계정 계정 여부
+      ];
+    }
+    jsonOut(['agents' => $out2]);
   }
   /* ---------- 상태 폴링 ---------- */
   if ($path === 'state' && $method === 'GET') {
@@ -164,14 +179,16 @@ function route(string $path, string $method): void {
     //  - 일반 관리자(요청자→관리자 승격): 기본 요청자로 처리 — 요청자(sreq) 알림 수신
     $isSuper = strtolower((string)($u['email'] ?? '')) === strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
     if (($u['role'] ?? '') === 'admin' && $isSuper) {
-      $st = $pdo->prepare("SELECT type,req_no,params,created_at,exclude_user FROM notifications
+      $st = $pdo->prepare("SELECT type,req_no,params,MAX(created_at) AS created_at FROM notifications
         GROUP BY type,req_no,params ORDER BY MAX(id) DESC LIMIT 20");
       $st->execute();
     } else {
       $notifRole = (($u['role'] ?? '') === 'admin') ? 'sreq' : $u['role'];
-      /* 2026-08-01: 지역 배정 직원은 본인 지역(존) 알림만 — 알림에 지역이 없거나 본인이 지역 미배정이면 전체 표시 */
-      $st = $pdo->prepare("SELECT type,req_no,params,created_at,exclude_user FROM notifications
-        WHERE role=? AND (exclude_user IS NULL OR exclude_user<>?) AND (region IS NULL OR ? IS NULL OR region=?) ORDER BY id DESC LIMIT 20");
+      /* 2026-08-01: 지역 배정 직원은 본인 지역(존) 알림만 — 알림에 지역이 없거나 본인이 지역 미배정이면 전체 표시.
+         대상 사용자 수만큼 행이 쌓이므로 동일 알림은 GROUP BY로 1건만 표시 (중복 표시 수정) */
+      $st = $pdo->prepare("SELECT type,req_no,params,MAX(created_at) AS created_at FROM notifications
+        WHERE role=? AND (exclude_user IS NULL OR exclude_user<>?) AND (region IS NULL OR ? IS NULL OR region=?)
+        GROUP BY type,req_no,params ORDER BY MAX(id) DESC LIMIT 20");
       $st->execute([$notifRole, $u['id'], $u['region'] ?? null, $u['region'] ?? null]);
     }
     $items = [];

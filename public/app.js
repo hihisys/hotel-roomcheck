@@ -195,7 +195,21 @@ function langSwitchHTML(){
 }
 function visNotifs(){var items=NOTIF.items||[];
   var wk=Date.now()-7*24*3600*1000;items=items.filter(function(n){return Number(n.at||0)>=wk;}); /* 2026-08-01: 최근 1주일만 표시 */
-  if(ui.role==='agent'){var me=[meName(),meNick()].filter(Boolean).map(function(x){return String(x).trim();});items=items.filter(function(n){var a=n.p&&n.p.agent;return a?me.indexOf(String(a).trim())>=0:false;});}return items;}
+  if(ui.role==='agent'){
+    /* 2026-08-01: 요청의 '에이전트'는 소속 회사명이므로 회사명으로도 매칭해야 부계정에게 알림이 도달한다.
+       담당자가 지정된 요청은 그 담당자(부계정) 본인에게만 표시 */
+    var comp=(typeof myAgencyName==='function'?myAgencyName():'')||'';
+    var mine=[meName(),meNick(),(SRV.me&&SRV.me.agency&&SRV.me.agency.login_id)||''].filter(Boolean).map(function(x){return String(x).trim();});
+    var scope=mine.concat([comp]).filter(Boolean);
+    items=items.filter(function(n){
+      var a=n.p&&n.p.agent,m=(n.p&&n.p.agentManager)||'';
+      if(!a)return false;
+      if(scope.indexOf(String(a).trim())<0)return false;
+      if(m)return mine.indexOf(String(m).trim())>=0;   // 담당자 지정 건은 본인만
+      return true;
+    });
+  }
+  return items;}
 function visUnread(){return visNotifs().filter(function(n){return n.new;}).length;}
 function notifPanelHTML(){
   const items=(visNotifs()).map(n=>{
@@ -239,7 +253,7 @@ function bindLang(){
       if(j.url)window.open(j.url,'_blank');else toast('봇 설정이 아직 완료되지 않았습니다');}catch(e){}};
 }
 /* ================= 서버 동기화 ================= */
-let AGENTS=[];
+let AGENTS=[],AGENT_USERS=[]; /* AGENTS=에이전트(회사) · AGENT_USERS=부계정 담당자(사람) */
 let SRV={on:false,rev:-1,me:null,nicks:{},shadow:{},shadowP:'',shadowF:'',timer:null,pushing:false};
 let NOTIF={unread:0,items:[]};
 const meName=()=>((SRV.on&&SRV.me&&SRV.me.name)||'');
@@ -311,7 +325,10 @@ async function srvInit(){
     SRV.on=true;SRV.me=j.user;
     /* 외부 API(에이전시·호텔)는 첫 화면을 막지 않고 백그라운드 로드 + 10분 캐시 */
     loadExternalLists();
-    try{const _ar=await pAg;if(_ar&&_ar.ok)AGENTS=(await _ar.json()).agents||[];}catch(e){}
+    /* 2026-08-01: /api/agents 응답은 '부계정(사람)' 목록 — 에이전트(회사) 입력칸에 섞이지 않도록 분리 보관.
+       담당자 선택 목록과 부계정 알림 연결에 사용 */
+    try{const _ar=await pAg;if(_ar&&_ar.ok){const _aj=await _ar.json();AGENT_USERS=(_aj.agents||[]);
+      AGENTS=AGENT_USERS.filter(a=>a&&a.name&&!a.sub&&!a.company).map(a=>({name:a.name,nickname:a.nickname||''}));}}catch(e){}
     DB.langs=DB.langs||{};
     if(j.user.lang&&(LANG_ALLOWED[ui.role]||[]).includes(j.user.lang))DB.langs[ui.role]=j.user.lang;
     try{const rs=await pSt;if(rs&&rs.ok)srvApplyState(await rs.json());}catch(e){}
@@ -518,22 +535,55 @@ function attachAC(inp,getItems,onPick){
 }
 /* 에이전시 담당자 자동 로드 — 에이전트 선택 시 /api/agencies/{idx}의 managers를 담당자 목록에 반영 (2026-07-30)
    force=true(에이전트 확정 선택 시): 기존 담당자 값이 있어도 새 에이전시의 첫 담당자로 갱신 */
+/* 선택한 에이전트(회사)의 담당자 후보 (2026-08-01)
+   ① 이 사이트에 등록된 부계정 담당자 — 선택 시 그 부계정 아이디로 웹 알림이 전달됨 (sub:true)
+   ② 너바나 에이전시에 등록된 담당자 (부계정 미연결 — 알림 대상 없음)
+   ③ 이전에 입력했던 담당자 이름 */
+function managerOptions(name){
+  const a=AGENTS.find(x=>x.name===name&&x.api&&x.idx);
+  const out=[],seen={};
+  const add=(n,sub,memo)=>{n=String(n||'').trim();if(!n||seen[n])return;seen[n]=1;out.push({name:n,sub:!!sub,memo:memo||''});};
+  (AGENT_USERS||[]).forEach(u=>{                      // ① 부계정 담당자
+    if(!u||!u.name)return;
+    const byComp=u.company&&name&&String(u.company).trim()===String(name).trim();
+    const byIdx=a&&a.idx&&(Number(u.parent_idx)===Number(a.idx)||Number(u.idx)===Number(a.idx));
+    if(byComp||byIdx)add(u.name,true,u.login_id||u.nickname||'');
+  });
+  ((a&&a._mgrs)||[]).forEach(n=>add(n,false));        // ② 너바나 담당자
+  ((DB.hist&&DB.hist.am)||[]).forEach(n=>add(n,false)); // ③ 입력 이력
+  return out;
+}
 async function loadAgencyManagers(name,force){
-  const a=AGENTS.find(x=>x.name===name&&x.api&&x.idx);if(!a)return;
-  if(!a._mgrs){
-    try{const r=await fetch('api/agencies/'+a.idx,{cache:'no-store'});if(!r.ok)return;
-      const j=await r.json();
-      a._mgrs=(((j&&j.agency)||{}).managers||[]).filter(m=>m&&m.mname&&(m.active==null||m.active==='Y')).map(m=>String(m.mname));
-    }catch(e){return;}
+  const a=AGENTS.find(x=>x.name===name&&x.api&&x.idx);
+  if(a&&!a._mgrs){
+    try{const r=await fetch('api/agencies/'+a.idx,{cache:'no-store'});
+      if(r.ok){const j=await r.json();
+        a._mgrs=(((j&&j.agency)||{}).managers||[]).filter(m=>m&&m.mname&&(m.active==null||m.active==='Y')).map(m=>String(m.mname));}
+      else a._mgrs=[];
+    }catch(e){a._mgrs=[];}
   }
-  const dl=document.getElementById('dlAm');
-  if(dl)dl.innerHTML=a._mgrs.map(n=>'<option value="'+esc(n)+'">').join('')
-    +(((DB.hist&&DB.hist.am)||[]).filter(n=>a._mgrs.indexOf(n)<0).map(n=>'<option value="'+esc(n)+'">').join(''));
+  const opts=managerOptions(name);
   const am=document.getElementById('agentMgr');
-  if(a._mgrs.length&&draft.agent===name&&(force||!draft.agentManager)){
-    draft.agentManager=a._mgrs[0];
-    if(am)am.value=a._mgrs[0];
+  /* 후보가 정확히 1명일 때만 자동 선택 — 여러 명이면 직접 고르도록 비워둔다 (2026-08-01) */
+  if(draft.agent===name&&(force||!draft.agentManager)){
+    const pick=opts.length===1?opts[0].name:'';
+    draft.agentManager=pick;
+    if(am)am.value=pick;
   }
+  renderMgrHint();
+}
+/* 담당자–부계정 연결 상태 안내 (2026-08-01): 연결되어야 그 아이디로 웹 알림이 나감 */
+function renderMgrHint(){
+  const am=document.getElementById('agentMgr');if(!am)return;
+  let h=document.getElementById('mgrHint');
+  if(!h){h=document.createElement('div');h.id='mgrHint';h.className='small';h.style.cssText='margin-top:4px;line-height:1.5';
+    am.parentNode.appendChild(h);}
+  const v=String(draft.agentManager||'').trim();
+  if(!v){const n=managerOptions(draft.agent).length;
+    h.style.color='var(--muted)';h.textContent=n?('담당자 '+n+'명 — 선택하세요'):'';return;}
+  const hit=managerOptions(draft.agent).find(o=>o.name===v);
+  if(hit&&hit.sub){h.style.color='var(--av)';h.textContent='📋 부계정 연결됨'+(hit.memo?' ('+hit.memo+')':'')+' — 이 담당자에게 웹 알림이 전달됩니다.';}
+  else{h.style.color='var(--so)';h.textContent='⚠ 부계정과 연결되지 않은 담당자입니다 — 웹 알림이 전달되지 않습니다.';}
 }
 /* 호텔 룸타입 자동 로드 — API 호텔 선택 시 /api/hotels/{idx}의 room_types를 룸타입 목록에 반영 (2026-07-30) */
 async function loadHotelRooms(name){
@@ -597,7 +647,7 @@ function formHTML(){
     +(ui.role==='sreq'
       ? '<div class="line l3">'
         +'<div><div class="label">'+T('agent_select')+'</div><input id="agent" autocomplete="off" value="'+esc(d.agent||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"></div>'
-        +'<div><div class="label">'+T('agent_mgr')+'</div><input id="agentMgr" list="dlAm" value="'+esc(d.agentManager||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"><datalist id="dlAm">'+((DB.hist&&DB.hist.am)||[]).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist></div>'
+        +'<div><div class="label">'+T('agent_mgr')+'</div><input id="agentMgr" autocomplete="off" value="'+esc(d.agentManager||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"></div>'
         +'<div><div class="label">'+T('mgr_nirvana')+'</div><input id="regName" list="dlSt" value="'+esc(d.registrant||'심은선')+'" placeholder="'+esc(T('ph_input'))+'"><datalist id="dlSt">'+((DB.hist&&DB.hist.st)||[]).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist></div></div>'
       : '')
     +dateArea
@@ -627,9 +677,16 @@ function bindForm(){
   if(d.agent)loadAgencyManagers(d.agent); /* 이미 선택된 에이전트의 담당자 목록 미리 로드 */
   /* 에이전트 빠른검색 드롭다운 (2026-07-30): 이름/닉네임 부분 일치 */
   if(ag)attachAC(ag,
-    ()=>AGENTS.map(a=>({label:a.name,s:[a.name,a.nickname||'']})),
-    label=>{d.agent=label;ag.value=label;loadAgencyManagers(label,true);});
-  const am=document.getElementById('agentMgr');if(am)am.oninput=e=>{d.agentManager=e.target.value;};
+    /* 2026-08-01: 에이전트 칸에는 '회사'만 — 담당자(사람) 이름이 섞여 나오던 문제 수정 */
+    ()=>{const cs=AGENTS.filter(a=>a.api);return (cs.length?cs:AGENTS).map(a=>({label:a.name,s:[a.name,a.nickname||'']}));},
+    label=>{d.agent=label;ag.value=label;d.agentManager='';const _am=document.getElementById('agentMgr');if(_am)_am.value='';loadAgencyManagers(label,true);});
+  const am=document.getElementById('agentMgr');
+  if(am){am.oninput=e=>{d.agentManager=e.target.value;renderMgrHint();};
+    /* 담당자 드롭다운 (2026-08-01): 화살표/클릭 시 후보 전체 표시, 부계정 연결 여부 함께 표기 */
+    attachAC(am,()=>managerOptions(d.agent).map(o=>({label:o.name,s:[o.name,o.memo],
+        sub:o.sub?('📋 '+(o.memo||'부계정')):'⚠ 부계정 미연결'})),
+      label=>{d.agentManager=label;am.value=label;renderMgrHint();});
+    renderMgrHint();}
   const rg=document.getElementById('regName');if(rg)rg.oninput=e=>{d.registrant=e.target.value;};
   /* (2026-07-30) 부계정 정보 필드는 회원정보 페이지로 이동 — 요청 페이지 바인딩 제거 */
   const nt=document.getElementById('notes');nt.oninput=e=>{d.notes=e.target.value;};

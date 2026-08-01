@@ -128,6 +128,8 @@ $('go').onclick=async()=>{
       body:JSON.stringify({login_id:email,password:pw})});
     const j2=await r2.json();
     if(j2.ok){location.href='agent.html';return;}
+    if(j2.error==='pending'){showMsg('err','pending');return;}   /* 부계정 승인 대기 (2026-08-01) */
+    if(j2.error==='rejected'){showMsg('err','rejected');return;}
     showMsg('err','bad');
   }catch(e){showMsg('err','noserver');}
 };

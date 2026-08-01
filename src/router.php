@@ -307,7 +307,7 @@ function route(string $path, string $method): void {
   if ($path === 'admin/users' && $method === 'GET') {
     requireAdmin();
     // 2026-07-30: 부계정 회원 정보(닉네임·연락처·계좌·부계정 아이디)도 회원 관리에 표시
-    $rows = $pdo->query("SELECT id,name,email,role,status,lang,telegram_chat_id,off_days,created_at,phone,nickname,bank_account,agency_idx,agency_login_id,agent_company,region FROM users ORDER BY status='pending' DESC, id DESC")->fetchAll(); /* 2026-08-01: region 포함 (관리지역 표시·설정) */
+    $rows = $pdo->query("SELECT id,name,email,role,status,lang,telegram_chat_id,off_days,created_at,phone,nickname,bank_account,agency_idx,agency_parent_idx,agency_login_id,agent_company,region FROM users ORDER BY status='pending' DESC, id DESC")->fetchAll(); /* 2026-08-01: region 포함 (관리지역 표시·설정) */
     $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
     foreach ($rows as &$r) {
       $r['tg'] = !empty($r['telegram_chat_id']);

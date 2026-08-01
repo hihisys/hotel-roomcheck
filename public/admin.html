@@ -121,8 +121,8 @@
   </section>
   <section class="card"><h3 style="margin:0 0 4px;font-size:16px;font-weight:800">전체 계정</h3><div class="seg" id="acctTabs" style="margin:8px 0"><button data-t="staff" class="on">직원</button><button data-t="agent">에이전시</button></div><div id="all"></div></section>
 
-  <section class="card"><h3 style="margin:0 0 4px;font-size:16px;font-weight:800">에이전시별 담당자</h3>
-    <div class="small" style="color:var(--muted);margin:4px 0 8px;line-height:1.5">너바나 시스템에 등록된 에이전시 담당자 목록입니다. 여기서 담당자별 <b>승인(활성화)·이용 중지·삭제</b>를 바로 처리할 수 있습니다.<br>너바나 원본 데이터는 변경되지 않고 이 사이트에서의 표시·이용만 제한되며, 해당 담당자의 로그인 부계정도 함께 처리됩니다.</div>
+  <section class="card"><h3 style="margin:0 0 4px;font-size:16px;font-weight:800">에이전시별 담당자 (부계정)</h3>
+    <div class="small" style="color:var(--muted);margin:4px 0 8px;line-height:1.5">너바나에서 만들어진 <b>부계정으로 이 사이트에 로그인한 담당자</b>만 표시됩니다.<br>부계정 첫 로그인 시 <b>대기</b> 상태가 되며, 여기서 <b>승인</b>해야 사이트를 사용할 수 있습니다. 이용 중지·삭제도 여기서 처리하세요. (삭제해도 다시 로그인하면 대기 상태로 재등록됩니다)</div>
     <select id="agcSel"><option value="">에이전시 선택</option></select>
     <div id="agcMgrs" style="margin-top:8px"></div>
   </section>
@@ -535,25 +535,29 @@ async function loadAgcList(){
     const idx=e.target.value;const box=document.getElementById('agcMgrs');
     if(!idx){box.innerHTML='';return;}
     box.innerHTML='<div class="small" style="color:var(--muted)">불러오는 중…</div>';
-    try{const r=await fetch('api/agencies/'+idx,{cache:'no-store'});const j=await r.json();
-      const ms=(j&&j.agency&&j.agency.managers)||[];
-      /* 담당자 승인/중지/삭제 (2026-08-01): 로컬 상태 배지 + 버튼 */
-      const mgrBadge=m=>m.local_status==='deleted'?'<span class="badge st-rejected">삭제됨</span>'
-        :m.local_status==='blocked'?'<span class="badge st-rejected">이용 중지</span>'
-        :'<span class="badge st-'+(m.active==='Y'?'approved':'rejected')+'">'+(m.active==='Y'?'활성':'중지(너바나)')+'</span>';
-      const mgrBtns=m=>{const n=esc(m.mname||'');let b='';
-        if(m.local_status)b+='<button class="bt-ok" data-mgr="'+n+'" data-mst="">✓ 승인 (활성화)</button>';
-        if(m.local_status!=='blocked')b+='<button class="bt-no" data-mgr="'+n+'" data-mst="blocked">이용 중지</button>';
-        if(m.local_status!=='deleted')b+='<button class="bt-del" data-mgr="'+n+'" data-mst="deleted">삭제</button>';
+    try{
+      /* 부계정에서 만들어진(로그인한) 담당자만 표시 (2026-08-01) — 승인/이용 중지/삭제 */
+      const r=await fetch('api/admin/users',{cache:'no-store'});const j=await r.json();
+      const nidx=Number(idx);
+      const subs=((j&&j.users)||[]).filter(u=>u.role==='agent'&&u.ext&&(Number(u.agency_parent_idx)===nidx||Number(u.agency_idx)===nidx));
+      const stBadge=u=>u.status==='approved'?'<span class="badge st-approved">승인됨</span>'
+        :u.status==='pending'?'<span class="badge st-pending">대기</span>'
+        :'<span class="badge st-rejected">이용 중지</span>';
+      const subBtns=u=>{let b='';
+        if(u.status!=='approved')b+='<button class="bt-ok" data-sacc="'+u.id+'" data-sact="approve">✓ 승인</button>';
+        if(u.status==='approved')b+='<button class="bt-no" data-sacc="'+u.id+'" data-sact="reject">이용 중지</button>';
+        b+='<button class="bt-del" data-sacc="'+u.id+'" data-sact="delete">삭제</button>';
         return '<div class="ubtns">'+b+'</div>';};
-      box.innerHTML=ms.length?ms.map(m=>'<div class="urow"><div class="u1"><div><div class="nm">'+esc(m.mname||'')+'</div><div class="meta">'+esc(m.tel||'-')+(m.email?' · '+esc(m.email):'')+(m.memo?' · '+esc(m.memo):'')+'</div></div>'+mgrBadge(m)+'</div>'+mgrBtns(m)+'</div>').join('')
-        :'<div class="small" style="color:var(--muted)">등록된 담당자가 없습니다.</div>';
-      box.querySelectorAll('[data-mgr]').forEach(b=>b.onclick=async()=>{
-        if(b.dataset.mst==='deleted'&&!confirm('담당자 "'+b.dataset.mgr+'" 를 삭제할까요?\n이 사이트에서 숨겨지고 로그인 부계정도 삭제됩니다. (너바나 원본은 유지)'))return;
-        try{const r2=await fetch('api/admin/manager-override',{method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({agency_idx:Number(idx),mname:b.dataset.mgr,status:b.dataset.mst})});
+      box.innerHTML=subs.length?subs.map(u=>'<div class="urow"><div class="u1"><div><div class="nm">'+esc(u.name)+(u.nickname?' <span class="small">· '+esc(u.nickname)+'</span>':'')+'</div>'
+          +'<div class="meta">'+(u.agency_login_id?'📋 부계정 '+esc(u.agency_login_id):'')+(u.phone?' · ☎ '+esc(u.phone):'')+' · 가입 '+new Date(Number(u.created_at)).toLocaleDateString('ko-KR')+'</div></div>'
+          +stBadge(u)+'</div>'+subBtns(u)+'</div>').join('')
+        :'<div class="small" style="color:var(--muted)">이 에이전시의 부계정으로 로그인한 담당자가 아직 없습니다.<br>담당자가 부계정으로 처음 로그인하면 여기에 "대기" 상태로 표시됩니다.</div>';
+      box.querySelectorAll('[data-sacc]').forEach(b=>b.onclick=async()=>{
+        if(b.dataset.sact==='delete'&&!confirm('이 부계정 담당자를 삭제할까요?\n다시 로그인하면 대기 상태로 재등록됩니다.'))return;
+        try{const r2=await fetch('api/admin/decide',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({id:Number(b.dataset.sacc),action:b.dataset.sact})});
           const j2=await r2.json();
-          toast(j2.ok?({'':'승인(활성화)했습니다',blocked:'이용 중지했습니다',deleted:'삭제했습니다'}[b.dataset.mst]):'처리하지 못했습니다');
+          toast(j2.ok?({approve:'승인했습니다',reject:'이용 중지했습니다',delete:'삭제했습니다'}[b.dataset.sact]):'처리하지 못했습니다');
           sel.onchange({target:{value:idx}});load();
         }catch(e){toast('서버에 연결할 수 없습니다');}});
     }catch(e){box.innerHTML='<div class="small" style="color:var(--muted)">불러오지 못했습니다.</div>';}

@@ -188,13 +188,15 @@ function langSwitchHTML(){
   renderHdrRight();
   return ui.notifOpen?notifPanelHTML():'';
 }
-function visNotifs(){var items=NOTIF.items||[];if(ui.role==='agent'){var me=[meName(),meNick()].filter(Boolean).map(function(x){return String(x).trim();});items=items.filter(function(n){var a=n.p&&n.p.agent;return a?me.indexOf(String(a).trim())>=0:false;});}return items;}
+function visNotifs(){var items=NOTIF.items||[];
+  var wk=Date.now()-7*24*3600*1000;items=items.filter(function(n){return Number(n.at||0)>=wk;}); /* 2026-08-01: 최근 1주일만 표시 */
+  if(ui.role==='agent'){var me=[meName(),meNick()].filter(Boolean).map(function(x){return String(x).trim();});items=items.filter(function(n){var a=n.p&&n.p.agent;return a?me.indexOf(String(a).trim())>=0:false;});}return items;}
 function visUnread(){return visNotifs().filter(function(n){return n.new;}).length;}
 function notifPanelHTML(){
   const items=(visNotifs()).map(n=>{
     const key={new_request:'nt_new_request',answered:'nt_answered',partial:'nt_partial',quote_requested:'nt_quote_requested',quote_sent:'nt_quote_sent'}[n.type]||n.type;
     const sub=[n.p&&n.p.hotels?escT(n.p.hotels):'',n.p&&n.p.agent?escT(n.p.agent):''].filter(Boolean).join(' · ');
-    return '<div class="ntitem'+(n.new?' ntnew':'')+'"><div class="ntline1">'+T(key)+' <b>'+esc(n.no||'')+'</b></div>'
+    return '<div class="ntitem'+(n.new?' ntnew':'')+'" data-ntgo="'+esc(n.no||'')+'" style="cursor:pointer"><div class="ntline1">'+T(key)+' <b>'+esc(n.no||'')+'</b></div>' /* 2026-08-01: 클릭 시 해당 요청으로 이동 */
       +(sub?'<div class="ntline2">'+sub+'</div>':'')
       +'<div class="ntline3">'+dotDateTime(n.at)+'</div></div>';
   }).join('');
@@ -208,6 +210,22 @@ function bindLang(){
   const bb=document.getElementById('bellBtn');if(bb)bb.onclick=()=>{ui.notifOpen=!ui.notifOpen;
     if(ui.notifOpen&&NOTIF.unread){fetch('api/notif-read',{method:'POST'}).catch(()=>{});NOTIF.unread=0;(NOTIF.items||[]).forEach(n=>n.new=false);}
     renderApp();};
+  /* 알림 클릭 → 해당 요청 열기 (2026-08-01) */
+  document.querySelectorAll('[data-ntgo]').forEach(it=>it.onclick=()=>{
+    const no=it.dataset.ntgo;if(!no)return;
+    const r=(DB.requests||[]).find(x=>{try{return reqNo(x)===no;}catch(e){return false;}});
+    ui.notifOpen=false;
+    if(!r){renderApp();toast('해당 요청을 찾을 수 없습니다');return;}
+    if(ui.role==='schk'){
+      ui.listTab=(r.status==='answered'&&r.answerComplete)?(isFullbookReq(r)?'full':'done'):'act';
+      ui.ssel=r.id;
+    }else{
+      ui.listTab=r.contractedAt?'con':(r.archivedAt?'past':'act');
+      ui.sel=r.id;ui.ssel=r.id;
+    }
+    renderApp();
+    setTimeout(()=>{const t=document.querySelector('[data-sel="'+r.id+'"],[data-ssel="'+r.id+'"]');if(t)t.scrollIntoView({behavior:'smooth',block:'start'});},80);
+  });
   const mb=document.getElementById('menuBtn');if(mb)mb.onclick=(e)=>{e.stopPropagation();ui.menuOpen=!ui.menuOpen;renderHdrRight();bindLang();};
   if(!window.__menuDoc){window.__menuDoc=true;document.addEventListener('click',function(e){if(ui.menuOpen&&!(e.target.closest&&(e.target.closest('.menupanel')||e.target.closest('#menuBtn')))){ui.menuOpen=false;renderHdrRight();bindLang();}});}
   const lb=document.getElementById('logoutBtn');if(lb)lb.onclick=()=>{fetch('api/logout',{method:'POST'}).finally(()=>location.href='login.html');};
@@ -705,6 +723,7 @@ function reqSummaryHTML(req){
         +(opts?'<div>'+opts+'</div>':'')+'</div></div>';
     }).join('')
     +(req.notes?'<div class="reqbox">📝 '+escT(req.notes)+'</div>':'')
+    +(req.fromSample?'<div class="small" style="margin-top:6px;color:var(--muted)">📑 견적서 샘플에서 복사'+(req.fromSample.name?': '+escT(req.fromSample.name):'')+'</div>':'') /* 2026-08-01 */
     +'<div class="small" style="margin-top:6px">'+escT(agentLine(req))+' · '+T('reqdate_w')+' '+dotDateTime(req.createdAt)+'</div>';
 }
 function listHead(req,forStaff){
@@ -712,6 +731,7 @@ function listHead(req,forStaff){
   const lastOut=req.mode==='parallel'?addDays(req.startDate,totalN(req)):finalOut(req);
   const extra=''; /* 2026-08-01: 에이전트/담당자 표기는 상단 헤더로 이동 (하단 중복 삭제) */
   const dtag=(ui.role!=='agent'&&req.direct&&!(req.status==='requested'&&!req.quoteSent))?'<span class="badge b-direct">'+T('b_direct_s')+'</span>':'';
+  const stag=req.fromSample?'<span class="badge b-quote">📑 샘플</span>':''; /* 2026-08-01: 견적서 샘플 복사본 표시 */
   /* 상단 헤더 표기 (2026-08-01):
      - 에이전트 페이지: 확인자 닉네임 (답변 전이면 빈칸)
      - 직원 페이지: 에이전트 · 담당자(닉네임) — 없으면 등록 직원(닉네임) */
@@ -722,7 +742,7 @@ function listHead(req,forStaff){
     _who=[_ag,_mgr].filter(Boolean).join(' · ')||nickOf(req.registrant)||'';
   }
   const _whoTxt=escT(_who);
-  return '<div class="t1"><span class="mono small">'+reqNo(req)+(_whoTxt?' · '+_whoTxt:'')+' · '+dotDateTime(req.createdAt)+'</span><span style="display:flex;gap:4px;flex:0 0 auto">'+dtag+reqBadge(req,forStaff)+'</span></div>'
+  return '<div class="t1"><span class="mono small">'+reqNo(req)+(_whoTxt?' · '+_whoTxt:'')+' · '+dotDateTime(req.createdAt)+'</span><span style="display:flex;gap:4px;flex:0 0 auto">'+stag+dtag+reqBadge(req,forStaff)+'</span></div>'
     +'<div class="t2">'+names+'</div>'
     +'<div class="t3">'+fdate(req.startDate)+' → '+fdate(lastOut)+' · '+totalN(req)+T('n_sfx')+extra+'</div>';
 }
@@ -885,11 +905,30 @@ function samplesHTML(){
         +'<div class="small" style="color:var(--muted)">'+escT(s.created_name||'')+' · '+dotDateTime(Number(s.created_at))+'</div></div>'
         +'<span class="chev'+(open?' open':'')+'">▶</span></div>'
       +(open?('<div style="margin-top:8px">'+(s._p?smpPreviewHTML(s):'<p class="small">불러오는 중…</p>')+'</div>'
-        +'<div class="qbtns"><button class="qcopy" data-smpload="'+s.id+'">📋 새 요청으로 불러오기</button>'
+        +'<div class="qbtns"><button class="qcopy" data-smpload="'+s.id+'">📋 복사 만들기</button>' /* 2026-08-01: 요청리스트에 복사본 생성 */
         +(s._p?'<button class="qimg" data-smpimg="'+s.id+'">🖼 이미지 저장</button>':'')
         +(mine?'<button class="qgray" data-smpdel="'+s.id+'">🗑 삭제</button>':'')+'</div>'):'')
       +'</div>';}).join('');
   return head+(list.length?cards:'<p class="small" style="margin:10px 0 2px">저장된 샘플이 없습니다.</p>');
+}
+/* 복사 만들기 (2026-08-01): 샘플을 요청리스트에 복사본으로 바로 생성 — 출처(샘플) 표시 포함 */
+function copySampleToList(s){
+  const p=s._p;if(!p){toast('샘플 내용을 불러오는 중입니다 — 잠시 후 다시 눌러주세요');return;}
+  DB.seqA=(DB.seqA||0)+1;
+  const req={id:Date.now(),no:DB.seqA,createdAt:Date.now(),status:'requested',direct:false,
+    quoteRequested:false,quoteOnly:false,quoteSent:false,answeredAt:null,
+    registrant:(ui.role==='sreq'?(meNick()||meName()||''):''),agentManager:'',
+    mode:p.mode||'multi',startDate:p.startDate||todayISO(),sharedNights:p.sharedNights||1,
+    agent:'',manager:'',notes:p.notes||'',
+    rows:(p.rows||[]).map((row,i)=>({id:Date.now()+i,region:row.region||'전체',hotel:row.hotel||'',roomType:row.roomType||'',
+      rooms:row.rooms||1,nights:row.nights||1,note:row.note||'',options:JSON.parse(JSON.stringify(row.options||[]))})),
+    ws:{},quote:p.quote?JSON.parse(JSON.stringify(p.quote)):{rate:40,pax:2,addl:[],override:null},
+    fromSample:{id:s.id,name:s.name||''}};
+  if(!req.rows.length){toast('샘플에 호텔 정보가 없습니다');return;}
+  upsert(req);
+  ui.listTab='act';ui.sel=req.id;ui.ssel=req.id;ui.smpOpen=null;ui.qbOpen=null;
+  renderApp();window.scrollTo({top:0,behavior:'smooth'});
+  toast('샘플 복사본을 요청리스트에 만들었습니다 · '+reqNo(req));
 }
 function loadSampleToDraft(s){
   const p=s._p;if(!p){toast('샘플 내용을 불러오는 중입니다 — 잠시 후 다시 눌러주세요');return;}
@@ -985,7 +1024,7 @@ function bindCommonList(){
   const sq=document.getElementById('smpQ');if(sq)sq.onchange=e=>{SMP_F.q=e.target.value;renderApp();};
   const sft=document.getElementById('smpFT');if(sft)sft.onchange=e=>{SMP_F.type=e.target.value;renderApp();};
   const sfl=document.getElementById('smpFL');if(sfl)sfl.onchange=e=>{SMP_F.loc=e.target.value;renderApp();};
-  document.querySelectorAll('[data-smpload]').forEach(b=>b.onclick=e=>{e.stopPropagation();const s=(SAMPLES||[]).find(x=>x.id===Number(b.dataset.smpload));if(s)loadSampleToDraft(s);});
+  document.querySelectorAll('[data-smpload]').forEach(b=>b.onclick=e=>{e.stopPropagation();const s=(SAMPLES||[]).find(x=>x.id===Number(b.dataset.smpload));if(s)copySampleToList(s);}); /* 2026-08-01: 불러오기 → 복사 만들기 */
   document.querySelectorAll('[data-smpimg]').forEach(b=>b.onclick=e=>{e.stopPropagation();saveImg('qcardsmp'+b.dataset.smpimg,'견적샘플.png');});
   document.querySelectorAll('[data-smpdel]').forEach(b=>b.onclick=async e=>{e.stopPropagation();
     if(!confirm('이 샘플을 삭제할까요?'))return;
@@ -1020,31 +1059,55 @@ function bindAgentList(){
   document.querySelectorAll('[data-qtext]').forEach(b=>b.onclick=()=>{const r=byId(Number(b.dataset.qtext));if(r)copyText(quoteText(r),T('t_qcopied'));});
   document.querySelectorAll('[data-qimg]').forEach(b=>b.onclick=()=>{saveImg('qcard'+b.dataset.qimg,'견적.png');});
 }
-/* html2canvas 로더 (2026-07-31): 내장 파일 우선, 실패 시 CDN 예비 — 이미지 저장 미동작 수정 */
+/* html2canvas 로더 (2026-08-01 강화): 내장 파일 → cdnjs → jsdelivr → unpkg 순서로 시도 */
 function ensureH2C(){return new Promise(res=>{
   if(typeof html2canvas!=='undefined')return res(true);
-  const tryLoad=(src,next)=>{const s=document.createElement('script');s.src=src;
-    s.onload=()=>{(typeof html2canvas!=='undefined')?res(true):(next?next():res(false));};
-    s.onerror=()=>{next?next():res(false);};
+  const srcs=['vendor/html2canvas.min.js?v=20260801',
+    'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+    'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',
+    'https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js'];
+  let i=0;
+  const tryNext=()=>{
+    if(typeof html2canvas!=='undefined')return res(true);
+    if(i>=srcs.length)return res(false);
+    const s=document.createElement('script');s.src=srcs[i++];
+    s.onload=()=>{(typeof html2canvas!=='undefined')?res(true):tryNext();};
+    s.onerror=()=>tryNext();
     document.head.appendChild(s);};
-  tryLoad('vendor/html2canvas.min.js?v=20260731',()=>tryLoad('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',null));
+  tryNext();
 });}
+/* 캔버스 다운로드 (2026-08-01): toBlob 우선(대용량 이미지 안정), 실패 시 dataURL 예비 */
+function dlCanvas(cv,name){
+  const viaData=()=>{const a=document.createElement('a');a.download=name;a.href=cv.toDataURL('image/png');document.body.appendChild(a);a.click();a.remove();toast(T('t_img_saved'));};
+  try{
+    if(cv.toBlob){cv.toBlob(b=>{
+      if(!b){viaData();return;}
+      const u=URL.createObjectURL(b),a=document.createElement('a');
+      a.download=name;a.href=u;document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(u),5000);toast(T('t_img_saved'));
+    },'image/png');}
+    else viaData();
+  }catch(e){viaData();}
+}
 async function saveImg(id,name){const node=document.getElementById(id);
   if(!node)return;
   if(!await ensureH2C()){toast(T('t_img_need_net'));return;}
-  html2canvas(node,{scale:2,backgroundColor:'#ffffff'}).then(cv=>{const a=document.createElement('a');a.download=name;a.href=cv.toDataURL('image/png');a.click();toast(T('t_img_saved'));}).catch(()=>{toast(T('t_img_need_net'));});}
+  html2canvas(node,{scale:2,backgroundColor:'#ffffff'}).then(cv=>dlCanvas(cv,name)).catch(()=>{toast(T('t_img_fail'));});}
 async function saveFullImg(req){
   if(!await ensureH2C()){toast(T('t_img_need_net'));return;}
   FORCE_KO=true;let html='';
-  try{html=resultCardHTML(req)+(req.quoteSent||ui.qOpen?quoteCardHTML(req):'');}finally{FORCE_KO=false;}
+  try{html=resultCardHTML(req)+(req.quoteSent||ui.qOpen||ui.qbOpen?quoteCardHTML(req):'');}
+  catch(e){html='';}
+  finally{FORCE_KO=false;}
+  if(!html){toast(T('t_img_fail'));return;} /* 2026-08-01: 렌더 실패 시 무반응 대신 안내 */
   const tmp=document.createElement('div');
   tmp.style.cssText='position:fixed;left:-10000px;top:0;width:370px;background:#fff;padding:8px';
   tmp.innerHTML=html;
   tmp.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));
   document.body.appendChild(tmp);
   html2canvas(tmp,{scale:2,backgroundColor:'#ffffff'})
-    .then(cv=>{const a=document.createElement('a');a.download='룸체크견적_'+reqNo(req)+'.png';a.href=cv.toDataURL('image/png');a.click();toast(T('t_img_saved'));tmp.remove();})
-    .catch(()=>{tmp.remove();});
+    .then(cv=>{dlCanvas(cv,'룸체크견적_'+reqNo(req)+'.png');tmp.remove();})
+    .catch(()=>{tmp.remove();toast(T('t_img_fail'));});
 }
 
 /* ================= ③ 직원 리스트 & 워크시트 ================= */
@@ -1202,8 +1265,8 @@ function quoteText(req){
   const c=quoteCalc(req);
   const optLine=o=>o.memo?o.memo:o.name;
   let t='The Nirvana · 여행 견적\n'
-    +'요청 : '+(req.agent||'-')+(req.agentManager?'-'+req.agentManager:'')+'\n'+kdotDateTime(req.createdAt)+'\n'
-    +'발행 : '+(req.quoteBy||DB.checker||req.registrant||'심은선')+'\n'+kdotDateTime(req.quoteSentAt||Date.now())+'\n';
+    +'요청 : '+(req.agent||'-')+(req.agentManager?'-'+req.agentManager:'')+' · '+kdotDateTime(req.createdAt)+'\n'
+    +'발행 : '+(req.quoteBy||DB.checker||req.registrant||'심은선')+' · '+kdotDateTime(req.quoteSentAt||Date.now())+'\n'; /* 2026-08-01: 요청/발행 각 한 줄 표시 */
   req.rows.forEach((row,i)=>{const dd=rDates(req,row,i);
     const sh=(row.options||[]).filter(o=>o.show&&o.name);
     t+='\n'+(i+1)+') '+kdstr(dd.checkIn)+' → '+kdstr(dd.checkOut)+' ('+dd.nights+'박)\n';
@@ -1234,10 +1297,8 @@ function quoteCardHTML(req){
   const qBy=req.quoteBy||DB.checker||req.registrant||'심은선';
   const qAt=req.quoteSentAt||Date.now();
   return '<div class="quotecard" id="qcard'+req.id+'"><div class="qc-title" style="font-size:17px;letter-spacing:.6px">The Nirvana · 여행 견적</div>'
-    +'<div class="qc-sub" style="text-align:left;margin-top:8px;color:var(--sub);font-weight:700">요청 : '+escT((req.agent||'-')+(req.agentManager?'-'+req.agentManager:''))+'</div>'
-    +'<div class="qc-sub" style="text-align:left;margin-top:1px">'+kdotDateTime(req.createdAt)+'</div>'
-    +'<div class="qc-sub" style="text-align:left;margin-top:5px;color:var(--sub);font-weight:700">발행 : '+escT(qBy)+'</div>'
-    +'<div class="qc-sub" style="text-align:left;margin-top:1px">'+kdotDateTime(qAt)+'</div>'
+    +'<div class="qc-sub" style="text-align:left;margin-top:8px;color:var(--sub);font-weight:700">요청 : '+escT((req.agent||'-')+(req.agentManager?'-'+req.agentManager:''))+' · <span style="font-weight:400">'+kdotDateTime(req.createdAt)+'</span></div>' /* 2026-08-01: 한 줄 표시 */
+    +'<div class="qc-sub" style="text-align:left;margin-top:2px;color:var(--sub);font-weight:700">발행 : '+escT(qBy)+' · <span style="font-weight:400">'+kdotDateTime(qAt)+'</span></div>'
     +legs+(incLines?'<div class="qc-leg qc-addl">'+incLines+'</div>':'')
     +(q.remark?'<div class="qc-remark">※ '+escT(q.remark).replace(/\n/g,'<br>')+'</div>':'')
     +'<hr class="qc-sep"><div class="qc-final"><span class="lbl">견적금액 · 1인</span><span class="amt">'+manwonF(c.perMan)+'</span></div>'
@@ -1280,7 +1341,7 @@ function quoteBuilderHTML(req){
     +'<div style="margin-top:12px"><div class="label">'+T('qb_remark')+'</div>'
       +'<textarea id="qRemark" placeholder="'+esc(T('qb_remark_ph'))+'">'+escT(q.remark||'')+'</textarea></div>'
     +'<div class="label" style="margin-top:12px">'+T('qb_preview')+'</div>'+quoteCardHTML(req)
-    +'<div class="qbtns"><button class="qcopy" id="qbCopy">'+T('qb_copy')+'</button><button class="qimg" id="qbImg">'+T('btn_qimg')+'</button><button class="qimg" id="qbSample">💾 '+T('btn_sample')+'</button></div>'
+    +'<div class="qbtns"><button class="qcopy" id="qbDraft">'+T('qb_draft')+'</button><button class="qimg" id="qbImg">'+T('btn_qimg')+'</button><button class="qimg" id="qbSample">💾 '+T('btn_sample')+'</button></div>' /* 2026-08-01: 텍스트 복사 → 임시저장 (발행 없이 저장) */
     +'<div class="qbtns"><button class="qmgr" id="fullImg">'+T('btn_fullimg')+'</button><button class="qmgr" id="fullUrl">'+T('btn_fullurl')+'</button></div>'
     +'<p class="foot">'+T('qb_foot')+'</p>'
     +'</div>';
@@ -1307,7 +1368,8 @@ function bindQuoteBuilder(req){
     rowEl.querySelector('.adMemo').oninput=e=>{it.memo=e.target.value;saveDB();};
     rowEl.querySelector('.adDel').onclick=()=>{req.quote.addl=req.quote.addl.filter(x=>x.id!==id);saveDB();renderApp();};});
   const qr=el('qRemark');if(qr){qr.oninput=e=>{req.quote.remark=e.target.value;saveDB();};qr.onchange=()=>renderApp();}
-  el('qbCopy').onclick=()=>copyText(quoteText(req),T('t_qtcopied'));
+  /* 임시저장 (2026-08-01): 발행(quoteSent) 없이 견적 내용만 저장하고 닫기 */
+  const qd=el('qbDraft');if(qd)qd.onclick=()=>{saveDB();ui.qOpen=false;ui.qbOpen=null;renderApp();toast(T('t_qdraft'));};
   el('qbImg').onclick=()=>saveImg('qcard'+req.id,'견적.png');
   const smB=el('qbSample');if(smB)smB.onclick=()=>openSampleSave(req); /* 샘플로 저장 (2026-07-31) */
   const fi=el('fullImg');if(fi)fi.onclick=()=>saveFullImg(req);
@@ -1421,4 +1483,5 @@ let _tt;function toast(m){const t=document.getElementById('toast');t.textContent
     toast(TF('t_imported',{no:reqNo(imp)}));
   }
   renderApp();
+  setTimeout(function(){ensureH2C();},1200); /* 2026-08-01: html2canvas 미리 로드 — 이미지 저장 클릭 시 지연·실패 방지 */
 })();

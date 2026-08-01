@@ -114,7 +114,7 @@ ko:{sub_agent:"에이전트 콘솔",sub_sreq:"요청자 콘솔",sub_schk:"확인
   qb_sub_rate:"฿ 소계 × 환율",qb_addl_sum:"추가 항목 합계 (₩ 환산)",qb_krw_total:"원화 총액",
   qb_auto1:"자동 1인",qb_final:"최종 1인 견적 (수정해서 발송 가능)",qb_man:"만원",qb_auto:"자동",
   qb_remark:"특이사항 메모 (견적금액 위에 표시)",qb_remark_ph:"예: 환율 변동에 따라 금액이 달라질 수 있습니다.",
-  qb_preview:"견적서 미리보기",qb_copy:"📋 견적 텍스트 복사",
+  qb_preview:"견적서 미리보기",qb_copy:"📋 견적 텍스트 복사",qb_draft:"💾 임시저장",t_qdraft:"견적서가 임시저장되었습니다 (발행되지 않음)",
   qb_foot:"호텔·옵션은 ฿로 합산 후 환율로 환산, 추가 항목은 ฿/₩ 선택. 노출 메모는 견적 카드에 표시됩니다.",
   ppl:"인",per1:"견적금액 · 1인",basis:"인 기준",
   /* 토스트 */
@@ -140,7 +140,7 @@ ko:{sub_agent:"에이전트 콘솔",sub_sreq:"요청자 콘솔",sub_schk:"확인
   t_qcopied:"견적이 복사되었습니다",t_qtcopied:"견적 텍스트가 복사되었습니다",
   t_rescopied:"결과 URL이 복사되었습니다",
   t_registered:"룸체크 요청이 등록되었습니다 · ",t_direct_reg:"리스트에 바로 등록되었습니다 · ",
-  t_img_saved:"이미지를 저장했습니다",t_img_need_net:"이미지 저장은 인터넷 연결 시 가능합니다",
+  t_img_saved:"이미지를 저장했습니다",t_img_need_net:"이미지 저장은 인터넷 연결 시 가능합니다",t_img_fail:"이미지 생성에 실패했습니다 — 다시 시도해주세요",
   t_imported:"공유된 룸체크 {no}을(를) 불러왔습니다"
 },
 en:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"Checker Console",m_offday:"Days Off",
@@ -233,7 +233,7 @@ en:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"Checker Con
   qb_sub_rate:"฿ subtotal × rate",qb_addl_sum:"Additional items (in ₩)",qb_krw_total:"KRW Total",
   qb_auto1:"Auto per person",qb_final:"Final per-person quote (editable)",qb_man:"×10,000₩",qb_auto:"Auto",
   qb_remark:"Remark (shown above the amount)",qb_remark_ph:"e.g. Amount may vary with exchange rate.",
-  qb_preview:"Quote Preview",qb_copy:"📋 Copy Quote Text",
+  qb_preview:"Quote Preview",qb_copy:"📋 Copy Quote Text",qb_draft:"💾 Save Draft",t_qdraft:"Quote saved as draft (not issued)",
   qb_foot:"Hotels & options are summed in ฿ then converted; additional items can be ฿/₩. Display memos appear on the quote card.",
   ppl:"pax",per1:"Quote · per person",basis:"pax total",
   notif_title:"Notifications",notif_empty:"No new notifications",
@@ -258,7 +258,7 @@ en:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"Checker Con
   t_qcopied:"Quote copied",t_qtcopied:"Quote text copied",
   t_rescopied:"Result URL copied",
   t_registered:"Room check request registered · ",t_direct_reg:"Added directly to the list · ",
-  t_img_saved:"Image saved",t_img_need_net:"Saving images requires an internet connection",
+  t_img_saved:"Image saved",t_img_need_net:"Saving images requires an internet connection",t_img_fail:"Failed to generate image — please try again",
   t_imported:"Shared room check {no} imported"
 },
 th:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"คอนโซลผู้ตรวจสอบ",m_offday:"วันหยุด",
@@ -351,7 +351,7 @@ th:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"คอน�
   qb_sub_rate:"฿ รวม × อัตรา",qb_addl_sum:"รวมรายการเพิ่มเติม (₩)",qb_krw_total:"ยอดรวม KRW",
   qb_auto1:"อัตโนมัติต่อคน",qb_final:"ราคาสุดท้ายต่อคน (แก้ไขได้)",qb_man:"×10,000₩",qb_auto:"อัตโนมัติ",
   qb_remark:"หมายเหตุ (แสดงเหนือยอดเงิน)",qb_remark_ph:"เช่น ราคาอาจเปลี่ยนตามอัตราแลกเปลี่ยน",
-  qb_preview:"ตัวอย่างใบเสนอราคา",qb_copy:"📋 คัดลอกข้อความ",
+  qb_preview:"ตัวอย่างใบเสนอราคา",qb_copy:"📋 คัดลอกข้อความ",qb_draft:"💾 บันทึกชั่วคราว",t_qdraft:"บันทึกใบเสนอราคาชั่วคราวแล้ว (ยังไม่ออก)",
   qb_foot:"โรงแรมและตัวเลือกรวมเป็น ฿ แล้วแปลงตามอัตรา รายการเพิ่มเติมเลือก ฿/₩ ได้",
   ppl:"คน",per1:"ราคา · ต่อคน",basis:"คน รวม",
   notif_title:"การแจ้งเตือน",notif_empty:"ไม่มีการแจ้งเตือนใหม่",
@@ -376,7 +376,7 @@ th:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"คอน�
   t_qcopied:"คัดลอกใบเสนอราคาแล้ว",t_qtcopied:"คัดลอกข้อความแล้ว",
   t_rescopied:"คัดลอก URL ผลลัพธ์แล้ว",
   t_registered:"ลงทะเบียนคำขอแล้ว · ",t_direct_reg:"เพิ่มลงรายการโดยตรงแล้ว · ",
-  t_img_saved:"บันทึกรูปแล้ว",t_img_need_net:"ต้องเชื่อมต่ออินเทอร์เน็ตเพื่อบันทึกรูป",
+  t_img_saved:"บันทึกรูปแล้ว",t_img_need_net:"ต้องเชื่อมต่ออินเทอร์เน็ตเพื่อบันทึกรูป",t_img_fail:"สร้างรูปไม่สำเร็จ — ลองอีกครั้ง",
   t_imported:"นำเข้าคำขอที่แชร์ {no} แล้ว"
 }};
 /* 영어 요일 헤더 (달력) */

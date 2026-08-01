@@ -19,6 +19,8 @@ function detectEvents(PDO $pdo, ?array $old, array $new, array $actor): void {
   $role = $actor['role'];
   $uid = (int)$actor['id'];
   $reqRegion = $new['region'] ?? null;
+  /* 2026-08-01: 상단 region이 없으면(에이전트 등록 건) 첫 행의 지역으로 판단 — 지역 배정 직원 알림 매칭 개선 */
+  if (!$reqRegion) { foreach (($new['rows'] ?? []) as $_rr) { if (!empty($_rr['region']) && $_rr['region'] !== '전체') { $reqRegion = $_rr['region']; break; } } }
   $createdBy = $old === null ? $uid : ((int)($new['created_by'] ?? 0) ?: $uid);
 
   // 1) 새 요청 (직접 등록 제외 → 확인자에게 / 에이전트가 만들면 요청자에게도)

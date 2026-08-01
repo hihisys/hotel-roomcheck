@@ -145,10 +145,18 @@ function allRequests(PDO $pdo, ?array $currentUser = null): array {
       continue;
     }
 
-    // 직원: 본인 지역의 요청만 포함
-    if (in_array($userRole, ['sreq', 'schk'], true)) {
-      $reqRegion = $p['region'] ?? null;
-      if ($userRegion && $reqRegion === $userRegion) {
+    // 직원: 요청의 지역과 본인 지역 매칭 (2026-08-01 수정)
+    // - 요청 지역은 상단 region 또는 각 행(rows)의 지역에서 수집 (에이전트 등록 건은 상단 region이 없어 행 지역으로 판단)
+    // - 요청에 특정 지역이 없거나('전체' 포함), 직원에게 지역 배정이 없으면 표시
+    if (in_array($userRole, ['sreq', 'schk', 'admin'], true)) {
+      $reqRegions = [];
+      $topR = $p['region'] ?? null;
+      if ($topR && $topR !== '전체') $reqRegions[] = $topR;
+      foreach (($p['rows'] ?? []) as $row) {
+        $rr = $row['region'] ?? null;
+        if ($rr && $rr !== '전체') $reqRegions[] = $rr;
+      }
+      if (!$userRegion || !$reqRegions || in_array($userRegion, $reqRegions, true)) {
         $out[] = $p;
       }
     }

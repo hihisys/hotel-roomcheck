@@ -329,7 +329,7 @@ input[type=number]::selection{background:var(--brand);color:#fff}
 
 /* 견적서 숙박기간 강조 바 */
 .qc-dbar{display:flex;align-items:center;gap:7px;background:#F1F4F2;border-left:4px solid var(--brand);border-radius:8px;padding:7px 9px;margin-top:4px}
-@supports (background:color-mix(in srgb,red 50%,#fff)){.qc-dbar{background:color-mix(in srgb,var(--brand) 9%,#fff)}}
+.qc-dbar{background:#E9F2F2} /* 2026-08-01: color-mix 제거 — html2canvas(이미지 저장) 미지원 색상함수 파싱 오류 수정 */
 .qc-dnum{flex:0 0 auto;width:19px;height:19px;border-radius:50%;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
 .qc-dt{font-weight:800;font-size:13.5px;color:var(--ink);letter-spacing:.2px;white-space:nowrap}
 .qc-arw{color:var(--brand)}
@@ -348,7 +348,7 @@ input[type=number]::selection{background:var(--brand);color:#fff}
 .nthead{font-size:12px;font-weight:800;color:var(--muted);padding:9px 13px;border-bottom:1px solid var(--line);background:var(--paper)}
 .ntitem{padding:9px 13px;border-bottom:1px solid var(--line)}
 .ntitem:last-child{border-bottom:none}
-.ntitem.ntnew{background:color-mix(in srgb,var(--brand) 6%,#fff)}
+.ntitem.ntnew{background:#F0F6F6} /* 2026-08-01: color-mix 제거 */
 .ntline1{font-size:13px;font-weight:800}
 .ntline2{font-size:12px;color:var(--sub);margin-top:1px}
 .ntline3{font-size:10.5px;color:var(--muted);margin-top:2px;font-family:var(--mono)}

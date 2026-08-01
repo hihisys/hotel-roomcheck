@@ -25,7 +25,7 @@ const diffD=(a,b)=>Math.round((_utc(b)-_utc(a))/86400000);
 const fmtD=iso=>{const d=_utc(iso);return String(d.getUTCDate()).padStart(2,'0')+MON[d.getUTCMonth()]+String(d.getUTCFullYear()).slice(2)};
 const wdk=iso=>WDK[_utc(iso).getUTCDay()];
 const dstr=iso=>fmtD(iso)+" "+wdk(iso);
-const kdstr=iso=>{const d=_utc(iso);return d.getUTCFullYear()+'.'+String(d.getUTCMonth()+1).padStart(2,'0')+'.'+String(d.getUTCDate()).padStart(2,'0')+' '+WDK[d.getUTCDay()];};
+const kdstr=iso=>{if(isSreqPage())return fmtD(iso);const d=_utc(iso);return d.getUTCFullYear()+'.'+String(d.getUTCMonth()+1).padStart(2,'0')+'.'+String(d.getUTCDate()).padStart(2,'0')+' '+WDK[d.getUTCDay()];};
 const kdshort=iso=>{const d=_utc(iso);return String(d.getUTCMonth()+1).padStart(2,'0')+'.'+String(d.getUTCDate()).padStart(2,'0')+' '+WDK[d.getUTCDay()];};
 /* 직원 요청자 페이지: 영문·호텔식 표기 */
 const HOTEL_EN={"마이카오락 비치 리조트":"My Khaolak Beach Resort","로빈슨 클럽 카오락":"Robinson Khao Lak","카오락 에메랄드 비치 리조트":"Khaolak Emerald Beach Resort","JW 메리어트 카오락":"JW Marriott Khao Lak Resort","카오락 메리어트 비치 리조트":"Khao Lak Marriott Beach Resort","카타타니 푸켓 비치 리조트":"Katathani Phuket Beach Resort","더 쇼어 앳 카타타니":"The Shore at Katathani","로얄 클리프 비치 호텔":"Royal Cliff Beach Hotel","아바니 파타야":"Avani Pattaya Resort"};
@@ -52,8 +52,8 @@ function rtDispKo(n){if(!n||/[가-힣]/.test(n))return n;
   if(s!==n)_rtKo2En[s]=n;return s;}
 const dRoom=n=>isEN()?(RT_EN[n]||n):rtDispKo(n);
 const dRegion=n=>isEN()?(RG_EN[n]||n):n;
-const fdate=iso=>isEN()?fmtD(iso):kdstr(iso);
-const fdshort=iso=>isEN()?fmtD(iso):kdshort(iso);
+const fdate=iso=>(isEN()||isSreqPage())?fmtD(iso):kdstr(iso);   /* 2026-08-01: 요청자 페이지 01Jan26 */
+const fdshort=iso=>(isEN()||isSreqPage())?fmtD(iso):kdshort(iso);
 const esc=v=>String(v||'').replace(/"/g,'&quot;');
 const escT=v=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
 const opt=(v,t,sel)=>'<option value="'+esc(v)+'"'+(sel?' selected':'')+'>'+t+'</option>';
@@ -85,10 +85,14 @@ function parseDateStr(s){
   const dt=_utc(iso);if(dt.getUTCDate()!==dd||dt.getUTCMonth()+1!==m)return null;
   return iso;}
 const dotDate=t=>{const d=new Date(t);return d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');};
+/* 요청자 페이지 날짜 표기 (2026-08-01): 01Jan26 형식으로 통일 — 호텔·항공 예약 표준 표기 */
+const isSreqPage=()=>{try{return typeof ui!=='undefined'&&ui.role==='sreq';}catch(e){return false;}};
+const dmy=t=>{const d=new Date(t);return String(d.getDate()).padStart(2,'0')+MON[d.getMonth()]+String(d.getFullYear()).slice(2);};
 const dotDateTime=t=>{const d=new Date(t);const hm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-  if(isEN())return String(d.getDate()).padStart(2,'0')+MON[d.getMonth()]+String(d.getFullYear()).slice(2)+' '+hm;
+  if(isEN()||isSreqPage())return dmy(t)+' '+hm;
   return dotDate(t)+' '+hm;};
-const kdotDateTime=t=>{const d=new Date(t);return dotDate(t)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
+const kdotDateTime=t=>{const d=new Date(t);const hm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+  return (isSreqPage()?dmy(t):dotDate(t))+' '+hm;};
 document.getElementById('optdl').innerHTML=OPTLIST.map(o=>'<option>'+o+'</option>').join('');
 document.addEventListener('focusin',e=>{if(e.target&&e.target.matches&&e.target.matches('input[type=number]'))e.target.select();});
 
@@ -209,7 +213,11 @@ function visNotifs(){var items=NOTIF.items||[];
       return true;
     });
   }
-  return items;}
+  /* 2026-08-01: 동일 알림(종류·요청번호·내용) 중복 제거 — 대상 인원수만큼 쌓여도 1건만 표시 */
+  var seen={},uniq=[];
+  items.forEach(function(n){var k=n.type+'|'+(n.no||'')+'|'+JSON.stringify(n.p||{});
+    if(seen[k])return;seen[k]=1;uniq.push(n);});
+  return uniq;}
 function visUnread(){return visNotifs().filter(function(n){return n.new;}).length;}
 function notifPanelHTML(){
   const items=(visNotifs()).map(n=>{
@@ -1204,7 +1212,7 @@ function staffWorkInner(req){
       +'<div class="flex aic" style="gap:5px;flex-wrap:wrap;margin-bottom:5px">'
       +(row.region&&row.region!=='전체'?'<span class="rq-region" style="margin-bottom:0">'+escT(dRegion(row.region))+'</span>':'')
       +phoneHTML(req,row)
-      +(row.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+T('save_w')+' '+(row.confirmedBy?escT(nickOf(row.confirmedBy))+' · ':'')+dotDateTime(row.savedAt)+'</span>':'')+'</div>' /* 2026-08-01: 저장 옆에 룸첵 확인자 이름 */
+      +(row.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+(row.confirmedBy?escT(nickOf(row.confirmedBy))+' · ':'')+dotDateTime(row.savedAt)+'</span>':'')+'</div>' /* 2026-08-01: '저장' 글씨 제거 — 확인 담당자·시간만 표시 */ /* 2026-08-01: 저장 옆에 룸첵 확인자 이름 */
       +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(row.hotel)||T('no_hotel'))+'</span><span class="rq-type">'+escT(dRoom(row.roomType)||'-')+' <span class="sm">· '+row.rooms+T('r_sfx')+'</span></span></span>'
       +'<span style="display:flex;gap:5px;align-items:center;flex:0 0 auto">'+stSel('stsel',mSt?'__none':uSt[0],'data-all="'+row.id+'"',mSt)
       +'<span class="pbox"><span>฿</span><input type="number" class="pall" data-all="'+row.id+'" placeholder="'+esc(mPr?T('ws_mixed'):T('ws_price_ph'))+'" value="'+(mPr?'':(uPr[0]||''))+'"></span></span></div>'

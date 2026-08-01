@@ -357,6 +357,25 @@ function route(string $path, string $method): void {
       jsonOut(['ok' => true]);
     }
   }
+  /* 에이전시 담당자 승인/중지/삭제 (2026-08-01): 관리자가 담당자별 로컬 상태 설정.
+     너바나 원본은 변경하지 않고 이 사이트에서의 표시·이용만 제한하며,
+     같은 에이전시의 로그인 부계정(이름/닉네임 일치)도 함께 승인/중지/삭제 처리 */
+  if ($path === 'admin/manager-override' && $method === 'POST') {
+    requireAdmin();
+    $aidx = (int)($in['agency_idx'] ?? 0);
+    $mn = trim((string)($in['mname'] ?? ''));
+    $stv = (string)($in['status'] ?? '');
+    if (!$aidx || $mn === '' || ($stv !== '' && !in_array($stv, ['blocked', 'deleted'], true))) jsonOut(['error' => 'invalid'], 422);
+    $pdo->prepare("DELETE FROM manager_overrides WHERE agency_idx=? AND mname=?")->execute([$aidx, $mn]);
+    if ($stv !== '') $pdo->prepare("INSERT INTO manager_overrides (agency_idx,mname,status,created_at) VALUES (?,?,?,?)")->execute([$aidx, $mn, $stv, nowMs()]);
+    $us = $pdo->prepare("SELECT id FROM users WHERE role='agent' AND (agency_idx=? OR agency_parent_idx=?) AND (name=? OR nickname=?)");
+    $us->execute([$aidx, $aidx, $mn, $mn]);
+    foreach ($us->fetchAll() as $uu) {
+      if ($stv === 'deleted') $pdo->prepare("DELETE FROM users WHERE id=? AND role='agent'")->execute([$uu['id']]);
+      else $pdo->prepare("UPDATE users SET status=? WHERE id=?")->execute([$stv === 'blocked' ? 'rejected' : 'approved', $uu['id']]);
+    }
+    jsonOut(['ok' => true]);
+  }
   /* 직원 관리지역 설정 (2026-08-01): 관리자가 직원(sreq/schk)의 관할지역을 지정 — 직원 본인은 변경 불가 */
   if ($path === 'admin/setregion' && $method === 'POST') {
     requireAdmin();
@@ -606,7 +625,26 @@ function route(string $path, string $method): void {
     if ($idx <= 0) jsonOut(['error' => 'invalid_id'], 400);
     $r = agencyDetailRequest($idx);
     if ($r['ok']) {
-      jsonOut(['ok' => true, 'agency' => $r['data']]);
+      /* 담당자 로컬 상태 병합 (2026-08-01): 관리자에겐 상태 표시, 일반 사용자에겐 중지/삭제 담당자 숨김 */
+      $ag = $r['data'];
+      try {
+        $ov = $pdo->prepare("SELECT mname,status FROM manager_overrides WHERE agency_idx=?");
+        $ov->execute([$idx]);
+        $map = [];
+        foreach ($ov->fetchAll() as $o) $map[trim((string)$o['mname'])] = $o['status'];
+        if ($map) {
+          $isAdminUser = (($u['role'] ?? '') === 'admin');
+          $ms = [];
+          foreach ((array)($ag['managers'] ?? []) as $m) {
+            $lst = $map[trim((string)($m['mname'] ?? ''))] ?? null;
+            if (!$isAdminUser && $lst) continue;
+            if ($lst) $m['local_status'] = $lst;
+            $ms[] = $m;
+          }
+          $ag['managers'] = $ms;
+        }
+      } catch (Throwable $e) {}
+      jsonOut(['ok' => true, 'agency' => $ag]);
     } else {
       $code = match($r['error']) {
         'not_found' => 404,

@@ -15,7 +15,7 @@ function db(): PDO {
   if (str_starts_with($dsn, 'sqlite:')) $pdo->exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=3000;');
   /* 마이그레이션 1회 실행 가드 (2026-07-31): 스키마 버전이 같으면 매 요청 DDL 수십 개 실행을 건너뜀
      ⚠️ migrate()에 컬럼/테이블을 추가하면 아래 버전 문자열을 반드시 올릴 것 */
-  $SCHEMA_VER = '2026-08-01a'; /* notifications.region 추가 (지역별 알림) */
+  $SCHEMA_VER = '2026-08-01b'; /* manager_overrides 테이블 추가 (에이전시 담당자 승인/중지/삭제) */
   $need = true;
   try {
     $st = $pdo->query("SELECT v FROM meta WHERE k='schema_ver'");
@@ -65,6 +65,15 @@ function migrate(PDO $pdo): void {
     params $TXT NULL,
     created_at BIGINT NOT NULL
   )");
+  /* 에이전시 담당자 로컬 상태 (2026-08-01): 관리자가 담당자별 이용 중지/삭제 — 너바나 원본은 변경하지 않음 */
+  $pdo->exec("CREATE TABLE IF NOT EXISTS manager_overrides (
+    id $AI,
+    agency_idx BIGINT NOT NULL,
+    mname VARCHAR(120) NOT NULL,
+    status VARCHAR(10) NOT NULL,             -- 'blocked'(이용 중지) | 'deleted'(삭제)
+    created_at BIGINT NOT NULL
+  )");
+
   /* 견적서 샘플 (2026-07-31): 요청자 전체 공유, 투어 종류·로케이션으로 검색 */
   $pdo->exec("CREATE TABLE IF NOT EXISTS quote_samples (
     id $AI,

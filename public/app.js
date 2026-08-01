@@ -25,7 +25,8 @@ const diffD=(a,b)=>Math.round((_utc(b)-_utc(a))/86400000);
 const fmtD=iso=>{const d=_utc(iso);return String(d.getUTCDate()).padStart(2,'0')+MON[d.getUTCMonth()]+String(d.getUTCFullYear()).slice(2)};
 const wdk=iso=>WDK[_utc(iso).getUTCDay()];
 const dstr=iso=>fmtD(iso)+" "+wdk(iso);
-const kdstr=iso=>{if(isSreqPage())return fmtD(iso);const d=_utc(iso);return d.getUTCFullYear()+'.'+String(d.getUTCMonth()+1).padStart(2,'0')+'.'+String(d.getUTCDate()).padStart(2,'0')+' '+WDK[d.getUTCDay()];};
+/* 견적서 날짜: 한국 달력 기준 년.월.일 요일 (2026-08-02) */
+const kdstr=iso=>{const d=_utc(iso);return d.getUTCFullYear()+'.'+String(d.getUTCMonth()+1).padStart(2,'0')+'.'+String(d.getUTCDate()).padStart(2,'0')+' '+WDK[d.getUTCDay()];};
 const kdshort=iso=>{const d=_utc(iso);return String(d.getUTCMonth()+1).padStart(2,'0')+'.'+String(d.getUTCDate()).padStart(2,'0')+' '+WDK[d.getUTCDay()];};
 /* 직원 요청자 페이지: 영문·호텔식 표기 */
 const HOTEL_EN={"마이카오락 비치 리조트":"My Khaolak Beach Resort","로빈슨 클럽 카오락":"Robinson Khao Lak","카오락 에메랄드 비치 리조트":"Khaolak Emerald Beach Resort","JW 메리어트 카오락":"JW Marriott Khao Lak Resort","카오락 메리어트 비치 리조트":"Khao Lak Marriott Beach Resort","카타타니 푸켓 비치 리조트":"Katathani Phuket Beach Resort","더 쇼어 앳 카타타니":"The Shore at Katathani","로얄 클리프 비치 호텔":"Royal Cliff Beach Hotel","아바니 파타야":"Avani Pattaya Resort"};
@@ -91,8 +92,9 @@ const dmy=t=>{const d=new Date(t);return String(d.getDate()).padStart(2,'0')+MON
 const dotDateTime=t=>{const d=new Date(t);const hm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
   if(isEN()||isSreqPage())return dmy(t)+' '+hm;
   return dotDate(t)+' '+hm;};
+/* 견적서 일시: 한국 달력 기준 년.월.일 시:분 (2026-08-02) */
 const kdotDateTime=t=>{const d=new Date(t);const hm=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
-  return (isSreqPage()?dmy(t):dotDate(t))+' '+hm;};
+  return dotDate(t)+' '+hm;};
 document.getElementById('optdl').innerHTML=OPTLIST.map(o=>'<option>'+o+'</option>').join('');
 document.addEventListener('focusin',e=>{if(e.target&&e.target.matches&&e.target.matches('input[type=number]'))e.target.select();});
 
@@ -1382,10 +1384,12 @@ function quoteCardHTML(req){
     const sh=(row.options||[]).filter(o=>o.show&&o.name);
     const optLines=sh.map(o=>'<div style="margin-top:2px"><span class="qc-opt">'+escT(o.memo?o.memo:o.name)+'</span></div>').join('');
     const av=answered?availOf(req,row,i):null;
-    /* 2026-08-02: 날짜를 두 줄(체크인/체크아웃)로 표시하고 박수를 날짜 바로 옆에 배치 — 모바일 이미지 가독성 */
+    /* 2026-08-02: 날짜 두 줄 대형 (IN/OUT 라벨) — 모바일 이미지에서 날짜 가독성 확보 */
     return '<div class="qc-leg"><div class="qc-dbar"><span class="qc-dnum">'+(i+1)+'</span>'
-      +'<span class="qc-dt qc-dt2"><span class="qc-din">'+kdstr(dd.checkIn)+'</span>'
-      +'<span class="qc-dout"><b class="qc-arw">→</b> '+kdstr(dd.checkOut)+'</span></span>'
+      +'<span class="qc-dgrp">'
+        +'<span class="qc-drow2"><span class="qc-dlab">IN</span><span class="qc-dval">'+kdstr(dd.checkIn)+'</span></span>'
+        +'<span class="qc-drow2"><span class="qc-dlab">OUT</span><span class="qc-dval">'+kdstr(dd.checkOut)+'</span></span>'
+      +'</span>'
       +'<span class="qc-dn">'+dd.nights+'박</span></div>'
       +(row.region!=='전체'&&row.region?'<div class="qc-region">'+escT(dRegion(row.region))+'</div>':'')
       +'<div class="qc-rowline" style="align-items:center;margin-top:1px"><span class="qc-h" style="margin-top:0">'+escT(dHotel(row.hotel)||'-')+'</span>'

@@ -328,17 +328,19 @@ input[type=number]::selection{background:var(--brand);color:#fff}
 .lstitem.ls-pastitem .badge{background:var(--paper);color:var(--muted);border:1px solid var(--line)}
 
 /* 견적서 숙박기간 강조 바 */
-.qc-dbar{display:flex;align-items:center;gap:7px;background:#F1F4F2;border-left:4px solid var(--brand);border-radius:8px;padding:7px 9px;margin-top:4px}
+.qc-dbar{display:flex;align-items:center;gap:7px;background:#F1F4F2;border-left:4px solid var(--brand);border-radius:8px;padding:9px 11px;margin-top:4px}
 .qc-dbar{background:#E9F2F2} /* 2026-08-01: color-mix 제거 — html2canvas(이미지 저장) 미지원 색상함수 파싱 오류 수정 */
 .qc-dnum{flex:0 0 auto;width:19px;height:19px;border-radius:50%;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
 .qc-dt{font-weight:800;font-size:13.5px;color:var(--ink);letter-spacing:.2px;white-space:nowrap}
-/* 견적서 날짜: 체크인/체크아웃 두 줄 (2026-08-02) */
-.qc-dt2{display:flex;flex-direction:column;gap:1px;line-height:1.35}
-.qc-dout{padding-left:1px}
+/* 견적서 날짜: 두 줄 대형 + IN/OUT 라벨 (2026-08-02) */
+.qc-dgrp{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.qc-drow2{display:flex;align-items:baseline;gap:8px}
+.qc-dlab{flex:0 0 auto;width:26px;font-size:10.5px;font-weight:800;color:var(--brand);opacity:.75;letter-spacing:.5px}
+.qc-dval{font-size:16px;font-weight:800;color:var(--ink);letter-spacing:.2px;white-space:nowrap}
 .qc-arw{color:var(--brand)}
-.qc-dn{margin-left:8px;flex:0 0 auto;background:var(--brand);color:#fff;border-radius:999px;padding:2.5px 10px;font-size:11.5px;font-weight:800;white-space:nowrap;align-self:center}
-@media (max-width:400px){.qc-dt{font-size:12.5px}.qc-dn{padding:2px 8px;font-size:11px}}
-@media (max-width:340px){.qc-dt{font-size:11.5px;letter-spacing:0}}
+.qc-dn{margin-left:8px;flex:0 0 auto;background:var(--brand);color:#fff;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:800;white-space:nowrap;align-self:center}
+@media (max-width:400px){.qc-dt{font-size:12.5px}.qc-dval{font-size:15px}.qc-dn{padding:3.5px 10px;font-size:11.5px}}
+@media (max-width:340px){.qc-dt{font-size:11.5px;letter-spacing:0}.qc-dval{font-size:13.5px}.qc-dlab{width:22px;font-size:10px}}
 
 /* 견적서 추가 항목 카드 (호텔 카드와 구분되는 색) */
 .qc-leg.qc-addl{background:#EDF3FA;border:1px solid #C6D9EA;border-left:4px solid #4A7FB5}

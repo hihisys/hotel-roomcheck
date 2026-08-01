@@ -711,8 +711,10 @@ function listHead(req,forStaff){
   const lastOut=req.mode==='parallel'?addDays(req.startDate,totalN(req)):finalOut(req);
   const extra=ui.role==='sreq'?' · '+escT(nickOf(req.agent)||'-')+(req.agentManager?' / '+escT(req.agentManager):''):'';
   const dtag=(ui.role!=='agent'&&req.direct&&!(req.status==='requested'&&!req.quoteSent))?'<span class="badge b-direct">'+T('b_direct_s')+'</span>':'';
-  /* 2026-07-31: 에이전트 페이지 상단은 확인자 닉네임 표시 — 답변 전이면 빈칸 */
-  const _who=(ui.role==='agent'?(req.manager||''):(req.registrant||'심은선'));
+  /* 2026-07-31: 에이전트 페이지 상단은 확인자 닉네임 — 답변 전이면 빈칸
+     2026-08-01: 직원 페이지는 실제 등록 당사자 표시 — 요청자(registrant) 없으면 에이전트 담당자,
+     그마저 없으면 에이전시명. 닉네임 우선(nickOf), 임의 기본값(심은선) 표시하지 않음 */
+  const _who=(ui.role==='agent'?(req.manager||''):(req.registrant||req.agentManager||req.agent||''));
   const _whoTxt=escT(nickOf(_who)||'');
   return '<div class="t1"><span class="mono small">'+reqNo(req)+(_whoTxt?' · '+_whoTxt:'')+' · '+dotDateTime(req.createdAt)+'</span><span style="display:flex;gap:4px;flex:0 0 auto">'+dtag+reqBadge(req,forStaff)+'</span></div>'
     +'<div class="t2">'+names+'</div>'

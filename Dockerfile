@@ -14,8 +14,8 @@ RUN docker-php-ext-install pdo pdo_sqlite
 RUN rm -f /etc/apache2/ports.conf && \
     echo "Listen 8080" > /etc/apache2/ports.conf
 
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
+# Enable Apache mod_rewrite + headers (JS/CSS 캐시 재검증용, 2026-08-01)
+RUN a2enmod rewrite headers
 
 # Set working directory
 WORKDIR /var/www/html
@@ -44,6 +44,9 @@ RUN printf '%s\n' \
   '        AllowOverride All' \
   '        Require all granted' \
   '    </Directory>' \
+  '    <FilesMatch "\.(js|css|html)$">' \
+  '        Header set Cache-Control "no-cache, must-revalidate"' \
+  '    </FilesMatch>' \
   '    ErrorLog ${APACHE_LOG_DIR}/error.log' \
   '    CustomLog ${APACHE_LOG_DIR}/access.log combined' \
   '</VirtualHost>' > /etc/apache2/sites-available/000-default.conf && \

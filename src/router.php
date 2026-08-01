@@ -96,8 +96,8 @@ function route(string $path, string $method): void {
       if (mb_strlen($ac) > 120) jsonOut(['error' => 'invalid_agent_company'], 422);
       $pdo->prepare("UPDATE users SET agent_company=? WHERE id=?")->execute([$ac ?: null, $u['id']]);
     }
-    /* 관할지역 수정 (2026-07-22): 직원(sreq/schk)과 관리자(admin)가 저장 가능, krabi 또는 bangkok */
-    if (isset($in['region']) && in_array($u['role'], ['sreq', 'schk', 'admin'], true)) {
+    /* 관할지역 수정 (2026-08-01 변경): 관리자만 저장 가능 — 직원(sreq/schk)은 본인 지역 변경 불가, 관리자 페이지에서 설정 */
+    if (isset($in['region']) && $u['role'] === 'admin') {
       $region = $in['region'] ?: null;
       if ($region && !in_array($region, ['krabi', 'bangkok'], true)) $region = null;
       $pdo->prepare("UPDATE users SET region=? WHERE id=?")->execute([$region, $u['id']]);
@@ -169,9 +169,10 @@ function route(string $path, string $method): void {
       $st->execute();
     } else {
       $notifRole = (($u['role'] ?? '') === 'admin') ? 'sreq' : $u['role'];
+      /* 2026-08-01: 지역 배정 직원은 본인 지역(존) 알림만 — 알림에 지역이 없거나 본인이 지역 미배정이면 전체 표시 */
       $st = $pdo->prepare("SELECT type,req_no,params,created_at,exclude_user FROM notifications
-        WHERE role=? AND (exclude_user IS NULL OR exclude_user<>?) ORDER BY id DESC LIMIT 20");
-      $st->execute([$notifRole, $u['id']]);
+        WHERE role=? AND (exclude_user IS NULL OR exclude_user<>?) AND (region IS NULL OR ? IS NULL OR region=?) ORDER BY id DESC LIMIT 20");
+      $st->execute([$notifRole, $u['id'], $u['region'] ?? null, $u['region'] ?? null]);
     }
     $items = [];
     $unread = 0;
@@ -306,7 +307,7 @@ function route(string $path, string $method): void {
   if ($path === 'admin/users' && $method === 'GET') {
     requireAdmin();
     // 2026-07-30: 부계정 회원 정보(닉네임·연락처·계좌·부계정 아이디)도 회원 관리에 표시
-    $rows = $pdo->query("SELECT id,name,email,role,status,lang,telegram_chat_id,off_days,created_at,phone,nickname,bank_account,agency_idx,agency_login_id,agent_company FROM users ORDER BY status='pending' DESC, id DESC")->fetchAll();
+    $rows = $pdo->query("SELECT id,name,email,role,status,lang,telegram_chat_id,off_days,created_at,phone,nickname,bank_account,agency_idx,agency_login_id,agent_company,region FROM users ORDER BY status='pending' DESC, id DESC")->fetchAll(); /* 2026-08-01: region 포함 (관리지역 표시·설정) */
     $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
     foreach ($rows as &$r) {
       $r['tg'] = !empty($r['telegram_chat_id']);
@@ -355,6 +356,20 @@ function route(string $path, string $method): void {
       } catch (PDOException $e) { jsonOut(['error' => 'email_exists'], 409); }
       jsonOut(['ok' => true]);
     }
+  }
+  /* 직원 관리지역 설정 (2026-08-01): 관리자가 직원(sreq/schk)의 관할지역을 지정 — 직원 본인은 변경 불가 */
+  if ($path === 'admin/setregion' && $method === 'POST') {
+    requireAdmin();
+    $id = (int)($in['id'] ?? 0);
+    $region = $in['region'] ?? null;
+    if ($region && !in_array($region, ['krabi', 'bangkok'], true)) jsonOut(['error' => 'invalid_region'], 422);
+    if (!$id) jsonOut(['error' => 'invalid'], 422);
+    $st = $pdo->prepare("SELECT role FROM users WHERE id=?"); $st->execute([$id]);
+    $t = $st->fetch();
+    if (!$t) jsonOut(['error' => 'not_found'], 404);
+    if (!in_array($t['role'], ['sreq', 'schk', 'admin'], true)) jsonOut(['error' => 'not_staff'], 403);
+    $pdo->prepare("UPDATE users SET region=? WHERE id=?")->execute([$region ?: null, $id]);
+    jsonOut(['ok' => true]);
   }
   if ($path === 'admin/setrole' && $method === 'POST') {
     requireAdmin();

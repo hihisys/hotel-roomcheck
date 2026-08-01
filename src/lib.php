@@ -109,6 +109,24 @@ function isPendingForRequester(array $p): bool {
    - 최고관리자(super): 전체 요청
    - 일반 사용자: 본인 지역 + 본인이 요청한 것
    - 에이전트: 모든 요청 (지역 제한 없음) */
+/* 지역 존 매핑 (2026-08-01): users.region 저장값('krabi'|'bangkok') ↔ 요청 행의 한글 지역명 */
+function regionZone(?string $kr): ?string {
+  if (!$kr) return null;
+  $m = ['카오락' => 'krabi', '푸켓' => 'krabi', '크라비' => 'krabi', '방콕' => 'bangkok', '파타야' => 'bangkok',
+        'krabi' => 'krabi', 'bangkok' => 'bangkok'];
+  return $m[$kr] ?? null;
+}
+/* 요청이 속한 지역 존 목록 (상단 region + 각 행 지역) */
+function reqZones(array $p): array {
+  $z = [];
+  $zz = regionZone($p['region'] ?? null);
+  if ($zz) $z[] = $zz;
+  foreach (($p['rows'] ?? []) as $row) {
+    $zz = regionZone($row['region'] ?? null);
+    if ($zz) $z[] = $zz;
+  }
+  return array_values(array_unique($z));
+}
 function allRequests(PDO $pdo, ?array $currentUser = null): array {
   $out = [];
   // 2026-07-30: 사용자 없이 호출(시스템 컨텍스트 — 통계·다이제스트)이면 전체 조회
@@ -145,18 +163,13 @@ function allRequests(PDO $pdo, ?array $currentUser = null): array {
       continue;
     }
 
-    // 직원: 요청의 지역과 본인 지역 매칭 (2026-08-01 수정)
-    // - 요청 지역은 상단 region 또는 각 행(rows)의 지역에서 수집 (에이전트 등록 건은 상단 region이 없어 행 지역으로 판단)
-    // - 요청에 특정 지역이 없거나('전체' 포함), 직원에게 지역 배정이 없으면 표시
+    // 직원: 요청의 지역(존)과 본인 관리지역 매칭 (2026-08-01 수정)
+    // - 요청 지역은 상단 region 또는 각 행(rows)의 지역에서 수집해 존(krabi/bangkok)으로 변환
+    //   (에이전트 등록 건은 상단 region이 없어 행 지역으로 판단)
+    // - 요청에 특정 지역이 없거나('전체'·기타 포함), 직원에게 지역 배정이 없으면 표시
     if (in_array($userRole, ['sreq', 'schk', 'admin'], true)) {
-      $reqRegions = [];
-      $topR = $p['region'] ?? null;
-      if ($topR && $topR !== '전체') $reqRegions[] = $topR;
-      foreach (($p['rows'] ?? []) as $row) {
-        $rr = $row['region'] ?? null;
-        if ($rr && $rr !== '전체') $reqRegions[] = $rr;
-      }
-      if (!$userRegion || !$reqRegions || in_array($userRegion, $reqRegions, true)) {
+      $zones = reqZones($p);
+      if (!$userRegion || !$zones || in_array($userRegion, $zones, true)) {
         $out[] = $p;
       }
     }

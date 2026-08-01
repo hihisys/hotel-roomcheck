@@ -115,6 +115,7 @@
     <div class="label" style="margin-top:12px">이름</div><input id="nname" placeholder="직원 이름">
     <div class="label" style="margin-top:12px">아이디 (이메일 또는 영문 아이디)</div><input id="nid" placeholder="staff01 또는 staff@nirvana.com" autocomplete="off">
     <div class="label" style="margin-top:12px">비밀번호 (6자 이상)</div><input id="npw" placeholder="초기 비밀번호" autocomplete="off">
+    <div class="label" style="margin-top:12px">관리지역</div><select id="nregion"><option value="">전체 (지역 제한 없음)</option><option value="krabi">카오락 + 푸켓 + 크라비</option><option value="bangkok">방콕 + 파타야</option></select>
     <button class="cta" id="ncreate">계정 발행</button>
     <p class="small" style="margin:8px 0 0">발행 즉시 승인 상태로 로그인할 수 있습니다. 아이디·비밀번호를 직원에게 전달하세요. 비밀번호는 직원이 회원정보에서 직접 변경할 수 있습니다.</p>
   </section>
@@ -221,6 +222,14 @@ function row(u,withDecide){
     u.phone?('☎ '+esc(u.phone)):'',
     u.bank_account?('🏦 '+esc(u.bank_account)):''
   ].filter(Boolean);
+  /* 관리지역 설정 (2026-08-01): 직원(요청자/확인자)·일반 관리자 행에서 관리자가 직접 변경 — 직원 본인은 변경 불가 */
+  const REGION_KO={'':'전체 (제한 없음)',krabi:'카오락 + 푸켓 + 크라비',bangkok:'방콕 + 파타야'};
+  if(!u.ext&&(u.role==='sreq'||u.role==='schk'||(u.role==='admin'&&!u.super))){
+    btns+='<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--muted)">🗺 관리지역 '
+      +'<select class="regionSel" data-id="'+u.id+'" style="font-size:12px;padding:4px 6px;border:1px solid var(--line);border-radius:7px">'
+      +Object.keys(REGION_KO).map(k=>'<option value="'+k+'"'+((u.region||'')===k?' selected':'')+'>'+REGION_KO[k]+'</option>').join('')
+      +'</select></label>';
+  }
   const infoLine=infoBits.length?'<div class="meta">'+infoBits.join(' · ')+'</div>':'';
   return '<div class="urow"><div class="u1"><div><div class="nm">'+esc(u.name)+' <span class="small">· '+roleTag+'</span></div>'
     +(u.ext?'':'<div class="em">'+esc(u.email)+'</div>') /* 부계정은 내부용 합성 이메일 숨김 (2026-07-31) */
@@ -443,6 +452,16 @@ async function load(){
   const pend=j.users.filter(u=>u.status==='pending');
   (function(){window.__atab=window.__atab||'staff';var stf=j.users.filter(function(u){return u.role!=='agent';});var ags=j.users.filter(function(u){return u.role==='agent';});var cur=window.__atab==='agent'?ags:stf;document.querySelectorAll('#acctTabs button').forEach(function(b){b.classList.toggle('on',b.dataset.t===window.__atab);b.onclick=function(){window.__atab=b.dataset.t;load();};});document.getElementById('all').innerHTML=cur.length?cur.map(function(u){return row(u,false);}).join(''):'<p class="small" style="margin:6px 0">계정 없음</p>';})();
   renderOffRoster(j.users);
+  /* 관리지역 변경 (2026-08-01) */
+  document.querySelectorAll('.regionSel').forEach(s=>s.onchange=async()=>{
+    try{
+      const r3=await fetch('api/admin/setregion',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id:Number(s.dataset.id),region:s.value||null})});
+      const j3=await r3.json();
+      toast(j3.ok?'관리지역을 변경했습니다':'변경하지 못했습니다');
+      if(!j3.ok)load();
+    }catch(e){toast('서버에 연결할 수 없습니다');}
+  });
   document.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{
     if(b.dataset.a==='delete'&&!confirm('이 계정을 삭제할까요?'))return;
     if(b.dataset.a==='promote'&&!confirm('이 계정을 관리자로 승격할까요? 승격 시 에이전트·직원 승인/취소 권한을 갖습니다.'))return;
@@ -468,7 +487,7 @@ document.getElementById('ncreate').onclick=async()=>{
   if(!name||!id||pw.length<6){toast('이름·아이디·비밀번호(6자 이상)를 확인해주세요');return;}
   try{
     const r=await fetch('api/admin/create-user',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name,email:id,password:pw,role:nrole,lang:(document.getElementById('nlang')||{}).value||''})});
+      body:JSON.stringify({name,email:id,password:pw,role:nrole,lang:(document.getElementById('nlang')||{}).value||'',region:(document.getElementById('nregion')||{}).value||''})});
     const j=await r.json();
     if(j.ok){toast('계정을 발행했습니다: '+id);
       document.getElementById('nname').value='';document.getElementById('nid').value='';document.getElementById('npw').value='';

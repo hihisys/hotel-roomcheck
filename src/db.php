@@ -15,7 +15,7 @@ function db(): PDO {
   if (str_starts_with($dsn, 'sqlite:')) $pdo->exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=3000;');
   /* 마이그레이션 1회 실행 가드 (2026-07-31): 스키마 버전이 같으면 매 요청 DDL 수십 개 실행을 건너뜀
      ⚠️ migrate()에 컬럼/테이블을 추가하면 아래 버전 문자열을 반드시 올릴 것 */
-  $SCHEMA_VER = '2026-07-31b'; /* quote_samples 테이블 추가 */
+  $SCHEMA_VER = '2026-08-01a'; /* notifications.region 추가 (지역별 알림) */
   $need = true;
   try {
     $st = $pdo->query("SELECT v FROM meta WHERE k='schema_ver'");
@@ -89,6 +89,7 @@ function migrate(PDO $pdo): void {
   ensureColumn($pdo, 'users', 'orig_role', 'VARCHAR(10) NULL'); // 관리자 승격 전 원래 역할 (해제 시 복원)
   ensureColumn($pdo, 'users', 'off_days', 'LONGTEXT NULL'); // 휴무일 JSON {"dates":["YYYY-MM-DD"],"weekdays":[0..6]} (2026-07-18)
   ensureColumn($pdo, 'users', 'region', 'VARCHAR(20) NULL'); // 관할지역 (2026-07-22): 'krabi' | 'bangkok' | null
+  ensureColumn($pdo, 'notifications', 'region', 'VARCHAR(20) NULL'); // 알림 지역 존 (2026-08-01): 지역 배정 직원에게만 해당 지역 알림 표시
   ensureColumn($pdo, 'users', 'agent_company', 'VARCHAR(120) NULL'); // 부계정 소속 에이전시(회사) — 이직 시 회원정보에서 변경 (2026-07-30)
   ensureColumn($pdo, 'requests', 'created_by', 'BIGINT NULL'); // 요청 생성자 ID (2026-07-22, 지역 필터링용)
   // 최초 관리자 계정 + env 변경 시 아이디·비밀번호 동기화 (2026-07-17)

@@ -122,7 +122,7 @@
   <section class="card"><h3 style="margin:0 0 4px;font-size:16px;font-weight:800">전체 계정</h3><div class="seg" id="acctTabs" style="margin:8px 0"><button data-t="staff" class="on">직원</button><button data-t="agent">에이전시</button></div><div id="all"></div></section>
 
   <section class="card"><h3 style="margin:0 0 4px;font-size:16px;font-weight:800">에이전시별 담당자 (부계정)</h3>
-    <div class="small" style="color:var(--muted);margin:4px 0 8px;line-height:1.5">너바나에서 만들어진 <b>부계정으로 이 사이트에 로그인한 담당자</b>만 표시됩니다.<br>부계정 첫 로그인 시 <b>대기</b> 상태가 되며, 여기서 <b>승인</b>해야 사이트를 사용할 수 있습니다. 이용 중지·삭제도 여기서 처리하세요. (삭제해도 다시 로그인하면 대기 상태로 재등록됩니다)</div>
+    <div class="small" style="color:var(--muted);margin:4px 0 8px;line-height:1.5">너바나에서 만들어진 <b>부계정 담당자</b> 목록입니다. 부계정 첫 로그인 시 <b>대기</b> 상태가 되며, 여기서 <b>승인</b>해야 사이트를 사용할 수 있습니다.<br>이용 중지·삭제도 여기서 처리하세요. (삭제해도 다시 로그인하면 대기 상태로 재등록됩니다)</div>
     <select id="agcSel"><option value="">에이전시 선택</option></select>
     <div id="agcMgrs" style="margin-top:8px"></div>
   </section>
@@ -536,28 +536,53 @@ async function loadAgcList(){
     if(!idx){box.innerHTML='';return;}
     box.innerHTML='<div class="small" style="color:var(--muted)">불러오는 중…</div>';
     try{
-      /* 부계정에서 만들어진(로그인한) 담당자만 표시 (2026-08-01) — 승인/이용 중지/삭제 */
-      const r=await fetch('api/admin/users',{cache:'no-store'});const j=await r.json();
+      /* 부계정에서 만들어진 담당자 표시 (2026-08-01) — 너바나 부계정 목록 API 연동 + 로컬 상태 병합.
+         목록 API가 아직 없으면 이 사이트에 로그인한 부계정만 표시 */
       const nidx=Number(idx);
-      const subs=((j&&j.users)||[]).filter(u=>u.role==='agent'&&u.ext&&(Number(u.agency_parent_idx)===nidx||Number(u.agency_idx)===nidx));
-      const stBadge=u=>u.status==='approved'?'<span class="badge st-approved">승인됨</span>'
-        :u.status==='pending'?'<span class="badge st-pending">대기</span>'
-        :'<span class="badge st-rejected">이용 중지</span>';
-      const subBtns=u=>{let b='';
+      const r=await fetch('api/admin/users',{cache:'no-store'});const j=await r.json();
+      const locals=((j&&j.users)||[]).filter(u=>u.role==='agent'&&u.ext&&(Number(u.agency_parent_idx)===nidx||Number(u.agency_idx)===nidx));
+      let ext=null;
+      try{const r2=await fetch('api/admin/agency-sub-accounts?parent_idx='+nidx,{cache:'no-store'});const j2=await r2.json();if(j2&&j2.ok)ext=j2.subs||[];}catch(e){}
+      const stBadge=st=>st==='approved'?'<span class="badge st-approved">승인됨</span>'
+        :st==='pending'?'<span class="badge st-pending">대기</span>'
+        :st==='rejected'?'<span class="badge st-rejected">이용 중지</span>'
+        :'<span class="badge" style="background:var(--paper);color:var(--muted);border:1px solid var(--line)">미로그인</span>';
+      const accBtns=u=>{let b='';
         if(u.status!=='approved')b+='<button class="bt-ok" data-sacc="'+u.id+'" data-sact="approve">✓ 승인</button>';
         if(u.status==='approved')b+='<button class="bt-no" data-sacc="'+u.id+'" data-sact="reject">이용 중지</button>';
         b+='<button class="bt-del" data-sacc="'+u.id+'" data-sact="delete">삭제</button>';
         return '<div class="ubtns">'+b+'</div>';};
-      box.innerHTML=subs.length?subs.map(u=>'<div class="urow"><div class="u1"><div><div class="nm">'+esc(u.name)+(u.nickname?' <span class="small">· '+esc(u.nickname)+'</span>':'')+'</div>'
-          +'<div class="meta">'+(u.agency_login_id?'📋 부계정 '+esc(u.agency_login_id):'')+(u.phone?' · ☎ '+esc(u.phone):'')+' · 가입 '+new Date(Number(u.created_at)).toLocaleDateString('ko-KR')+'</div></div>'
-          +stBadge(u)+'</div>'+subBtns(u)+'</div>').join('')
-        :'<div class="small" style="color:var(--muted)">이 에이전시의 부계정으로 로그인한 담당자가 아직 없습니다.<br>담당자가 부계정으로 처음 로그인하면 여기에 "대기" 상태로 표시됩니다.</div>';
+      let html='';
+      if(ext){
+        /* 외부 목록 기준: 필드명 유연 처리 + 소속 에이전시 필터 + 로컬 계정 매칭 */
+        const gI=x=>Number(x.idx!=null?x.idx:(x.uid!=null?x.uid:0));
+        const gP=x=>Number(x.parent_idx!=null?x.parent_idx:(x.parents!=null?x.parents:(x.parent!=null?x.parent:0)));
+        const gPN=x=>String(x.parent_name||x.parent_agent||'');
+        const gL=x=>String(x.login_id||x.id||'');
+        const pname=(window.AGC_MAP&&window.AGC_MAP[nidx])||'';
+        const subs=ext.filter(x=>!gP(x)&&!gPN(x)?true:(gP(x)===nidx||(pname&&gPN(x)===pname)));
+        html=subs.length?subs.map(x=>{
+          const lu=locals.find(u=>Number(u.agency_idx)===gI(x))||locals.find(u=>u.agency_login_id&&gL(x)&&String(u.agency_login_id).toLowerCase()===gL(x).toLowerCase());
+          const meta=['📋 '+esc(gL(x)||'-'),x.nickname?'닉네임 '+esc(x.nickname):'',x.position?esc(x.position):'',x.department?esc(x.department):'',x.phone?'☎ '+esc(x.phone):'',x.email?esc(x.email):''].filter(Boolean).join(' · ');
+          return '<div class="urow"><div class="u1"><div><div class="nm">'+esc(x.name||gL(x))+'</div>'
+            +'<div class="meta">'+meta+'</div>'
+            +(lu?'':'<div class="meta">아직 이 사이트에 로그인하지 않은 부계정입니다 — 첫 로그인 시 대기 상태로 등록됩니다.</div>')+'</div>'
+            +stBadge(lu?lu.status:null)+'</div>'+(lu?accBtns(lu):'')+'</div>';}).join('')
+          :'<div class="small" style="color:var(--muted)">이 에이전시에 등록된 부계정이 없습니다.</div>';
+      }else{
+        /* 예비 동작: 로그인한 부계정만 */
+        html=locals.length?locals.map(u=>'<div class="urow"><div class="u1"><div><div class="nm">'+esc(u.name)+(u.nickname?' <span class="small">· '+esc(u.nickname)+'</span>':'')+'</div>'
+            +'<div class="meta">'+(u.agency_login_id?'📋 부계정 '+esc(u.agency_login_id):'')+(u.phone?' · ☎ '+esc(u.phone):'')+'</div></div>'
+            +stBadge(u.status)+'</div>'+accBtns(u)+'</div>').join('')
+          :'<div class="small" style="color:var(--muted)">이 에이전시의 부계정으로 로그인한 담당자가 아직 없습니다.<br>담당자가 부계정으로 처음 로그인하면 여기에 "대기" 상태로 표시됩니다.</div>';
+      }
+      box.innerHTML=html;
       box.querySelectorAll('[data-sacc]').forEach(b=>b.onclick=async()=>{
         if(b.dataset.sact==='delete'&&!confirm('이 부계정 담당자를 삭제할까요?\n다시 로그인하면 대기 상태로 재등록됩니다.'))return;
-        try{const r2=await fetch('api/admin/decide',{method:'POST',headers:{'Content-Type':'application/json'},
+        try{const r3=await fetch('api/admin/decide',{method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({id:Number(b.dataset.sacc),action:b.dataset.sact})});
-          const j2=await r2.json();
-          toast(j2.ok?({approve:'승인했습니다',reject:'이용 중지했습니다',delete:'삭제했습니다'}[b.dataset.sact]):'처리하지 못했습니다');
+          const j3=await r3.json();
+          toast(j3.ok?({approve:'승인했습니다',reject:'이용 중지했습니다',delete:'삭제했습니다'}[b.dataset.sact]):'처리하지 못했습니다');
           sel.onchange({target:{value:idx}});load();
         }catch(e){toast('서버에 연결할 수 없습니다');}});
     }catch(e){box.innerHTML='<div class="small" style="color:var(--muted)">불러오지 못했습니다.</div>';}

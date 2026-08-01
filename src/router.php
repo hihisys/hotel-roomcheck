@@ -357,6 +357,15 @@ function route(string $path, string $method): void {
       jsonOut(['ok' => true]);
     }
   }
+  /* 부계정 목록 조회 (2026-08-01): 너바나 부계정 목록 API 프록시 — 관리자 전용.
+     외부 API가 아직 없으면 {ok:false, error:'not_found'} 반환 → 화면은 로그인한 부계정만 표시(예비 동작) */
+  if ($path === 'admin/agency-sub-accounts' && $method === 'GET') {
+    requireAdmin();
+    $pidx = (int)($_GET['parent_idx'] ?? 0);
+    $r = agencySubAccountsRequest($pidx ?: null);
+    if ($r['ok']) jsonOut(['ok' => true, 'subs' => $r['data']]);
+    jsonOut(['ok' => false, 'error' => $r['error']]);
+  }
   /* 에이전시 담당자 승인/중지/삭제 (2026-08-01): 관리자가 담당자별 로컬 상태 설정.
      너바나 원본은 변경하지 않고 이 사이트에서의 표시·이용만 제한하며,
      같은 에이전시의 로그인 부계정(이름/닉네임 일치)도 함께 승인/중지/삭제 처리 */

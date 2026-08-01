@@ -184,6 +184,44 @@ function agencyListRequest(?string $type = null, ?string $active = null, ?string
    Request: {}
    Response: {success, message, status, data: {agency, managers, bank_accounts, contracts}}
 */
+/* 부계정 목록 조회 (2026-08-01): POST {AGENCY_API_BASE}/api2/agency-sub-accounts
+   너바나에서 만들어진 부계정 전체(또는 parent_idx 필터) 목록 — API가 아직 없으면 not_found 반환 */
+function agencySubAccountsRequest(?int $parentIdx = null): array {
+  $base = env('AGENCY_API_BASE');
+  if (!$base) return ['ok' => false, 'error' => 'not_configured'];
+
+  $url = rtrim($base, '/') . '/api2/agency-sub-accounts';
+  $payload = [];
+  if ($parentIdx) $payload['parent_idx'] = $parentIdx;
+  $body = json_encode($payload, JSON_UNESCAPED_UNICODE);
+
+  $ch = curl_init($url);
+  curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => $body,
+    CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Accept: application/json'],
+    CURLOPT_USERAGENT => env('AGENCY_API_UA', 'RoomcheckServer/1.0'),
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_TIMEOUT => (int)env('AGENCY_API_TIMEOUT', '10'),
+    CURLOPT_CONNECTTIMEOUT => 5,
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_SSL_VERIFYPEER => true,
+    CURLOPT_SSL_VERIFYHOST => 2,
+  ]);
+  $res = curl_exec($ch);
+  $errno = curl_errno($ch);
+  $http = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+  curl_close($ch);
+
+  if ($res === false || $errno !== 0) return ['ok' => false, 'error' => 'unreachable'];
+  $j = json_decode($res, true);
+  if ($http === 404) return ['ok' => false, 'error' => 'not_found'];
+  if ($http === 200 && is_array($j) && ($j['success'] ?? null) === true && is_array($j['data'] ?? null)) {
+    return ['ok' => true, 'data' => $j['data']];
+  }
+  return ['ok' => false, 'error' => 'bad_response'];
+}
+
 function agencyDetailRequest(int $idx): array {
   $base = env('AGENCY_API_BASE');
   if (!$base) return ['ok' => false, 'error' => 'not_configured'];

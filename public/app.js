@@ -835,7 +835,7 @@ function sectionsHTML(itemFn,sub){
     +'</section>';
 }
 function agentListHTML(){
-  return sectionsHTML(agentItemHTML,T('sub_agent'));
+  return sectionsHTML(agentItemHTML,T('cap_agent_list')); /* 2026-08-01: 헤더 부제(sub_agent)와 키 중복 분리 — 헤더에 '최신순…'이 표시되던 버그 수정 */
 }
 function resultCardHTML(req,asReq){
   const answered=!asReq&&req.status==='answered';

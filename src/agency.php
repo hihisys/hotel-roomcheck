@@ -15,14 +15,9 @@ require_once __DIR__ . '/lib.php';
 /* 외부 인증 API 호출. 반환:
    ['ok'=>true,  'data'=>array]                          — HTTP 200 + success===true
    ['ok'=>false, 'error'=>string, 'status'=>int|null]    — 그 외 전부 */
-function agencyAuthenticate(string $loginId, #[\SensitiveParameter] string $password): array {
-  $base = env('AGENCY_API_BASE');
-  if (!$base) return ['ok' => false, 'error' => 'not_configured', 'status' => null];
-  $url = rtrim($base, '/') . env('AGENCY_API_PATH', '/api2/agency-sub-accounts/login');
-
-  $mode = env('AGENCY_API_MODE', 'json');
+function agencyAuthPost(string $url, string $loginId, #[\SensitiveParameter] string $password, string $mode): array {
   $payload = ['login_id' => $loginId, 'password' => $password];
-  if ($mode === 'form') {                    // JSON POST가 어려운 환경용 대체 모드
+  if ($mode === 'form') {                    // JSON POST가 어려운 환경용 대체 모드 (요구사항 6)
     $body = http_build_query($payload);
     $contentType = 'application/x-www-form-urlencoded';
   } else {
@@ -40,27 +35,48 @@ function agencyAuthenticate(string $loginId, #[\SensitiveParameter] string $pass
     CURLOPT_TIMEOUT => (int)env('AGENCY_API_TIMEOUT', '10'),
     CURLOPT_CONNECTTIMEOUT => 5,
     CURLOPT_FOLLOWLOCATION => false,
-    CURLOPT_SSL_VERIFYPEER => true,
+    CURLOPT_SSL_VERIFYPEER => true,          // 인증 정보를 보내므로 인증서 검증 필수
     CURLOPT_SSL_VERIFYHOST => 2,
   ]);
   $res = curl_exec($ch);
   $errno = curl_errno($ch);
   $http = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
   curl_close($ch);
-  unset($body, $payload);                    // 평문 비밀번호 참조 제거
+  unset($body, $payload, $password);         // 평문 비밀번호 참조 즉시 제거 (요구사항 5)
 
-  if ($res === false || $errno !== 0) {      // 네트워크 오류·타임아웃 (password 로그 금지)
-    error_log("agency-login upstream unreachable: curl errno=$errno login_id=$loginId");
+  if ($res === false || $errno !== 0) return ['http' => 0, 'errno' => $errno, 'json' => null];
+  return ['http' => $http, 'errno' => 0, 'json' => json_decode($res, true)];
+}
+
+function agencyAuthenticate(string $loginId, #[\SensitiveParameter] string $password): array {
+  $base = env('AGENCY_API_BASE');
+  if (!$base) return ['ok' => false, 'error' => 'not_configured', 'status' => null];
+  $url = rtrim($base, '/') . env('AGENCY_API_PATH', '/api2/agency-sub-accounts/login');
+
+  $mode = env('AGENCY_API_MODE', 'json');
+  $r = agencyAuthPost($url, $loginId, $password, $mode);
+
+  /* JSON을 받지 못하는 서버(400/406/415)면 폼 전송으로 1회 자동 재시도 (요구사항 6) */
+  if ($mode !== 'form' && in_array($r['http'], [400, 406, 415], true)) {
+    error_log("agency-login retry as form: http={$r['http']} login_id=$loginId");
+    $r = agencyAuthPost($url, $loginId, $password, 'form');
+  }
+  unset($password);                          // 평문 비밀번호 참조 제거 (로그·응답에 남기지 않음)
+
+  $http = $r['http'];
+  $j = $r['json'];
+
+  if ($http === 0) {                         // 네트워크 오류·타임아웃 (password 로그 금지)
+    error_log("agency-login upstream unreachable: curl errno={$r['errno']} login_id=$loginId");
     return ['ok' => false, 'error' => 'unreachable', 'status' => null];
   }
 
-  $j = json_decode($res, true);
-
-  if ($http === 401) {                       // 인증 실패 (아이디/비밀번호 불일치)
+  if ($http === 401) {                       // 인증 실패 (아이디/비밀번호 불일치) — 요구사항 4
     return ['ok' => false, 'error' => 'bad_credentials', 'status' => 401,
             'message' => is_array($j) ? ($j['message'] ?? null) : null];
   }
-  // 성공 판정은 HTTP 200 && success===true 둘 다 만족할 때만
+
+  /* 성공 판정: HTTP 200 && success===true && data.idx 존재 — 셋 다 만족할 때만 (요구사항 2) */
   if ($http === 200 && is_array($j) && ($j['success'] ?? null) === true
       && is_array($j['data'] ?? null) && isset($j['data']['idx'])) {
     return ['ok' => true, 'data' => $j['data']];

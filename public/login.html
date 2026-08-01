@@ -130,6 +130,9 @@ $('go').onclick=async()=>{
     if(j2.ok){location.href='agent.html';return;}
     if(j2.error==='pending'){showMsg('err','pending');return;}   /* 부계정 승인 대기 (2026-08-01) */
     if(j2.error==='rejected'){showMsg('err','rejected');return;}
+    /* 인증 서버 장애·미설정을 '비밀번호 오류'로 오인하지 않도록 구분 (2026-08-01) */
+    if(j2.error==='agency_disabled'){showMsg('err','aoff');return;}
+    if(j2.error==='agency_unreachable'||j2.error==='agency_bad_response'){showMsg('err','aerr');return;}
     showMsg('err','bad');
   }catch(e){showMsg('err','noserver');}
 };

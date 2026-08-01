@@ -7,8 +7,9 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions - SQLite support
-RUN docker-php-ext-install pdo pdo_sqlite
+# Install PHP extensions — SQLite(로컬 개발) + MySQL(운영 Cloud SQL)
+# ⚠️ pdo_mysql 없으면 Cloud SQL 연결 시 "could not find driver" 오류 (2026-08-01)
+RUN docker-php-ext-install pdo pdo_sqlite pdo_mysql
 
 # Remove default Apache ports configuration and set port 8080
 RUN rm -f /etc/apache2/ports.conf && \

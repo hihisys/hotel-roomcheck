@@ -332,8 +332,11 @@ input[type=number]::selection{background:var(--brand);color:#fff}
 .qc-dbar{background:#E9F2F2} /* 2026-08-01: color-mix 제거 — html2canvas(이미지 저장) 미지원 색상함수 파싱 오류 수정 */
 .qc-dnum{flex:0 0 auto;width:19px;height:19px;border-radius:50%;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
 .qc-dt{font-weight:800;font-size:13.5px;color:var(--ink);letter-spacing:.2px;white-space:nowrap}
+/* 견적서 날짜: 체크인/체크아웃 두 줄 (2026-08-02) */
+.qc-dt2{display:flex;flex-direction:column;gap:1px;line-height:1.35}
+.qc-dout{padding-left:1px}
 .qc-arw{color:var(--brand)}
-.qc-dn{margin-left:auto;flex:0 0 auto;background:var(--brand);color:#fff;border-radius:999px;padding:2.5px 10px;font-size:11.5px;font-weight:800;white-space:nowrap}
+.qc-dn{margin-left:8px;flex:0 0 auto;background:var(--brand);color:#fff;border-radius:999px;padding:2.5px 10px;font-size:11.5px;font-weight:800;white-space:nowrap;align-self:center}
 @media (max-width:400px){.qc-dt{font-size:12.5px}.qc-dn{padding:2px 8px;font-size:11px}}
 @media (max-width:340px){.qc-dt{font-size:11.5px;letter-spacing:0}}
 

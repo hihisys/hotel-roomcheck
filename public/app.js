@@ -1382,7 +1382,11 @@ function quoteCardHTML(req){
     const sh=(row.options||[]).filter(o=>o.show&&o.name);
     const optLines=sh.map(o=>'<div style="margin-top:2px"><span class="qc-opt">'+escT(o.memo?o.memo:o.name)+'</span></div>').join('');
     const av=answered?availOf(req,row,i):null;
-    return '<div class="qc-leg"><div class="qc-dbar"><span class="qc-dnum">'+(i+1)+'</span><span class="qc-dt">'+kdstr(dd.checkIn)+' <b class="qc-arw">→</b> '+kdstr(dd.checkOut)+'</span><span class="qc-dn">'+dd.nights+'박</span></div>'
+    /* 2026-08-02: 날짜를 두 줄(체크인/체크아웃)로 표시하고 박수를 날짜 바로 옆에 배치 — 모바일 이미지 가독성 */
+    return '<div class="qc-leg"><div class="qc-dbar"><span class="qc-dnum">'+(i+1)+'</span>'
+      +'<span class="qc-dt qc-dt2"><span class="qc-din">'+kdstr(dd.checkIn)+'</span>'
+      +'<span class="qc-dout"><b class="qc-arw">→</b> '+kdstr(dd.checkOut)+'</span></span>'
+      +'<span class="qc-dn">'+dd.nights+'박</span></div>'
       +(row.region!=='전체'&&row.region?'<div class="qc-region">'+escT(dRegion(row.region))+'</div>':'')
       +'<div class="qc-rowline" style="align-items:center;margin-top:1px"><span class="qc-h" style="margin-top:0">'+escT(dHotel(row.hotel)||'-')+'</span>'
       +(av?'<span class="avbig av-'+av.k+'" style="margin-top:0;font-size:11.5px;padding:4px 9px">'+avKo(av)+'</span>':'')+'</div>'

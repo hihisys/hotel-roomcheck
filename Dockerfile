@@ -57,6 +57,10 @@ RUN printf '%s\n' \
 ENV PORT=8080
 # 외부 API 연동 설정 — 에이전시 부계정 로그인 / 호텔 목록·상세 조회 (2026-07-30)
 ENV AGENCY_API_BASE=https://nirvana835.mycafe24.com
+# 부계정 목록 API 경로 (2026-08-01): 미지정 시 후보 경로를 자동 탐색한다.
+#   너바나 측 경로가 아래 후보와 다르면 이 값만 바꿔서 재배포하면 된다.
+#   후보: /api2/agency-sub-accounts, /api2/agency-sub-accounts/list, /api2/sub-accounts, /api2/agency-subaccounts
+ENV AGENCY_SUBS_PATH=
 ENV HOTEL_API_BASE=https://nirvana835.mycafe24.com
 
 # 텔레그램 알림 + 관리자 계정 + 다이제스트 (2026-07-30, 값 출처: claude/server/DEPLOY.md)

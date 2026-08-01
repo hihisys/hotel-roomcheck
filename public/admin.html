@@ -536,13 +536,14 @@ async function loadAgcList(){
     if(!idx){box.innerHTML='';return;}
     box.innerHTML='<div class="small" style="color:var(--muted)">불러오는 중…</div>';
     try{
-      /* 부계정에서 만들어진 담당자 표시 (2026-08-01) — 너바나 부계정 목록 API 연동 + 로컬 상태 병합.
-         목록 API가 아직 없으면 이 사이트에 로그인한 부계정만 표시 */
+      /* 부계정 담당자 표시 (2026-08-01 최종): 너바나 부계정 목록 API + 이 사이트 계정 상태 병합.
+         목록 API가 아직 열리지 않았으면 로그인한 부계정만 표시 (API가 열리면 자동으로 전체 표시) */
       const nidx=Number(idx);
       const r=await fetch('api/admin/users',{cache:'no-store'});const j=await r.json();
       const locals=((j&&j.users)||[]).filter(u=>u.role==='agent'&&u.ext&&(Number(u.agency_parent_idx)===nidx||Number(u.agency_idx)===nidx));
-      let ext=null;
-      try{const r2=await fetch('api/admin/agency-sub-accounts?parent_idx='+nidx,{cache:'no-store'});const j2=await r2.json();if(j2&&j2.ok)ext=j2.subs||[];}catch(e){}
+      let ext=null,extPath='';
+      try{const r2=await fetch('api/admin/agency-sub-accounts?parent_idx='+nidx+'&force=1',{cache:'no-store'});
+        const j2=await r2.json();if(j2&&j2.ok){ext=j2.subs||[];extPath=j2.path||'';}}catch(e){}
       const stBadge=st=>st==='approved'?'<span class="badge st-approved">승인됨</span>'
         :st==='pending'?'<span class="badge st-pending">대기</span>'
         :st==='rejected'?'<span class="badge st-rejected">이용 중지</span>'
@@ -552,26 +553,29 @@ async function loadAgcList(){
         if(u.status==='approved')b+='<button class="bt-no" data-sacc="'+u.id+'" data-sact="reject">이용 중지</button>';
         b+='<button class="bt-del" data-sacc="'+u.id+'" data-sact="delete">삭제</button>';
         return '<div class="ubtns">'+b+'</div>';};
+      const note=t=>'<div class="small" style="color:var(--muted);margin:0 0 8px">'+t+'</div>';
       let html='';
       if(ext){
-        /* 외부 목록 기준: 필드명 유연 처리 + 소속 에이전시 필터 + 로컬 계정 매칭 */
-        const gI=x=>Number(x.idx!=null?x.idx:(x.uid!=null?x.uid:0));
-        const gP=x=>Number(x.parent_idx!=null?x.parent_idx:(x.parents!=null?x.parents:(x.parent!=null?x.parent:0)));
-        const gPN=x=>String(x.parent_name||x.parent_agent||'');
-        const gL=x=>String(x.login_id||x.id||'');
+        /* 서버가 필드명을 정규화해서 내려줌: idx/parent_idx/parent_name/login_id/name/nickname/... */
         const pname=(window.AGC_MAP&&window.AGC_MAP[nidx])||'';
-        const subs=ext.filter(x=>!gP(x)&&!gPN(x)?true:(gP(x)===nidx||(pname&&gPN(x)===pname)));
-        html=subs.length?subs.map(x=>{
-          const lu=locals.find(u=>Number(u.agency_idx)===gI(x))||locals.find(u=>u.agency_login_id&&gL(x)&&String(u.agency_login_id).toLowerCase()===gL(x).toLowerCase());
-          const meta=['📋 '+esc(gL(x)||'-'),x.nickname?'닉네임 '+esc(x.nickname):'',x.position?esc(x.position):'',x.department?esc(x.department):'',x.phone?'☎ '+esc(x.phone):'',x.email?esc(x.email):''].filter(Boolean).join(' · ');
-          return '<div class="urow"><div class="u1"><div><div class="nm">'+esc(x.name||gL(x))+'</div>'
+        const hasParent=ext.some(x=>Number(x.parent_idx)||x.parent_name);
+        const subs=!hasParent?ext:ext.filter(x=>Number(x.parent_idx)===nidx||(pname&&String(x.parent_name)===pname));
+        html=note('✅ 너바나 부계정 목록 연결됨 — '+subs.length+'명'+(extPath?' <span style="opacity:.6">('+esc(extPath)+')</span>':''));
+        html+=subs.length?subs.map(x=>{
+          const lu=locals.find(u=>Number(u.agency_idx)===Number(x.idx))
+            ||locals.find(u=>u.agency_login_id&&x.login_id&&String(u.agency_login_id).toLowerCase()===String(x.login_id).toLowerCase())
+            ||locals.find(u=>x.name&&u.name===x.name);
+          const meta=['📋 '+esc(x.login_id||'-'),x.nickname?'닉네임 '+esc(x.nickname):'',x.position?esc(x.position):'',
+            x.department?esc(x.department):'',x.phone?'☎ '+esc(x.phone):'',x.email?esc(x.email):''].filter(Boolean).join(' · ');
+          return '<div class="urow"><div class="u1"><div><div class="nm">'+esc(x.name||x.login_id)
+            +(x.active==='N'?' <span class="small" style="color:var(--so)">· 너바나 비활성</span>':'')+'</div>'
             +'<div class="meta">'+meta+'</div>'
             +(lu?'':'<div class="meta">아직 이 사이트에 로그인하지 않은 부계정입니다 — 첫 로그인 시 자동 등록됩니다.</div>')+'</div>'
             +stBadge(lu?lu.status:null)+'</div>'+(lu?accBtns(lu):'')+'</div>';}).join('')
           :'<div class="small" style="color:var(--muted)">이 에이전시에 등록된 부계정이 없습니다.</div>';
       }else{
-        /* 예비 동작: 로그인한 부계정만 */
-        html=locals.length?locals.map(u=>'<div class="urow"><div class="u1"><div><div class="nm">'+esc(u.name)+(u.nickname?' <span class="small">· '+esc(u.nickname)+'</span>':'')+'</div>'
+        html=note('ℹ️ 너바나 부계정 목록 API가 아직 연결되지 않아, 이 사이트에 로그인한 부계정만 표시합니다.');
+        html+=locals.length?locals.map(u=>'<div class="urow"><div class="u1"><div><div class="nm">'+esc(u.name)+(u.nickname?' <span class="small">· '+esc(u.nickname)+'</span>':'')+'</div>'
             +'<div class="meta">'+(u.agency_login_id?'📋 부계정 '+esc(u.agency_login_id):'')+(u.phone?' · ☎ '+esc(u.phone):'')+'</div></div>'
             +stBadge(u.status)+'</div>'+accBtns(u)+'</div>').join('')
           :'<div class="small" style="color:var(--muted)">이 에이전시의 부계정으로 로그인한 담당자가 아직 없습니다.<br>담당자가 부계정으로 처음 로그인하면 여기에 표시됩니다.</div>';

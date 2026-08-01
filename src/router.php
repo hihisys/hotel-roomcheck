@@ -362,8 +362,9 @@ function route(string $path, string $method): void {
   if ($path === 'admin/agency-sub-accounts' && $method === 'GET') {
     requireAdmin();
     $pidx = (int)($_GET['parent_idx'] ?? 0);
-    $r = agencySubAccountsRequest($pidx ?: null);
-    if ($r['ok']) jsonOut(['ok' => true, 'subs' => $r['data']]);
+    if (!empty($_GET['force'])) { metaSet($pdo, 'subs_path_miss_at', 0); }  // 새로고침 시 즉시 재탐색
+    $r = agencySubAccountsRequest($pidx ?: null, $pdo);
+    if ($r['ok']) jsonOut(['ok' => true, 'subs' => $r['data'], 'path' => $r['path'] ?? '']);
     jsonOut(['ok' => false, 'error' => $r['error']]);
   }
   /* 에이전시 담당자 승인/중지/삭제 (2026-08-01): 관리자가 담당자별 로컬 상태 설정.

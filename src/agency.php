@@ -106,18 +106,18 @@ function agencyLoginRoute(PDO $pdo, array $in): void {
   $u = $st->fetch();
   if (!$u) {
     $email = "agency-$idx@agency.local";      // 이메일 로그인 불가한 합성 주소
-    /* 2026-08-01: 부계정 첫 로그인은 '대기' 상태로 생성 — 관리자 승인 후 사용 가능 */
+    /* 2026-08-01 변경: 너바나 인증에 성공한 부계정(=등록된 부계정)은 승인 없이 바로 로그인 */
     $pdo->prepare("INSERT INTO users (name,email,pass_hash,role,status,lang,created_at,
         agency_idx,agency_parent_idx,agency_kind,agency_login_id)
       VALUES (?,?,?,?,?,?,?,?,?,?,?)")
-      ->execute([$name, $email, '!agency-external-auth', 'agent', 'pending', 'ko', nowMs(),
+      ->execute([$name, $email, '!agency-external-auth', 'agent', 'approved', 'ko', nowMs(),
         $idx, $agency['parent_idx'], $agency['kind'], $agency['login_id']]);
     $st->execute([$idx]);
     $u = $st->fetch();
-    if (($u['status'] ?? '') === 'pending') jsonOut(['error' => 'pending'], 403); // 승인 대기 안내
   } else {
     if ($u['status'] === 'rejected') jsonOut(['error' => 'rejected'], 403);  // 관리자가 중지한 계정
-    if ($u['status'] === 'pending') jsonOut(['error' => 'pending'], 403);    // 승인 대기 (2026-08-01)
+    /* 이전 승인 대기 정책으로 '대기'가 된 계정도 너바나 인증 성공 시 자동 승인 (2026-08-01) */
+    if ($u['status'] === 'pending') { $pdo->prepare("UPDATE users SET status='approved' WHERE id=?")->execute([$u['id']]); $u['status'] = 'approved'; }
     $pdo->prepare("UPDATE users SET name=?, agency_parent_idx=?, agency_kind=?, agency_login_id=? WHERE id=?")
         ->execute([$name, $agency['parent_idx'], $agency['kind'], $agency['login_id'], $u['id']]);
   }

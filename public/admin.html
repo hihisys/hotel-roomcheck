@@ -122,7 +122,7 @@
   <section class="card"><h3 style="margin:0 0 4px;font-size:16px;font-weight:800">전체 계정</h3><div class="seg" id="acctTabs" style="margin:8px 0"><button data-t="staff" class="on">직원</button><button data-t="agent">에이전시</button></div><div id="all"></div></section>
 
   <section class="card"><h3 style="margin:0 0 4px;font-size:16px;font-weight:800">에이전시별 담당자 (부계정)</h3>
-    <div class="small" style="color:var(--muted);margin:4px 0 8px;line-height:1.5">너바나에서 만들어진 <b>부계정 담당자</b> 목록입니다. 부계정 첫 로그인 시 <b>대기</b> 상태가 되며, 여기서 <b>승인</b>해야 사이트를 사용할 수 있습니다.<br>이용 중지·삭제도 여기서 처리하세요. (삭제해도 다시 로그인하면 대기 상태로 재등록됩니다)</div>
+    <div class="small" style="color:var(--muted);margin:4px 0 8px;line-height:1.5">너바나에서 만들어진 <b>부계정 담당자</b> 목록입니다. 너바나에 등록된 부계정은 <b>승인 없이 바로 로그인</b>됩니다.<br>이용을 막으려면 여기서 <b>이용 중지</b>하세요 (중지 시 로그인 차단, 승인하면 다시 사용 가능). 삭제 후 다시 로그인하면 재등록됩니다.</div>
     <select id="agcSel"><option value="">에이전시 선택</option></select>
     <div id="agcMgrs" style="margin-top:8px"></div>
   </section>
@@ -566,7 +566,7 @@ async function loadAgcList(){
           const meta=['📋 '+esc(gL(x)||'-'),x.nickname?'닉네임 '+esc(x.nickname):'',x.position?esc(x.position):'',x.department?esc(x.department):'',x.phone?'☎ '+esc(x.phone):'',x.email?esc(x.email):''].filter(Boolean).join(' · ');
           return '<div class="urow"><div class="u1"><div><div class="nm">'+esc(x.name||gL(x))+'</div>'
             +'<div class="meta">'+meta+'</div>'
-            +(lu?'':'<div class="meta">아직 이 사이트에 로그인하지 않은 부계정입니다 — 첫 로그인 시 대기 상태로 등록됩니다.</div>')+'</div>'
+            +(lu?'':'<div class="meta">아직 이 사이트에 로그인하지 않은 부계정입니다 — 첫 로그인 시 자동 등록됩니다.</div>')+'</div>'
             +stBadge(lu?lu.status:null)+'</div>'+(lu?accBtns(lu):'')+'</div>';}).join('')
           :'<div class="small" style="color:var(--muted)">이 에이전시에 등록된 부계정이 없습니다.</div>';
       }else{
@@ -574,11 +574,11 @@ async function loadAgcList(){
         html=locals.length?locals.map(u=>'<div class="urow"><div class="u1"><div><div class="nm">'+esc(u.name)+(u.nickname?' <span class="small">· '+esc(u.nickname)+'</span>':'')+'</div>'
             +'<div class="meta">'+(u.agency_login_id?'📋 부계정 '+esc(u.agency_login_id):'')+(u.phone?' · ☎ '+esc(u.phone):'')+'</div></div>'
             +stBadge(u.status)+'</div>'+accBtns(u)+'</div>').join('')
-          :'<div class="small" style="color:var(--muted)">이 에이전시의 부계정으로 로그인한 담당자가 아직 없습니다.<br>담당자가 부계정으로 처음 로그인하면 여기에 "대기" 상태로 표시됩니다.</div>';
+          :'<div class="small" style="color:var(--muted)">이 에이전시의 부계정으로 로그인한 담당자가 아직 없습니다.<br>담당자가 부계정으로 처음 로그인하면 여기에 표시됩니다.</div>';
       }
       box.innerHTML=html;
       box.querySelectorAll('[data-sacc]').forEach(b=>b.onclick=async()=>{
-        if(b.dataset.sact==='delete'&&!confirm('이 부계정 담당자를 삭제할까요?\n다시 로그인하면 대기 상태로 재등록됩니다.'))return;
+        if(b.dataset.sact==='delete'&&!confirm('이 부계정 담당자를 삭제할까요?\n다시 로그인하면 재등록됩니다.'))return;
         try{const r3=await fetch('api/admin/decide',{method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({id:Number(b.dataset.sacc),action:b.dataset.sact})});
           const j3=await r3.json();

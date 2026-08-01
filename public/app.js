@@ -246,11 +246,15 @@ const meName=()=>((SRV.on&&SRV.me&&SRV.me.name)||'');
 const nickOf=n=>(n&&SRV.nicks&&SRV.nicks[n])||n||''; /* 서버 로그인 사용자 이름 (에이전시 부계정 포함) */
 const meNick=()=>{if(!SRV.on||!SRV.me)return '';const a=SRV.me.agency;return SRV.me.nickname||(a&&a.nickname)||SRV.me.name||'';}; /* 표시용: 닉네임 우선, 없으면 이름 */
 /* 부계정의 소속 에이전시(회사) 이름 (2026-07-30): 회원정보에서 수정한 값 우선, 없으면 API 목록에서 idx로 조회 */
+/* 직원 본인 표기명 (2026-08-01): 로그인 계정 닉네임 → 이름 → 확인자 입력칸 → 기본값
+   — 답변 담당자가 로그인 사용자와 다르게(기본값 심은선) 기록되던 문제 수정 */
+function meStaffName(){return meNick()||meName()||DB.checker||'심은선';}
 function myAgencyName(){
   if(!SRV.on||!SRV.me)return '';
   if(SRV.me.agent_company)return String(SRV.me.agent_company);
   const ag=SRV.me.agency;if(!ag||!ag.idx)return '';
-  const a=(typeof AGENTS!=='undefined'?AGENTS:[]).find(x=>x&&x.api&&x.idx===ag.idx);
+  /* 2026-08-01: 부계정은 본인 idx가 아니라 소속(parent) 에이전시 idx로 회사명을 찾아야 함 */
+  const a=(typeof AGENTS!=='undefined'?AGENTS:[]).find(x=>x&&x.api&&(x.idx===ag.idx||(ag.parent_idx&&x.idx===ag.parent_idx)));
   return a?a.name:'';
 }
 /* 에이전트 페이지 기본값 (2026-07-30): 에이전트=소속 에이전시(회사), 담당자=본인 — 통계가 '에이전트 담당자'로 잡히도록 */
@@ -689,7 +693,9 @@ function bindForm(){
     if(d.mode==='parallel')d.rows.forEach(r=>{r.rooms=Math.max(1,Number(d.sharedRooms)||1);});
     /* 에이전트 페이지 (2026-07-30): 에이전트=소속 에이전시(회사), 담당자=본인 자동 설정 */
     if(ui.role==='agent'){
-      if(!(d.agent||'').trim())d.agent=myAgencyName()||meNick()||meName()||'';
+      const _comp=myAgencyName();
+      if(_comp)d.agent=_comp; /* 2026-08-01: 회사명이 확인되면 항상 소속 에이전시로 저장 (잘못 입력된 값 무시) */
+      else if(!(d.agent||'').trim())d.agent=meNick()||meName()||'';
       if(!(d.agentManager||'').trim())d.agentManager=meNick()||meName()||'';
     }
     DB.agentName=d.agent;
@@ -1055,7 +1061,7 @@ function bindAgentList(){
     const r=byId(ui.qbOpen);
     if(r){bindQuoteBuilder(r);
       const s=document.getElementById('qbSend');
-      if(s)s.onclick=()=>{r.quoteSent=true;r.quoteRequested=false;r.quoteSentAt=Date.now();r.quoteBy=r.registrant||'심은선';saveDB();renderApp();toast(T('t_quote_sent')+reqNo(r));};
+      if(s)s.onclick=()=>{r.quoteSent=true;r.quoteRequested=false;r.quoteSentAt=Date.now();r.quoteBy=r.registrant||meStaffName();saveDB();renderApp();toast(T('t_quote_sent')+reqNo(r));};
       const st2=document.getElementById('qbSendTo');
       if(st2)st2.onclick=()=>openSendToAgent(r); /* 다른 에이전트에게 복제 전송 (2026-07-31) */}
   }
@@ -1245,12 +1251,12 @@ function bindStaff(){
     r.options=r.options||[];r.options.push({id:Date.now(),name:'',qty:1,amt:0,show:true,memo:''});saveDB();renderApp();});
   const qt=document.getElementById('qTog');if(qt)qt.onclick=()=>{ui.qOpen=!ui.qOpen;renderApp();};
   if(ui.qOpen)bindQuoteBuilder(req);
-  const sa=document.getElementById('sendA');if(sa)sa.onclick=()=>{buildWsFromDOM(req);req.status='answered';req.answeredAt=Date.now();req.manager=DB.checker||'심은선';req.answerComplete=allDone(req);recordFullbook(req);saveDB();renderApp();
+  const sa=document.getElementById('sendA');if(sa)sa.onclick=()=>{buildWsFromDOM(req);req.status='answered';req.answeredAt=Date.now();req.manager=meStaffName();req.answerComplete=allDone(req);recordFullbook(req);saveDB();renderApp();
     toast(isFullbookReq(req)?T('t_fullbook')+reqNo(req)
       :(!allDone(req)?TF('t_partial',{n:doneCount(req),t:req.rows.length})+reqNo(req)
       :T('t_answered')+reqNo(req)));};
   const fa=document.getElementById('fwdAgent');if(fa)fa.onclick=()=>{req.forwardedAt=Date.now();saveDB();renderApp();toast('에이전트에 전송 · '+reqNo(req));};
-  const sq=document.getElementById('sendQ');if(sq)sq.onclick=()=>{buildWsFromDOM(req);req.status='answered';req.answeredAt=Date.now();req.manager=DB.checker||'심은선';req.answerComplete=allDone(req);req.quoteSent=true;req.quoteRequested=false;req.quoteSentAt=Date.now();req.quoteBy=DB.checker||'심은선';recordFullbook(req);saveDB();renderApp();toast(T('t_qsent')+reqNo(req));};
+  const sq=document.getElementById('sendQ');if(sq)sq.onclick=()=>{buildWsFromDOM(req);req.status='answered';req.answeredAt=Date.now();req.manager=meStaffName();req.answerComplete=allDone(req);req.quoteSent=true;req.quoteRequested=false;req.quoteSentAt=Date.now();req.quoteBy=meStaffName();recordFullbook(req);saveDB();renderApp();toast(T('t_qsent')+reqNo(req));};
 }
 
 /* ================= ④ 간단 견적 ================= */
@@ -1271,7 +1277,7 @@ function quoteText(req){
   const optLine=o=>o.memo?o.memo:o.name;
   let t='The Nirvana · 여행 견적\n'
     +'요청 : '+(req.agent||'-')+(req.agentManager?'-'+req.agentManager:'')+' · '+kdotDateTime(req.createdAt)+'\n'
-    +'발행 : '+(req.quoteBy||DB.checker||req.registrant||'심은선')+' · '+kdotDateTime(req.quoteSentAt||Date.now())+'\n'; /* 2026-08-01: 요청/발행 각 한 줄 표시 */
+    +'발행 : '+(req.quoteBy||req.registrant||meStaffName())+' · '+kdotDateTime(req.quoteSentAt||Date.now())+'\n'; /* 2026-08-01: 요청/발행 각 한 줄 표시 */
   req.rows.forEach((row,i)=>{const dd=rDates(req,row,i);
     const sh=(row.options||[]).filter(o=>o.show&&o.name);
     t+='\n'+(i+1)+') '+kdstr(dd.checkIn)+' → '+kdstr(dd.checkOut)+' ('+dd.nights+'박)\n';
@@ -1299,7 +1305,7 @@ function quoteCardHTML(req){
       +(row.showRate?'<div class="qc-price">호텔 요금 ₩'+won(hotelTHB(req,row,i)*c.rate)+'</div>':'')
       +'</div>';}).join('');
   const incLines=q.addl.filter(x=>x.show&&(x.memo||x.desc)).map(x=>'<div style="margin-top:2px"><span class="qc-addl-txt">'+escT(x.memo||x.desc)+'</span></div>').join('');
-  const qBy=req.quoteBy||DB.checker||req.registrant||'심은선';
+  const qBy=req.quoteBy||req.registrant||meStaffName();
   const qAt=req.quoteSentAt||Date.now();
   return '<div class="quotecard" id="qcard'+req.id+'"><div class="qc-title" style="font-size:17px;letter-spacing:.6px">The Nirvana · 여행 견적</div>'
     +'<div class="qc-sub" style="text-align:left;margin-top:8px;color:var(--sub);font-weight:700">요청 : '+escT((req.agent||'-')+(req.agentManager?'-'+req.agentManager:''))+' · <span style="font-weight:400">'+kdotDateTime(req.createdAt)+'</span></div>' /* 2026-08-01: 한 줄 표시 */

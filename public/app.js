@@ -301,6 +301,7 @@ function srvApplyState(j){
     try{localStorage.setItem(LSKEY,JSON.stringify(DB));}catch(e){_mem=DB;}
   }
   if(j.notifs)NOTIF=j.notifs;
+  if(j.nicks)SRV.nicks=j.nicks; /* 이름→닉네임 맵 (2026-08-01) */
   SRV.rev=j.rev;
 }
 async function srvPull(){
@@ -709,13 +710,18 @@ function reqSummaryHTML(req){
 function listHead(req,forStaff){
   const names=req.rows.map(function(r,i){var nm=escT(dHotel(r.hotel)||T('no_input'));if(req.status==='answered'&&!(ui.role==='agent'&&req.direct&&!req.forwardedAt)){var av=availOf(req,r,i);var col=av.k==='ok'?'var(--av)':(av.k==='no'?'var(--so)':((av.k==='rq'||av.k==='part')?'var(--rq)':''));if(col)nm='<span style="color:'+col+';font-weight:700">'+nm+'</span>';}return nm;}).join(req.mode==='multi'&&req.rows.length>1?' → ':' · ');
   const lastOut=req.mode==='parallel'?addDays(req.startDate,totalN(req)):finalOut(req);
-  const extra=ui.role==='sreq'?' · '+escT(nickOf(req.agent)||'-')+(req.agentManager?' / '+escT(req.agentManager):''):'';
+  const extra=''; /* 2026-08-01: 에이전트/담당자 표기는 상단 헤더로 이동 (하단 중복 삭제) */
   const dtag=(ui.role!=='agent'&&req.direct&&!(req.status==='requested'&&!req.quoteSent))?'<span class="badge b-direct">'+T('b_direct_s')+'</span>':'';
-  /* 2026-07-31: 에이전트 페이지 상단은 확인자 닉네임 — 답변 전이면 빈칸
-     2026-08-01: 직원 페이지는 실제 등록 당사자 표시 — 요청자(registrant) 없으면 에이전트 담당자,
-     그마저 없으면 에이전시명. 닉네임 우선(nickOf), 임의 기본값(심은선) 표시하지 않음 */
-  const _who=(ui.role==='agent'?(req.manager||''):(req.registrant||req.agentManager||req.agent||''));
-  const _whoTxt=escT(nickOf(_who)||'');
+  /* 상단 헤더 표기 (2026-08-01):
+     - 에이전트 페이지: 확인자 닉네임 (답변 전이면 빈칸)
+     - 직원 페이지: 에이전트 · 담당자(닉네임) — 없으면 등록 직원(닉네임) */
+  let _who='';
+  if(ui.role==='agent')_who=nickOf(req.manager)||'';
+  else{
+    const _ag=nickOf(req.agent)||'',_mgr=req.agentManager?(nickOf(req.agentManager)||''):'';
+    _who=[_ag,_mgr].filter(Boolean).join(' · ')||nickOf(req.registrant)||'';
+  }
+  const _whoTxt=escT(_who);
   return '<div class="t1"><span class="mono small">'+reqNo(req)+(_whoTxt?' · '+_whoTxt:'')+' · '+dotDateTime(req.createdAt)+'</span><span style="display:flex;gap:4px;flex:0 0 auto">'+dtag+reqBadge(req,forStaff)+'</span></div>'
     +'<div class="t2">'+names+'</div>'
     +'<div class="t3">'+fdate(req.startDate)+' → '+fdate(lastOut)+' · '+totalN(req)+T('n_sfx')+extra+'</div>';
@@ -833,7 +839,7 @@ function resultCardHTML(req,asReq){
   return '<div class="quotecard '+(answered?'rescard':'reqcard')+'" id="rescard'+req.id+'"><div class="qc-title">The Nirvana · 룸체크 '+(answered?'결과':'요청')+'</div>'
     +'<div class="qc-sub" style="text-align:left;margin-top:3px">'+escT(reqNo(req))
       +(answered
-        ?' · 담당 '+escT(nickOf(req.manager)||'-')+' · 확인일 '+dotDateTime(req.answeredAt||req.createdAt) /* 2026-07-31: 확인자 닉네임 표시 */
+        ?' · 담당 '+escT(nickOf(req.manager)||'-')+'<br>확인일 '+dotDateTime(req.answeredAt||req.createdAt) /* 2026-08-01: 최종 답변자 닉네임 + 확인일 줄바꿈 */
         :' · '+escT(nickOf(req.agent)||'-')+(req.agentManager?' · '+escT(req.agentManager):(req.registrant?' · '+escT(nickOf(req.registrant)):''))+' · 요청일 '+dotDateTime(req.createdAt))+'</div>' /* 2026-07-31: 에이전시 · 담당자 · 요청일 형식 */
     +legs
     +(req.notes?'<div class="reqbox">📝 '+escT(req.notes)+'</div>':'')+'</div>';
@@ -1067,7 +1073,7 @@ function staffWorkInner(req){
       +'<div class="flex aic" style="gap:5px;flex-wrap:wrap;margin-bottom:5px">'
       +(row.region&&row.region!=='전체'?'<span class="rq-region" style="margin-bottom:0">'+escT(dRegion(row.region))+'</span>':'')
       +phoneHTML(req,row)
-      +(row.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+T('save_w')+' '+dotDateTime(row.savedAt)+'</span>':'')+'</div>'
+      +(row.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+T('save_w')+' '+(row.confirmedBy?escT(nickOf(row.confirmedBy))+' · ':'')+dotDateTime(row.savedAt)+'</span>':'')+'</div>' /* 2026-08-01: 저장 옆에 룸첵 확인자 이름 */
       +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(row.hotel)||T('no_hotel'))+'</span><span class="rq-type">'+escT(dRoom(row.roomType)||'-')+' <span class="sm">· '+row.rooms+T('r_sfx')+'</span></span></span>'
       +'<span style="display:flex;gap:5px;align-items:center;flex:0 0 auto">'+stSel('stsel',mSt?'__none':uSt[0],'data-all="'+row.id+'"',mSt)
       +'<span class="pbox"><span>฿</span><input type="number" class="pall" data-all="'+row.id+'" placeholder="'+esc(mPr?T('ws_mixed'):T('ws_price_ph'))+'" value="'+(mPr?'':(uPr[0]||''))+'"></span></span></div>'
@@ -1096,7 +1102,8 @@ function staffWorkInner(req){
     +'<span class="small"><b style="color:var(--rq)">RQ</b> '+T('lg_rq')+'</span>'
     +'<span class="small"><b style="color:var(--so)">S/O</b> '+T('lg_so')+'</span></div>';
   return '<div class="flex between aic" style="margin:2px 0 6px"><h3 style="margin:0;font-size:15.5px;font-weight:800">'+T('ws_title')+'</h3><span class="mono small">'+reqNo(req)+'</span></div>'
-    +'<div class="metaline" style="color:#1E63C8;font-weight:600">'+T('recv_w')+' '+escT(nickOf(req.registrant)||T('no_input'))+' · '+dotDateTime(req.createdAt)+'</div>'+(req.answeredAt?'<div class="metaline" style="color:var(--av);font-weight:600">'+T('ans_w')+' '+escT(nickOf(req.manager))+' · '+dotDateTime(req.answeredAt)+(req.registrant?' · 요청 '+escT(nickOf(req.registrant)):'')+(req.agentManager?' / '+T('agent_w')+' '+escT(nickOf(req.agentManager)):'')+'</div>':'')+(req.quoteRequested&&!req.quoteSent?'<div class="metaline" style="color:var(--so)">💬 '+T('b_qreq_staff')+'</div>':'')
+    /* 2026-08-01: 접수=등록 당사자(에이전트, 담당자 닉네임 또는 직원 닉네임)+시간 / 답변=최종 처리자 닉네임+시간만 */
+    +'<div class="metaline" style="color:#1E63C8;font-weight:600">'+T('recv_w')+' '+escT(nickOf(req.registrant)||[nickOf(req.agent)||'',req.agentManager?(nickOf(req.agentManager)||''):''].filter(Boolean).join(', ')||T('no_input'))+' · '+dotDateTime(req.createdAt)+'</div>'+(req.answeredAt?'<div class="metaline" style="color:var(--av);font-weight:600">'+T('ans_w')+' '+escT(nickOf(req.manager))+' · '+dotDateTime(req.answeredAt)+'</div>':'')+(req.quoteRequested&&!req.quoteSent?'<div class="metaline" style="color:var(--so)">💬 '+T('b_qreq_staff')+'</div>':'')
     +(req.notes?'<div class="reqbox">📝 '+T('extra_req')+': '+escT(req.notes)+'</div>':'')
     +'<div style="margin-top:10px">'+cards+'</div>'+legend
     +'<p class="foot">'+T('ws_foot')+'</p>'

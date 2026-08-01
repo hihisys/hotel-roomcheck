@@ -153,6 +153,12 @@ function route(string $path, string $method): void {
       $out['seqA'] = (int)metaGet($pdo, 'seqA', 0);
       $out['seqD'] = (int)metaGet($pdo, 'seqD', 0);
     }
+    // 닉네임 맵 (2026-08-01): 이름→닉네임 — 화면의 nickOf() 표시용 (지금까지 서버가 내려주지 않아 닉네임이 안 보이던 문제 수정)
+    $nk = [];
+    foreach ($pdo->query("SELECT name,nickname FROM users WHERE nickname IS NOT NULL AND nickname<>''")->fetchAll() as $nu) {
+      $nk[$nu['name']] = $nu['nickname'];
+    }
+    $out['nicks'] = $nk;
     // 알림 (역할 대상, 본인 행동 제외, 2026-07-30)
     //  - 최고관리자(ADMIN_EMAIL): 모든 역할의 알림을 본인 행동 포함 전체 열람
     //  - 일반 관리자(요청자→관리자 승격): 기본 요청자로 처리 — 요청자(sreq) 알림 수신

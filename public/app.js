@@ -57,6 +57,10 @@ const esc=v=>String(v||'').replace(/"/g,'&quot;');
 const escT=v=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
 const opt=(v,t,sel)=>'<option value="'+esc(v)+'"'+(sel?' selected':'')+'>'+t+'</option>';
 const hotelsIn=r=>r==="전체"?HOTELS:HOTELS.filter(h=>h.region===r);
+/* 호텔 선택 시 지역 자동 표시 (2026-08-01): 지역 미선택(전체) 상태에서 호텔을 고르면 그 호텔의 지역을 자동 설정 */
+function autoRegion(row){if(!row||!row.hotel)return;if(row.region&&row.region!=='전체')return;
+  const h=HOTELS.find(x=>x.name===row.hotel);
+  if(h&&h.region&&h.region!=='전체'&&REGIONS.includes(h.region))row.region=h.region;}
 const roomsFor=name=>{const h=HOTELS.find(x=>x.name===name);return h?h.rooms:GENERIC;};
 const won=n=>Math.round(n||0).toLocaleString('ko-KR');
 const manwonF=m=>(Math.round((m||0)*10)/10).toLocaleString('ko-KR')+'만원';
@@ -642,10 +646,10 @@ function bindForm(){
     const hi=el.querySelector('.inHotel');
     /* 호텔 입력은 "찾기 전용" — 목록의 호텔(한/영)만 저장, 임의 입력은 저장하지 않음 (2026-07-30) */
     const hotelByInput=v=>{v=String(v||'').trim();if(!v)return '';const k=HOTEL_KO[v]||v;return HOTELS.some(x=>x.name===k)?k:null;};
-    hi.oninput=e=>{const m=hotelByInput(e.target.value);if(m!==null){row.hotel=m;if(m)loadHotelRooms(m);}};
+    hi.oninput=e=>{const m=hotelByInput(e.target.value);if(m!==null){row.hotel=m;if(m){loadHotelRooms(m);autoRegion(row);}}};
     hi.onchange=e=>{const m=hotelByInput(e.target.value);
       if(m===null){row.hotel='';e.target.value='';toast(T('t_pick_hotel'));}
-      else{row.hotel=m;if(m)loadHotelRooms(m);}
+      else{row.hotel=m;if(m){loadHotelRooms(m);autoRegion(row);}}
       renderApp();};
     if(row.hotel)loadHotelRooms(row.hotel); /* 이미 선택된 호텔의 룸타입 미리 로드 */
     const ri=el.querySelector('.inRoom');
@@ -659,7 +663,7 @@ function bindForm(){
         return hotelsIn(row.region).map(h=>({label:dHotel(h.name),s:[h.name,HOTEL_EN[h.name]||''],main:!!h.main,
             _r:_ro[h.region]||9,sub:(row.region==='전체'&&h.region&&h.region!=='전체')?dRegion(h.region):''}))
           .sort((a,b)=>((b.main?1:0)-(a.main?1:0))||(a._r-b._r)||a.label.localeCompare(b.label,isEN()?'en':'ko'));}, /* 2026-07-31: 메인 우선 → 지역별 그룹 → 언어별 가나다/ABC */
-      label=>{row.hotel=HOTEL_KO[label]||label;hi.value=label;loadHotelRooms(row.hotel);renderApp();});
+      label=>{row.hotel=HOTEL_KO[label]||label;hi.value=label;loadHotelRooms(row.hotel);autoRegion(row);renderApp();});
     attachAC(ri,
       ()=>roomsFor(row.hotel).map(r=>({label:dRoom(r),s:[r,RT_EN[r]||'',dRoom(r)]})),
       label=>{row.roomType=rtStore(label);ri.value=label;renderApp();});

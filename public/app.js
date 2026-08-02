@@ -1223,7 +1223,7 @@ function staffWorkInner(req){
       +'<div class="flex aic" style="gap:5px;flex-wrap:wrap;margin-bottom:5px">'
       +(row.region&&row.region!=='전체'?'<span class="rq-region" style="margin-bottom:0">'+escT(dRegion(row.region))+'</span>':'')
       +phoneHTML(req,row)
-      +(row.checkedBy?'<span class="small" style="color:var(--av);font-weight:700;flex:0 0 auto">'+T('ws_checked')+' '+escT(nickOf(row.checkedBy))+' · '+dotDateTime(row.checkedAt||row.savedAt)+'</span>'
+      +(row.checkedBy?'<span class="small" style="color:var(--av);font-weight:700;flex:0 0 auto">'+escT(nickOf(row.checkedBy))+' · '+dotDateTime(row.checkedAt||row.savedAt)+'</span>' /* 2026-08-02: '룸첵' 단어 제거 — 확인자 이름·시각만 */
         :(row.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+(row.confirmedBy?escT(nickOf(row.confirmedBy))+' · ':'')+dotDateTime(row.savedAt)+'</span>':''))
       +((ui.role==='schk'||ui.role==='sreq')?'<span style="flex:0 0 auto;margin-left:auto;display:flex;gap:6px;align-items:center">'
         +(rowDirty(req,row.id)?'<span class="small" style="color:var(--so);font-weight:700">'+T('ws_unsaved')+'</span>':'')

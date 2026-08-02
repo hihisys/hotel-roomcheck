@@ -583,6 +583,42 @@ function route(string $path, string $method): void {
     jsonOut(['ok' => true, 'off_days' => ['dates' => $dates, 'weekdays' => $weekdays, 'work_overrides' => $workOvr]]);
   }
 
+  /* 휴일 근무자 공유 조회 (2026-08-02, [011]): 직원끼리 "이 휴일에 누가 근무하는지" 확인.
+     - 대상: 승인된 요청자·확인자·(최고관리자를 제외한) 관리자. 에이전트는 접근 불가.
+     - 반환: 각 직원의 표시 이름/닉네임과 요청 구간에 포함된 '휴무일' 목록만.
+       휴일(주말·공휴일) 판정은 클라이언트가 이미 갖고 있는 공휴일표로 하므로 서버는 날짜만 넘긴다.
+       → "휴무일 목록에 없으면 그날은 근무" 로 클라이언트가 계산한다.
+     - 개인 사유·연락처 등 다른 정보는 내려보내지 않는다. 구간은 최대 120일로 제한. */
+  if ($path === 'workdays' && $method === 'GET') {
+    $u = requireApproved();
+    if (!in_array($u['role'], ['sreq', 'schk', 'admin'], true)) jsonOut(['error' => 'forbidden'], 403);
+    $from = trim((string)($_GET['from'] ?? ''));
+    $to   = trim((string)($_GET['to'] ?? ''));
+    $isDate = fn($s) => (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/', $s);
+    if (!$isDate($from) || !$isDate($to) || $to < $from) jsonOut(['error' => 'bad_range'], 400);
+    if ((strtotime($to) - strtotime($from)) > 120 * 86400) jsonOut(['error' => 'range_too_wide'], 400);
+    $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
+    $st = $pdo->prepare("SELECT id,name,nickname,email,role,off_days FROM users WHERE status='approved' AND role IN ('sreq','schk','admin') ORDER BY id");
+    $st->execute();
+    $staff = [];
+    foreach ($st->fetchAll() as $r) {
+      if ($r['role'] === 'admin' && strtolower((string)$r['email']) === $superEmail) continue; // 최고관리자는 근무표 대상 아님
+      $od = decodeOffDays($r['off_days'] ?? '');
+      $off = [];
+      foreach ($od['dates'] as $d) { if (is_string($d) && $d >= $from && $d <= $to) $off[] = $d; }
+      sort($off);
+      $staff[] = [
+        'id'   => (int)$r['id'],
+        'name' => (string)$r['name'],
+        'nick' => (string)($r['nickname'] ?? ''),
+        'role' => $r['role'],
+        'me'   => ((int)$r['id'] === (int)$u['id']),
+        'off'  => array_values(array_unique($off)),
+      ];
+    }
+    jsonOut(['ok' => true, 'from' => $from, 'to' => $to, 'staff' => $staff]);
+  }
+
   /* ===== 견적서 샘플 (2026-07-31): 요청자 전체 공유 ===== */
   if ($path === 'quote-samples' && $method === 'GET') {
     requireApproved();

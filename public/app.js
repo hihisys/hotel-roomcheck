@@ -129,10 +129,13 @@ function sweep(){const now=Date.now();let ch=false;
       DB.vault.push(r);ch=true;return false;}
     return true;});
   DB.requests.forEach(r=>{
+    if(r.status==='answered'&&r.answerComplete===undefined){r.answerComplete=allDone(r);ch=true;}
+    /* 2026-08-02 [012]: 모든 호텔 답변이 완료되면 곧바로 '완료' 탭으로 옮긴다.
+       archivedAt(=이동 시각)을 기준으로 하는 기존 삭제 규칙(이동 후 30일)은 그대로 유지된다. */
+    if(!r.archivedAt&&!r.contractedAt&&r.status==='answered'&&r.answerComplete){r.archivedAt=now;ch=true;}
     if(!r.archivedAt&&!r.contractedAt){
       const base=r.quoteSent?(r.quoteSentAt||r.answeredAt||r.createdAt):r.createdAt;
       if(now-base>WEEK_MS){r.archivedAt=now;ch=true;}}
-    if(r.status==='answered'&&r.answerComplete===undefined){r.answerComplete=allDone(r);ch=true;}
     if(r.status==='answered'&&r.answerComplete&&!r.checkerHidden&&r.answeredAt){
       const limit=isFullbookReq(r)?HALFYEAR_MS:TWOWEEK_MS;
       if(now-r.answeredAt>limit){r.checkerHidden=true;ch=true;}}});
@@ -505,8 +508,8 @@ function renderApp(){
   const app=document.getElementById('app');
   const dl=document.getElementById('optdl');if(dl)dl.innerHTML=OPTLIST.map(o=>'<option>'+esc(dOpt(o))+'</option>').join('');
   if(ui.role==='agent'){app.innerHTML=langSwitchHTML()+formHTML()+agentListHTML();bindForm();bindAgentList();}
-  else if(ui.role==='sreq'){app.innerHTML=langSwitchHTML()+formHTML()+staffListHTML();bindForm();bindStaff();}
-  else{app.innerHTML=langSwitchHTML()+checkerHTML()+staffListHTML();bindStaff();}
+  else if(ui.role==='sreq'){app.innerHTML=langSwitchHTML()+formHTML()+holidayCardHTML()+staffListHTML();bindForm();bindStaff();bindHoliday();}
+  else{app.innerHTML=langSwitchHTML()+checkerHTML()+holidayCardHTML()+staffListHTML();bindStaff();bindHoliday();}
   bindLang();
 }
 function checkerHTML(){
@@ -843,6 +846,72 @@ function agentItemHTML(req){
     }
     return '<div class="lstitem '+reqStateCls(req)+(req.archivedAt&&!req.contractedAt?' ls-pastitem':'')+'" data-rid="'+req.id+'"><div class="lsthead" data-sel="'+req.id+'">'+listHead(req,false)+'</div>'+detail+'</div>';
 }
+/* ================= 휴일 근무자 카드 (2026-08-02, [011]) =================
+   직원(요청자·확인자)이 "다가오는 휴일에 누가 근무하는지"를 메인 화면에서 바로 볼 수 있게 한다.
+   - 데이터: GET api/workdays (각 직원의 휴무일 목록) → 휴일인데 휴무 목록에 없으면 그날 근무
+   - 본인 근무 추가/취소는 휴무일 등록 페이지(myoffdays.html)에서 하고, 저장하면 이 카드에 반영된다
+   - 접기/펴기 상태는 브라우저에 기억한다 */
+const HW_FIXED_HOL=['01-01','03-01','05-05','06-06','08-15','10-03','10-09','12-25'];
+const HW_LUNAR_HOL={2025:['01-28','01-29','01-30','03-03','05-06','10-05','10-06','10-07','10-08'],2026:['02-16','02-17','02-18','03-02','05-24','05-25','08-17','09-24','09-25','09-26','10-05'],2027:['02-06','02-07','02-08','02-09','05-13','08-16','09-14','09-15','09-16','10-04','10-11','12-27'],2028:['01-25','01-26','01-27','05-02','10-02','10-03','10-04','10-05']};
+const hwIsHol=iso=>{const y=+iso.slice(0,4),md=iso.slice(5);return HW_FIXED_HOL.indexOf(md)>=0||((HW_LUNAR_HOL[y]||[]).indexOf(md)>=0);};
+const HW_DAYS=14; /* 오늘부터 2주 */
+const HW_KEY='rc_hwopen';
+let HW={loaded:false,staff:[],busy:false};
+function hwOpen(){try{return localStorage.getItem(HW_KEY)!=='0';}catch(e){return true;}}
+function hwSetOpen(v){try{localStorage.setItem(HW_KEY,v?'1':'0');}catch(e){}}
+function hwIsoAdd(n){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()+n);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function hwLoad(){
+  if(HW.busy||HW.loaded)return;
+  HW.busy=true;
+  fetch('api/workdays?from='+hwIsoAdd(0)+'&to='+hwIsoAdd(HW_DAYS-1),{cache:'no-store'})
+    .then(r=>r.json())
+    .then(j=>{HW.busy=false;
+      if(!j||!j.ok||!Array.isArray(j.staff))return;
+      HW.staff=j.staff;HW.loaded=true;renderApp();})
+    .catch(()=>{HW.busy=false;});
+}
+/* 다가오는 휴일(주말·공휴일) 중 근무자가 있는 날 */
+function hwDays(){
+  const out=[];
+  const meS=HW.staff.find(s=>s.me);
+  for(let i=0;i<HW_DAYS;i++){
+    const iso=hwIsoAdd(i),d=new Date(iso+'T00:00:00'),dow=d.getDay();
+    if(!(dow===0||dow===6||hwIsHol(iso)))continue;
+    const names=[];let mine=false;
+    HW.staff.forEach(s=>{if((s.off||[]).indexOf(iso)>=0)return;
+      if(s.me)mine=true;else names.push(s.nick||s.name);});
+    if(!names.length&&!mine)continue;
+    out.push({iso:iso,dow:dow,names:names,me:mine,meLabel:meS?(meS.nick||meS.name):''});
+  }
+  return out;
+}
+function holidayCardHTML(){
+  if(ui.role!=='sreq'&&ui.role!=='schk')return '';
+  const open=hwOpen();
+  const head='<div class="hwhead" id="hwTog"><b>🗓 '+T('hw_title')+'</b><span class="hwsub">'+T('hw_sub')+'</span>'
+    +'<span class="hwcar">'+(open?'▾':'▸')+'</span></div>';
+  if(!open)return '<section class="card hwcard">'+head+'</section>';
+  let body='';
+  if(!HW.loaded)body='<div class="hwempty">'+T('hw_loading')+'</div>';
+  else{
+    const days=hwDays();
+    body=days.length?days.map(d=>{
+      const cls=(d.dow===0||hwIsHol(d.iso))?'sun':(d.dow===6?'sat':'');
+      const chips=d.names.map(n=>'<span class="wkchip">'+escT(n)+'</span>').join('')
+        +(d.me?'<span class="wkchip me">'+escT(d.meLabel)+' '+T('hw_me')+'</span>':'');
+      return '<div class="hwrow"><span class="hwd '+cls+'">'+fdshort(d.iso)+'</span><span class="hwn">'+chips+'</span></div>';
+    }).join(''):'<div class="hwempty">'+T('hw_empty')+'</div>';
+  }
+  return '<section class="card hwcard">'+head+body
+    +'<div class="hwfoot"><a href="myoffdays.html">'+T('hw_link')+'</a></div></section>';
+}
+function bindHoliday(){
+  const t=document.getElementById('hwTog');
+  if(t)t.onclick=()=>{hwSetOpen(!hwOpen());renderApp();};
+  hwLoad();
+}
+
 function sectionsHTML(itemFn,sub){
   if(ui.role==='schk'){
     const pending=r=>r.status==='requested'||(r.status==='answered'&&!r.answerComplete);

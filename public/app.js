@@ -433,11 +433,11 @@ function phoneHTML(req,row){
   if(row.hotel)ensureHotelPhone(row.hotel);
   const nums=(row.hotel&&DB.phones[row.hotel])||[];
   const sel=row.phone&&nums.includes(row.phone)?row.phone:(nums[0]||'');
-  let os=nums.map(n=>opt(n,'📞 '+n,n===sel)).join('');
+  let os=nums.map(n=>opt(n,n,n===sel)).join('');   /* 2026-08-02: 번호 앞 📞 제거 — 아이콘은 전화 버튼으로 이동 */
   os+='<option value="__add">'+T('ph_add_opt')+'</option>';
   let h='<select class="phSel" data-prid="'+row.id+'" style="width:auto;flex:0 1 auto;padding:7px 5px;font-size:12px;font-family:var(--mono)">'
     +(nums.length?'':'<option value="" selected>'+T('ph_none')+'</option>')+os+'</select>';
-  if(sel)h+='<a class="chip on" style="text-decoration:none;line-height:1" href="tel:'+sel.replace(/[^+0-9]/g,'')+'">'+T('ph_call')+'</a>';
+  if(sel)h+='<a class="chip on phCall" style="text-decoration:none" href="tel:'+sel.replace(/[^+0-9]/g,'')+'" title="'+esc(T('ph_call'))+'" aria-label="'+esc(T('ph_call'))+'">📞</a>';   /* 2026-08-02: 아이콘만 표시해 폭 축소 */
   if(ui.phAdd.has(row.id))h+='<input class="phNew" data-prid="'+row.id+'" placeholder="'+esc(T('ph_new'))+'" style="width:150px;flex:0 0 auto;padding:7px 8px;font-size:12px;font-family:var(--mono)">';
   if(ui.role==='schk'||(ui.role==='sreq'&&req.direct))
     h+='<input class="phWho" data-prid="'+row.id+'" value="'+esc(row.confirmedBy||'')+'" placeholder="'+esc(T('ph_who'))+'" style="width:104px;flex:0 0 auto;padding:7px 8px;font-size:12px">';
@@ -1221,7 +1221,7 @@ function staffWorkInner(req){
       +'<div class="rq-datebar"><span class="chev'+(isOpen?' open':'')+'" style="width:13px">▶</span>'+fdate(dd.checkIn)+' → '+fdate(dd.checkOut)+' <span class="nightsb">'+dd.nights+T('n_sfx')+'</span><span class="rq-idx">'+T('hotel_n')+' '+(i+1)+stChip+'</span></div>'
       +'<div class="rq-body">'
       +'<div class="flex aic" style="gap:5px;flex-wrap:wrap;margin-bottom:5px">'
-      +(row.region&&row.region!=='전체'?'<span class="rq-region" style="margin-bottom:0">'+escT(dRegion(row.region))+'</span>':'')
+      +(row.region&&row.region!=='전체'?'<span class="rq-region wsRegion" style="margin-bottom:0">'+escT(dRegion(row.region))+'</span>':'')   /* 2026-08-02: 워크시트에서는 지역 칩을 작게 */
       +phoneHTML(req,row)
       +(row.checkedBy?'<span class="small" style="color:var(--av);font-weight:700;flex:0 0 auto">'+escT(nickOf(row.checkedBy))+' · '+dotDateTime(row.checkedAt||row.savedAt)+'</span>' /* 2026-08-02: '룸첵' 단어 제거 — 확인자 이름·시각만 */
         :(row.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+(row.confirmedBy?escT(nickOf(row.confirmedBy))+' · ':'')+dotDateTime(row.savedAt)+'</span>':''))

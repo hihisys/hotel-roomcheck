@@ -437,7 +437,9 @@ function phoneHTML(req,row){
   os+='<option value="__add">'+T('ph_add_opt')+'</option>';
   let h='<select class="phSel" data-prid="'+row.id+'" style="width:auto;flex:0 1 auto;padding:7px 5px;font-size:12px;font-family:var(--mono)">'
     +(nums.length?'':'<option value="" selected>'+T('ph_none')+'</option>')+os+'</select>';
-  if(sel)h+='<a class="chip on phCall" style="text-decoration:none" href="tel:'+sel.replace(/[^+0-9]/g,'')+'" title="'+esc(T('ph_call'))+'" aria-label="'+esc(T('ph_call'))+'">📞</a>';   /* 2026-08-02: 아이콘만 표시해 폭 축소 */
+  /* 2026-08-02: 이모지는 기기별로 흐리게 보여 흰색 SVG 수화기 아이콘으로 교체 */
+  if(sel)h+='<a class="chip on phCall" href="tel:'+sel.replace(/[^+0-9]/g,'')+'" title="'+esc(T('ph_call'))+'" aria-label="'+esc(T('ph_call'))+'">'
+    +'<svg viewBox="0 0 24 24" width="16" height="16" fill="#fff" aria-hidden="true"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1l-2.3 2.2z"/></svg></a>';
   if(ui.phAdd.has(row.id))h+='<input class="phNew" data-prid="'+row.id+'" placeholder="'+esc(T('ph_new'))+'" style="width:150px;flex:0 0 auto;padding:7px 8px;font-size:12px;font-family:var(--mono)">';
   if(ui.role==='schk'||(ui.role==='sreq'&&req.direct))
     h+='<input class="phWho" data-prid="'+row.id+'" value="'+esc(row.confirmedBy||'')+'" placeholder="'+esc(T('ph_who'))+'" style="width:104px;flex:0 0 auto;padding:7px 8px;font-size:12px">';

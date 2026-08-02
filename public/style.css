@@ -168,7 +168,9 @@
 .rq-region{display:inline-block;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:800;color:var(--sub);margin-bottom:5px}
 /* 워크시트 전용 (2026-08-02): 지역 칩 축소 + 전화 걸기 아이콘 버튼 최소 폭 */
 .rq-region.wsRegion{padding:2px 6px;font-size:10px;letter-spacing:-.2px;max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.chip.phCall{padding:6px 9px;font-size:13px;line-height:1;flex:0 0 auto}
+.chip.phCall{padding:7px 10px;line-height:0;flex:0 0 auto;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;border-color:var(--brandDark)}
+.chip.phCall svg{display:block}
+.chip.phCall:active{filter:brightness(.92)}
 .rq-line{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0}
 .rq-type{font-weight:800;font-size:13.5px;color:var(--brand);white-space:nowrap}
 .rq-type .sm{font-weight:600;color:var(--muted);font-size:12px}

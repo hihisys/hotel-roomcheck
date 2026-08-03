@@ -1183,7 +1183,8 @@ async function saveFullImg(req){
 /* ================= ③ 직원 리스트 & 워크시트 ================= */
 function staffItemHTML(req){
   const open=ui.ssel===req.id;
-  return '<div class="lstitem '+reqStateCls(req)+(req.archivedAt&&!req.contractedAt?' ls-pastitem':'')+'" style="'+(open?'border-color:var(--brand);box-shadow:0 0 0 1.5px var(--brand)':'')+'"><div class="lsthead" data-ssel="'+req.id+'">'+listHead(req,true)+'</div>'
+  /* 2026-08-03 [016]: 요청자·확인자 페이지의 '완료' 항목은 흐리게(회색·반투명) 처리하지 않는다 — 다른 항목과 동일하게 표시 */
+  return '<div class="lstitem '+reqStateCls(req)+'" style="'+(open?'border-color:var(--brand);box-shadow:0 0 0 1.5px var(--brand)':'')+'"><div class="lsthead" data-ssel="'+req.id+'">'+listHead(req,true)+'</div>'
     +(open?'<div class="lstdetail">'+staffWorkInner(req)+'</div>':'')+'</div>';
 }
 function staffListHTML(){

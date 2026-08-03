@@ -14,6 +14,21 @@ function statBump(array &$arr, string $key, bool $confirmed, bool $quoteSent, bo
   if ($quoteSent) $arr[$key]['quoteSent']++;
   if ($contracted) $arr[$key]['contracted']++;
 }
+/* 통계 기간 헬퍼 (2026-08-02, [013]) — 요청 생성 시각(createdAt, ms) 기준 */
+function inStatRange(array $p, ?int $fromMs, ?int $toMs): bool {
+  $t = (int)($p['createdAt'] ?? 0);
+  if ($t <= 0) return true;                 // 시각이 없으면 제외하지 않는다
+  if ($fromMs !== null && $t < $fromMs) return false;
+  if ($toMs !== null && $t > $toMs) return false;
+  return true;
+}
+/* from/to(YYYY-MM-DD) → [시작 ms, 끝 ms] · 끝은 그날 23:59:59.999 */
+function statRangeMs(?string $from, ?string $to): array {
+  $ok = fn($d) => is_string($d) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d);
+  $f = $ok($from) ? strtotime($from . ' 00:00:00') * 1000 : null;
+  $t = $ok($to) ? (strtotime($to . ' 23:59:59') * 1000 + 999) : null;
+  return [$f, $t];
+}
 /* 휴무일 입력값 정규화 (2026-07-21): YYYY-MM-DD 문자열만 통과, 정렬·중복제거 */
 function normDates(array $in): array {
   $out = [];
@@ -507,10 +522,16 @@ function route(string $path, string $method): void {
     $pdo->prepare("UPDATE users SET telegram_chat_id=NULL, tg_link_code=NULL WHERE id=?")->execute([$id]);
     jsonOut(['ok' => true]);
   }
-  /* 관리자 통계 (2026-07-18): 요청 payload 집계. 확정 = 확인자 답변 완료 건 */
+  /* 관리자 통계 (2026-07-18, 2026-08-02 [013] 개편)
+     - from/to 로 기간 집계 (없으면 전체 기간 — 기존 동작 유지)
+     - 에이전트: 에이전시별 합계 + 소속 담당자 목록(화면에서 펼침)
+     - 담당자: 전체 에이전시 담당자를 한 목록으로
+     - 요청자: 요청 등록자 기준
+     - 확인자: 요청은 전 직원이 함께 받으므로 '전체 중 몇 건을 처리했는지'(처리 건수)만 집계 */
   if ($path === 'admin/stats' && $method === 'GET') {
     $u = requireAdmin();
-    $byAgent = []; $byAgentMgr = []; $byRequester = []; $byChecker = [];
+    [$fromMs, $toMs] = statRangeMs($_GET['from'] ?? null, $_GET['to'] ?? null);
+    $byAgency = []; $byAgentMgr = []; $byRequester = []; $byChecker = [];
     $tot = ['requests' => 0, 'confirmed' => 0, 'quoteSent' => 0, 'contracted' => 0];
     /* 에이전트 탭은 실제 에이전시만 집계 (2026-07-31): 내부 직원·관리자 이름이 agent에 들어간 건 제외
        (관리자·직원이 등록한 건은 요청자 탭에서 집계됨) */
@@ -520,6 +541,7 @@ function route(string $path, string $method): void {
     }
     // 2026-07-30 버그 수정: 사용자 정보 없이 호출하면 지역 필터에 걸려 항상 0건이 되던 문제 → 관리자 정보 전달
     foreach (allRequests($pdo, $u) as $p) {
+      if (!inStatRange($p, $fromMs, $toMs)) continue;
       $answered = (($p['status'] ?? '') === 'answered');
       $confirmed = $answered && !empty($p['answerComplete']); // 확인자 답변 완료 = 확정
       $quoteSent = !empty($p['quoteSent']);
@@ -529,38 +551,76 @@ function route(string $path, string $method): void {
       if ($quoteSent) $tot['quoteSent']++;
       if ($contracted) $tot['contracted']++;
       $none = '(미지정)';
-      /* 2026-07-31: 에이전트 통계는 에이전시+담당자 쌍으로 집계 (예: Awesome · 최선우)
-         — 내부 직원/관리자 이름이거나 미지정이면 에이전트 탭에서 제외 */
       $agName = trim((string)($p['agent'] ?? ''));
+      $mgName = trim((string)($p['agentManager'] ?? ''));
+      /* 에이전시 → 담당자 2단 집계 (2026-08-02 [013]) */
       if ($agName !== '' && empty($staffNames[$agName])) {
-        statBump($byAgent, $agName . '||' . trim((string)($p['agentManager'] ?? '')), $confirmed, $quoteSent, $contracted);
+        if (!isset($byAgency[$agName])) $byAgency[$agName] = ['tot' => ['requests'=>0,'confirmed'=>0,'quoteSent'=>0,'contracted'=>0], 'm' => []];
+        statBump($byAgency[$agName]['tot'], '_', $confirmed, $quoteSent, $contracted); // 아래에서 형태 정리
+        statBump($byAgency[$agName]['m'], $mgName !== '' ? $mgName : $none, $confirmed, $quoteSent, $contracted);
       }
-      statBump($byAgentMgr, trim((string)($p['agentManager'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);
+      statBump($byAgentMgr, $mgName !== '' ? $mgName : $none, $confirmed, $quoteSent, $contracted);
       statBump($byRequester, trim((string)($p['registrant'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);
-      if ($answered) statBump($byChecker, trim((string)($p['manager'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);
+      /* 확인자: 답변을 등록한 사람의 처리 건수 */
+      if ($answered) {
+        $ck = trim((string)($p['manager'] ?? '')) ?: $none;
+        if (!isset($byChecker[$ck])) $byChecker[$ck] = 0;
+        $byChecker[$ck]++;
+      }
     }
     $fmt = function (array $arr): array {
       $out = [];
       foreach ($arr as $k => $v) $out[] = array_merge(['name' => $k], $v);
-      usort($out, fn($a, $b) => ($b['confirmed'] <=> $a['confirmed']) ?: ($b['requests'] <=> $a['requests']));
+      usort($out, fn($a, $b) => ($b['requests'] <=> $a['requests']) ?: ($b['confirmed'] <=> $a['confirmed']));
       return $out;
     };
-    /* 에이전트 통계: 'agent||manager' 키를 name/manager로 분리 (2026-07-31) */
-    $agentsOut = [];
-    foreach ($byAgent as $k => $v) {
-      $parts = explode('||', (string)$k, 2);
-      $agentsOut[] = array_merge(['name' => $parts[0], 'manager' => $parts[1] ?? ''], $v);
+    /* 에이전시 출력: 합계 + 담당자 배열 */
+    $agenciesOut = [];
+    foreach ($byAgency as $name => $v) {
+      $t = $v['tot']['_'];
+      $agenciesOut[] = ['name' => $name, 'requests' => $t['requests'], 'confirmed' => $t['confirmed'],
+        'quoteSent' => $t['quoteSent'], 'contracted' => $t['contracted'], 'managers' => $fmt($v['m'])];
     }
-    usort($agentsOut, fn($a, $b) => ($b['confirmed'] <=> $a['confirmed']) ?: ($b['requests'] <=> $a['requests']));
+    usort($agenciesOut, fn($a, $b) => ($b['requests'] <=> $a['requests']) ?: ($b['confirmed'] <=> $a['confirmed']));
+    /* 확인자 출력: 처리 건수 + 전체 대비 비중 */
+    $checkersOut = [];
+    foreach ($byChecker as $name => $n) $checkersOut[] = ['name' => $name, 'done' => $n];
+    usort($checkersOut, fn($a, $b) => $b['done'] <=> $a['done']);
     jsonOut([
       'total' => $tot,
-      'agents' => $agentsOut,
+      'from' => $_GET['from'] ?? null, 'to' => $_GET['to'] ?? null,
+      'agencies' => $agenciesOut,
       'agentMgrs' => $fmt($byAgentMgr),
       'requesters' => $fmt($byRequester),
-      'checkers' => $fmt($byChecker),
+      'checkers' => $checkersOut,
     ]);
   }
 
+  /* 직원 업무 통계 (2026-08-02, [014]): 요청자·확인자가 "회사 전체 업무 중 내가 얼마나 처리했는지"를 본다.
+     - 대상: 승인된 요청자·확인자·(최고관리자 제외) 관리자
+     - 반환: 구간 전체 요청 수 + 사람별 처리(답변 등록) 건수. 금액·에이전시 실적은 내려보내지 않는다. */
+  if ($path === 'mystats' && $method === 'GET') {
+    $u = requireApproved();
+    if (!in_array($u['role'], ['sreq', 'schk', 'admin'], true)) jsonOut(['error' => 'forbidden'], 403);
+    [$fromMs, $toMs] = statRangeMs($_GET['from'] ?? null, $_GET['to'] ?? null);
+    $total = 0; $byChecker = [];
+    foreach (allRequests($pdo, $u) as $p) {
+      if (!inStatRange($p, $fromMs, $toMs)) continue;
+      $total++;
+      if (($p['status'] ?? '') === 'answered') {
+        $ck = trim((string)($p['manager'] ?? ''));
+        if ($ck === '') continue;
+        if (!isset($byChecker[$ck])) $byChecker[$ck] = 0;
+        $byChecker[$ck]++;
+      }
+    }
+    $rows = [];
+    foreach ($byChecker as $name => $n) $rows[] = ['name' => $name, 'done' => $n];
+    usort($rows, fn($a, $b) => $b['done'] <=> $a['done']);
+    $me = trim((string)($u['nickname'] ?? '')) ?: trim((string)($u['name'] ?? ''));
+    jsonOut(['ok' => true, 'from' => $_GET['from'] ?? null, 'to' => $_GET['to'] ?? null,
+      'total' => $total, 'me' => $me, 'staff' => $rows]);
+  }
   /* 본인 휴무일 자가 등록 (2026-07-19, 2026-07-21 확장, 2026-07-22 추가관리자 허용): 요청자·확인자,
      그리고 승격된(원래 직원이었던) 추가 관리자가 스스로 등록/취소. 최종관리자(super)는 대상 아님. 본인 계정만 수정.
      dates=최종 확정 휴무일, work_overrides=기본 휴무일(토/일/공휴일)을 근무로 되돌린 날짜 */

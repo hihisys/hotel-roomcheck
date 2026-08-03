@@ -11,7 +11,7 @@ const LANG_NAMES={ko:'한국어',en:'English',th:'ไทย'};
 const OPT_EN={"올인":"All Inclusive","올인 2회":"All Inclusive ×2","풀보드":"Full Board","하프보드":"Half Board","조식 포함":"Breakfast Included","허니문 세팅":"Honeymoon Setup","고층 요청":"High Floor Request","커넥팅룸":"Connecting Rooms","레이트 체크아웃":"Late Check-out","얼리 체크인":"Early Check-in","패스트 트랙":"Fast Track","VIP 라운지":"VIP Lounge","공항 픽업":"Airport Pickup"};
 
 const LPACK={
-ko:{sub_agent:"에이전트 콘솔",sub_sreq:"요청자 콘솔",sub_schk:"확인자 콘솔",m_offday:"휴무일 등록",
+ko:{sub_agent:"에이전트 콘솔",sub_sreq:"요청자 콘솔",sub_schk:"확인자 콘솔",m_offday:"휴무일 · 휴일 근무자",m_mystats:"업무 통계",
   /* 에이전트 부계정 정보 (2026-07-30) */
   name:"이름",nickname:"닉네임",phone:"연락처 (전화번호)",bank:"은행 계좌",
   ph_name:"이름 (한글이름)",ph_nickname:"표시용 닉네임 (선택사항)",ph_bank:"은행명 + 계좌번호 (선택사항)",
@@ -55,7 +55,6 @@ ko:{sub_agent:"에이전트 콘솔",sub_sreq:"요청자 콘솔",sub_schk:"확인
   list_title:"룸체크 요청 리스트",rules_btn:"ⓘ 삭제 기준",
   tab_req:"요청",tab_done:"완료",tab_full:"불가",
   tab_act:"요청",tab_past:"완료",tab_con:"계약완료", /* 2026-08-02 [012]: 요청 리스트→요청, 지난 리스트→완료 */
-  hw_title:"휴일 근무자",hw_sub:"다가오는 휴일",hw_me:"(나)",hw_empty:"다가오는 휴일에 근무자가 없습니다.",hw_loading:"근무 현황을 불러오는 중…",hw_link:"내 휴무일 등록 ›",
   cap_agent_list:"최신순 · 누르면 상세",sub_staff:"최신순 · 누르면 아래에 워크시트",
   cap_req:"아직 처리하지 못한 룸체크 요청입니다. 일부 호텔만 답변한 건(부분 답변)도 모든 호텔이 완료될 때까지 여기에 남습니다.",
   cap_done:"답변을 보낸 리스트입니다. 답변 후 2주간 표시되며, 이후 자동으로 숨겨집니다. (데이터는 백업으로 보관하세요)",
@@ -145,7 +144,7 @@ ko:{sub_agent:"에이전트 콘솔",sub_sreq:"요청자 콘솔",sub_schk:"확인
   t_img_saved:"이미지를 저장했습니다",t_img_need_net:"이미지 저장은 인터넷 연결 시 가능합니다",t_img_fail:"이미지 생성에 실패했습니다 — 다시 시도해주세요",
   t_imported:"공유된 룸체크 {no}을(를) 불러왔습니다"
 },
-en:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"Checker Console",m_offday:"Days Off",
+en:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"Checker Console",m_offday:"Days off · on-duty",m_mystats:"Work stats",
   /* Agency sub-account info (2026-07-30) */
   name:"Name",nickname:"Nickname",phone:"Phone",bank:"Bank Account",
   ph_name:"Name (Korean name)",ph_nickname:"Display nickname (optional)",ph_bank:"Bank name + Account number (optional)",
@@ -184,7 +183,6 @@ en:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"Checker Con
   list_title:"Room Check Requests",rules_btn:"ⓘ Data Rules",
   tab_req:"Open",tab_done:"Done",tab_full:"Full",
   tab_act:"Requests",tab_past:"Done",tab_con:"Contracted",
-  hw_title:"Holiday staff on duty",hw_sub:"Upcoming holidays",hw_me:"(me)",hw_empty:"Nobody is on duty on the upcoming holidays.",hw_loading:"Loading duty roster…",hw_link:"My days off ›",
   cap_agent_list:"Newest first · tap for details",sub_staff:"Newest first · tap to open worksheet",
   cap_req:"Requests not yet completed. Partially answered requests stay here until every hotel is done.",
   cap_done:"Answered requests. Shown for 2 weeks after answering, then hidden automatically. (Keep a backup!)",
@@ -265,7 +263,7 @@ en:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"Checker Con
   t_img_saved:"Image saved",t_img_need_net:"Saving images requires an internet connection",t_img_fail:"Failed to generate image — please try again",
   t_imported:"Shared room check {no} imported"
 },
-th:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"คอนโซลผู้ตรวจสอบ",m_offday:"วันหยุด",
+th:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"คอนโซลผู้ตรวจสอบ",m_offday:"วันหยุด · ผู้ทำงาน",m_mystats:"สถิติการทำงาน",
   /* ข้อมูลบัญชีย่อยเอเจนซี (2026-07-30) */
   name:"ชื่อ",nickname:"ชื่อเล่น",phone:"เบอร์โทร",bank:"บัญชีธนาคาร",
   ph_name:"ชื่อ (ชื่อเกาหลี)",ph_nickname:"ชื่อเล่น (ไม่บังคับ)",ph_bank:"ชื่อธนาคาร + หมายเลขบัญชี (ไม่บังคับ)",
@@ -304,7 +302,6 @@ th:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"คอน�
   list_title:"รายการคำขอเช็คห้อง",rules_btn:"ⓘ เงื่อนไขข้อมูล",
   tab_req:"รอดำเนินการ",tab_done:"เสร็จแล้ว",tab_full:"เต็ม",
   tab_act:"คำขอ",tab_past:"เสร็จแล้ว",tab_con:"ทำสัญญาแล้ว",
-  hw_title:"ผู้ทำงานวันหยุด",hw_sub:"วันหยุดที่จะถึง",hw_me:"(ฉัน)",hw_empty:"ไม่มีผู้ทำงานในวันหยุดที่จะถึง",hw_loading:"กำลังโหลดตารางเวร…",hw_link:"ลงทะเบียนวันหยุดของฉัน ›",
   cap_agent_list:"ล่าสุดก่อน · แตะเพื่อดูรายละเอียด",sub_staff:"ล่าสุดก่อน · แตะเพื่อเปิดเวิร์กชีท",
   cap_req:"คำขอที่ยังไม่เสร็จ คำขอที่ตอบบางส่วนจะอยู่ที่นี่จนกว่าจะตอบครบทุกโรงแรม",
   cap_done:"คำขอที่ตอบแล้ว แสดง 2 สัปดาห์หลังตอบ จากนั้นซ่อนอัตโนมัติ (โปรดสำรองข้อมูล)",

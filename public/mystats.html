@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>너바나 · 업무 통계</title>
+<link rel="stylesheet" href="style.css?v=20260802j" />
+<style>
+/* 직원 업무 통계 (2026-08-02, [014])
+   요청자·확인자가 "회사 전체 업무 중 내가 얼마나 처리했는지"를 확인하는 별도 페이지.
+   메인 화면은 본인 업무 처리에만 집중하도록, 통계는 메뉴로 분리했다.
+   역할별 배색은 myoffdays.html과 같은 방식으로 --brand를 동적으로 바꾼다. */
+.wrap{max-width:470px}
+.backbtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer}
+.sechead2{font-size:14.5px;font-weight:800;margin:2px 0 4px}
+.note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6}
+.pfilter{display:flex;gap:5px;flex-wrap:wrap;margin-top:12px}
+.pfilter button{border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:7px 12px;font-size:12px;font-weight:800;color:var(--muted);cursor:pointer}
+.pfilter button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.prange{display:none;gap:6px;align-items:center;margin-top:9px}
+.prange.on{display:flex}
+.prange input{flex:1 1 auto;padding:8px 9px;border:1.5px solid var(--line);border-radius:9px;font-size:12.5px;font-family:var(--mono)}
+.prange button{border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:9px;padding:8px 12px;font-size:12px;font-weight:800;white-space:nowrap;cursor:pointer}
+.pnote{font-size:11.5px;color:var(--muted);font-weight:700;margin-top:10px;font-family:var(--mono)}
+.swgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.swb{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:13px 4px;text-align:center}
+.swb .n{font-size:24px;font-weight:800;color:var(--brand);font-family:var(--mono);line-height:1.1}
+.swb .l{font-size:11px;color:var(--muted);font-weight:700;margin-top:4px}
+.swb.me{background:var(--brand);border-color:var(--brand)}
+.swb.me .n{color:#fff}.swb.me .l{color:#fff;opacity:.9}
+.sharebox{margin-top:16px;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface)}
+.sharehd{display:flex;align-items:baseline;gap:6px;font-size:12.5px;font-weight:800;margin-bottom:9px}
+.sharehd .tot{margin-left:auto;font-family:var(--mono);color:var(--brand)}
+.sharebar{display:flex;height:20px;border-radius:10px;overflow:hidden;background:var(--paper)}
+.sharebar span{display:block;height:100%}
+.sharelg{display:flex;gap:10px;flex-wrap:wrap;margin-top:9px;font-size:11px;font-weight:800;color:var(--muted)}
+.sharelg i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.swrow{display:grid;grid-template-columns:1fr 56px 60px;gap:4px;align-items:center;padding:10px 6px;border-bottom:1px solid var(--line);font-size:13.5px}
+.swrow.hd{font-weight:800;color:var(--muted);font-size:11px;border-bottom:1.5px solid var(--line);margin-top:14px}
+.swrow.hd span:not(:first-child){text-align:center}
+.swrow .nm{font-weight:700}
+.swrow.mine{background:var(--paper);border-radius:9px}
+.swrow .v{text-align:center;font-weight:800;font-family:var(--mono);color:var(--brand)}
+.swrow .p{text-align:center;font-weight:800;font-family:var(--mono);font-size:12px;color:#0F7A5A}
+.swhint{font-size:11.5px;color:var(--muted);font-weight:700;line-height:1.6;margin-top:12px}
+.swempty{padding:18px 4px;text-align:center;font-size:12.5px;color:var(--muted);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="hdrtop">
+      <div class="hdrbrand"><img src="logo.png?v=20260730" class="hdrlogo" alt="THE NIRVANA"></div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="pagechip" id="nameChip"></span><button class="backbtn" id="back" data-i="back">← 돌아가기</button></div>
+    </div>
+    <p class="lede" data-i="lede">회사 전체 업무 중 내가 처리한 정도를 확인합니다.</p>
+  </header>
+  <section class="card">
+    <div class="sechead2" data-i="title">업무 통계</div>
+    <div class="note" data-i="desc">요청은 지역별로 전 직원에게 함께 전달되고, 먼저 확인한 사람이 답변을 등록합니다. 전체 요청 중 각자 몇 건을 처리했는지 보여줍니다.</div>
+    <div class="pfilter" id="pf"></div>
+    <div class="prange" id="pr"><input type="date" id="d1"><span>~</span><input type="date" id="d2"><button id="go" data-i="look">조회</button></div>
+    <div class="pnote" id="pnote"></div>
+    <div class="swgrid" id="grid"></div>
+    <div id="share"></div>
+    <div id="tbl"></div>
+    <div class="swhint" data-i="hint">다른 직원이 몇 건을 처리했는지도 같은 기준으로 보입니다. 개인 휴무 사유 등 다른 정보는 표시되지 않습니다.</div>
+  </section>
+</div>
+<script>
+const LD={
+ko:{back:"← 돌아가기",lede:"회사 전체 업무 중 내가 처리한 정도를 확인합니다.",title:"업무 통계",
+ desc:"요청은 지역별로 전 직원에게 함께 전달되고, 먼저 확인한 사람이 답변을 등록합니다. 전체 요청 중 각자 몇 건을 처리했는지 보여줍니다.",
+ look:"조회",range:"집계 기간",periods:["당일","어제","이번 주","직접 지정"],
+ tot:"전체 요청",mine:"내 처리",share:"내 비중",sh:"전체 요청 처리 분담",none:"미처리",me:"(나)",
+ c1:"이름",c2:"처리",c3:"비중",empty:"이 기간에는 처리 기록이 없습니다.",
+ hint:"다른 직원이 몇 건을 처리했는지도 같은 기준으로 보입니다. 개인 휴무 사유 등 다른 정보는 표시되지 않습니다.",noserver:"서버에 연결할 수 없습니다."},
+en:{back:"← Back",lede:"See how much of the company's work you have handled.",title:"Work stats",
+ desc:"Requests reach every staff member in the region, and whoever checks first records the answer. This shows how many each person handled.",
+ look:"Search",range:"Period",periods:["Today","Yesterday","This week","Custom"],
+ tot:"All requests",mine:"Handled by me",share:"My share",sh:"Workload split",none:"Open",me:"(me)",
+ c1:"Name",c2:"Handled",c3:"Share",empty:"No records in this period.",
+ hint:"Other staff members are shown on the same basis. No personal details such as day-off reasons are shown.",noserver:"Cannot reach the server."},
+th:{back:"← กลับ",lede:"ดูว่าคุณทำงานไปเท่าไรจากงานทั้งหมดของบริษัท",title:"สถิติการทำงาน",
+ desc:"คำขอจะส่งถึงพนักงานทุกคนตามพื้นที่ ผู้ที่ตรวจสอบก่อนจะเป็นผู้บันทึกคำตอบ ตารางนี้แสดงว่าแต่ละคนทำไปกี่รายการ",
+ look:"ค้นหา",range:"ช่วงที่นับ",periods:["วันนี้","เมื่อวาน","สัปดาห์นี้","กำหนดเอง"],
+ tot:"คำขอทั้งหมด",mine:"ฉันทำ",share:"สัดส่วนของฉัน",sh:"สัดส่วนการทำงานทั้งหมด",none:"ยังไม่ทำ",me:"(ฉัน)",
+ c1:"ชื่อ",c2:"ทำแล้ว",c3:"สัดส่วน",empty:"ไม่มีข้อมูลในช่วงนี้",
+ hint:"ตารางนี้แสดงจำนวนงานของพนักงานคนอื่นด้วยเกณฑ์เดียวกัน ไม่มีการแสดงข้อมูลส่วนตัวอื่น",noserver:"เชื่อมต่อเซิร์ฟเวอร์ไม่ได้"}};
+let L='ko', ME=null, DATA=null, period=0;
+const $=id=>document.getElementById(id);
+const SHARE_COLOR=['#54406E','#2B5FA3','#0F7A5A','#B07908','#9C8AB8','#8A6D3B','#4E7A9B','#7A5C3B'];
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const isoOf=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+/* 기간: 당일 / 어제 / 이번 주(일요일~토요일) / 직접 지정 */
+function rangeOf(){
+  const t=new Date(); t.setHours(0,0,0,0);
+  if(period===0){const s=isoOf(t);return [s,s];}
+  if(period===1){const y=new Date(t);y.setDate(t.getDate()-1);const s=isoOf(y);return [s,s];}
+  if(period===2){const s=new Date(t);s.setDate(t.getDate()-t.getDay());     // 일요일
+                 const e=new Date(s);e.setDate(s.getDate()+6);              // 토요일
+                 return [isoOf(s),isoOf(e)];}
+  return [($('d1').value||isoOf(t)),($('d2').value||isoOf(t))];
+}
+function tr(){const d=LD[L];document.querySelectorAll('[data-i]').forEach(el=>{if(d[el.dataset.i])el.textContent=d[el.dataset.i];});}
+function renderFilter(){
+  const T=LD[L];
+  $('pf').innerHTML=T.periods.map((p,i)=>'<button data-p="'+i+'"'+(i===period?' class="on"':'')+'>'+p+'</button>').join('');
+  $('pf').querySelectorAll('button').forEach(b=>b.onclick=()=>{period=Number(b.dataset.p);
+    $('pr').className='prange'+(period===3?' on':'');
+    if(period===3){const [f,t]=rangeOf();if(!$('d1').value)$('d1').value=f;if(!$('d2').value)$('d2').value=t;renderFilter();}
+    else load();});
+  $('pr').className='prange'+(period===3?' on':'');
+  $('go').onclick=()=>load();
+  const [f,t]=rangeOf();
+  $('pnote').textContent=T.range+' · '+(f===t?f:(f+' ~ '+t));
+}
+function render(){
+  const T=LD[L];
+  renderFilter();
+  if(!DATA)return;
+  const tot=DATA.total||0, rows=DATA.staff||[], meName=DATA.me||'';
+  const mine=(rows.find(r=>r.name===meName)||{done:0}).done;
+  const pct=v=>tot?Math.round(v/tot*100):0;
+  $('grid').innerHTML='<div class="swb"><div class="n">'+tot+'</div><div class="l">'+T.tot+'</div></div>'
+    +'<div class="swb me"><div class="n">'+mine+'</div><div class="l">'+T.mine+'</div></div>'
+    +'<div class="swb"><div class="n">'+pct(mine)+'%</div><div class="l">'+T.share+'</div></div>';
+  if(!tot||!rows.length){$('share').innerHTML='';$('tbl').innerHTML='<div class="swempty">'+T.empty+'</div>';return;}
+  const done=rows.reduce((a,r)=>a+r.done,0), rest=Math.max(0,tot-done);
+  let segs=rows.map((r,i)=>'<span style="width:'+(r.done/tot*100)+'%;background:'+SHARE_COLOR[i%SHARE_COLOR.length]+'"></span>').join('');
+  if(rest)segs+='<span style="width:'+(rest/tot*100)+'%;background:#D9D9D9"></span>';
+  const lg=rows.map((r,i)=>'<span><i style="background:'+SHARE_COLOR[i%SHARE_COLOR.length]+'"></i>'+esc(r.name)+(r.name===meName?' '+T.me:'')+' '+pct(r.done)+'%</span>').join('')
+    +(rest?'<span><i style="background:#D9D9D9"></i>'+T.none+' '+pct(rest)+'%</span>':'');
+  $('share').innerHTML='<div class="sharebox"><div class="sharehd"><span>'+T.sh+'</span><span class="tot">'+done+' / '+tot+'</span></div>'
+    +'<div class="sharebar">'+segs+'</div><div class="sharelg">'+lg+'</div></div>';
+  $('tbl').innerHTML='<div class="swrow hd"><span>'+T.c1+'</span><span>'+T.c2+'</span><span>'+T.c3+'</span></div>'
+    +rows.map(r=>'<div class="swrow'+(r.name===meName?' mine':'')+'"><span class="nm">'+esc(r.name)+(r.name===meName?' '+T.me:'')+'</span>'
+      +'<span class="v">'+r.done+'</span><span class="p">'+pct(r.done)+'%</span></div>').join('');
+}
+async function load(){
+  const [f,t]=rangeOf();
+  try{
+    const r=await fetch('api/mystats?from='+f+'&to='+t,{cache:'no-store'});
+    const j=await r.json();
+    if(j&&j.ok){DATA=j;render();return;}
+  }catch(e){}
+  DATA={total:0,staff:[],me:(ME&&(ME.nickname||ME.name))||''};render();
+}
+$('back').onclick=()=>{const page={agent:'agent.html',sreq:'request.html',schk:'check.html',admin:'admin.html'}[ME?ME.role:'']||'login.html';location.href=page;};
+(async()=>{
+  try{
+    const r=await fetch('api/me',{cache:'no-store'});const j=await r.json();
+    if(!j.user){location.href='login.html';return;}
+    ME=j.user;
+    if(!(ME.role==='sreq'||ME.role==='schk'||ME.role==='admin')){location.href='profile.html';return;}
+    if(ME.lang&&LD[ME.lang])L=ME.lang;
+    document.body.classList.add('role-'+ME.role);
+    const ROLE_BRAND={sreq:'#2B5FA3',schk:'#B07908',admin:'#54406E'};
+    if(ROLE_BRAND[ME.role])document.documentElement.style.setProperty('--brand',ROLE_BRAND[ME.role]);
+    $('nameChip').textContent=ME.nickname||ME.name;
+    $('nameChip').className='pagechip pc-'+ME.role;
+    tr(); renderFilter(); load();
+  }catch(e){location.href='login.html';}
+})();
+</script>
+</body>
+</html>

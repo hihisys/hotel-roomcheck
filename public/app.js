@@ -230,7 +230,10 @@ function visUnread(){return visNotifs().filter(function(n){return n.new;}).lengt
 function notifPanelHTML(){
   const items=(visNotifs()).map(n=>{
     const key={new_request:'nt_new_request',answered:'nt_answered',partial:'nt_partial',quote_requested:'nt_quote_requested',quote_sent:'nt_quote_sent'}[n.type]||n.type;
-    const sub=[n.p&&n.p.hotels?escT(n.p.hotels):'',n.p&&n.p.agent?escT(n.p.agent):''].filter(Boolean).join(' · ');
+    /* 2026-08-03 [015]: 알림에 표시되는 에이전트·담당자도 닉네임 우선 */
+    const _na=n.p&&n.p.agent?escT(nickOf(n.p.agent)):'';
+    const _nm=n.p&&n.p.agentManager?escT(nickOf(n.p.agentManager)):'';
+    const sub=[n.p&&n.p.hotels?escT(n.p.hotels):'',[_na,_nm].filter(Boolean).join(' · ')].filter(Boolean).join(' · ');
     return '<div class="ntitem'+(n.new?' ntnew':'')+'" data-ntgo="'+esc(n.no||'')+'" style="cursor:pointer"><div class="ntline1">'+T(key)+' <b>'+esc(n.no||'')+'</b></div>' /* 2026-08-01: 클릭 시 해당 요청으로 이동 */
       +(sub?'<div class="ntline2">'+sub+'</div>':'')
       +'<div class="ntline3">'+dotDateTime(n.at)+'</div></div>';
@@ -453,13 +456,13 @@ function phoneHTML(req,row){
 }
 function draftFromReq(r){const base=Date.now();
   return {mode:r.mode,startDate:r.startDate,sharedNights:r.sharedNights||1,sharedRooms:(r.mode==='parallel'&&r.rows[0]?r.rows[0].rooms:1),
-    agent:r.agent||'',agentManager:r.agentManager||'',registrant:r.registrant||'심은선',manager:'',notes:r.notes||'',quoteAsk:false,
+    agent:r.agent||'',agentManager:r.agentManager||'',registrant:r.registrant||meStaffName()||'',manager:'',notes:r.notes||'',quoteAsk:false,
     _quote:r.quote?JSON.parse(JSON.stringify(r.quote)):null,
     _wsn:r.rows.map((row,i)=>rDates(r,row,i).dates.map(iso=>{const c=(r.ws||{})[row.id+'|'+iso]||{};return {price:c.price||''};})),
     rows:r.rows.map((row,i)=>({id:base+i,region:row.region||'전체',hotel:row.hotel||'',roomType:row.roomType||'',rooms:row.rooms||1,nights:row.nights||1,note:row.note||'',
       options:(row.options||[]).map((o,j)=>({id:base+100+i*10+j,name:o.name,qty:o.qty||1,amt:o.amt||0,show:o.show!==false,memo:o.memo||''}))}))};}
 function newDraft(prev){return {mode:'multi',startDate:todayISO(),sharedNights:1,sharedRooms:1,
-  agent:prev?prev.agent:(DB.agentName||''),agentManager:prev?prev.agentManager:'',registrant:prev?prev.registrant:'심은선',manager:'',notes:'',quoteAsk:false,
+  agent:prev?prev.agent:(DB.agentName||''),agentManager:prev?prev.agentManager:'',registrant:prev?prev.registrant:(meStaffName()||''),manager:'',notes:'',quoteAsk:false,
   agentName:prev?prev.agentName:'',agentNickname:prev?prev.agentNickname:'',agentPhone:prev?prev.agentPhone:'',agentBank:prev?prev.agentBank:'',
   rows:[{id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[]}]};}
 let draft=newDraft();
@@ -564,7 +567,11 @@ function managerOptions(name){
     const byComp=u.company&&name&&String(u.company).trim()===String(name).trim();
     const byIdx=a&&a.idx&&(Number(u.parent_idx)===Number(a.idx)||Number(u.idx)===Number(a.idx));
     if(!(byComp||byIdx))return;
-    const n=String(u.name).trim();if(!n||seen[n])return;seen[n]=1;
+    /* 2026-08-03 [015]: 화면에 보이는 담당자 이름은 닉네임 우선(없으면 이름).
+       저장값도 같은 표기를 쓰며, 알림·리스트 필터는 이름/닉네임 양쪽을 모두 비교하므로 매칭에 영향 없음 */
+    const raw=String(u.name).trim();if(!raw)return;
+    const n=(String(u.nickname||'').trim())||nickOf(raw)||raw;
+    if(seen[n])return;seen[n]=1;
     out.push({name:n,sub:true,memo:''});
   });
   return out;
@@ -645,7 +652,7 @@ function formHTML(){
       ? '<div class="line l3">'
         +'<div><div class="label">'+T('agent_select')+'</div><input id="agent" autocomplete="off" value="'+esc(d.agent||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"></div>'
         +'<div><div class="label">'+T('agent_mgr')+'</div><input id="agentMgr" autocomplete="off" value="'+esc(d.agentManager||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"></div>'
-        +'<div><div class="label">'+T('mgr_nirvana')+'</div><input id="regName" list="dlSt" value="'+esc(d.registrant||'심은선')+'" placeholder="'+esc(T('ph_input'))+'"><datalist id="dlSt">'+((DB.hist&&DB.hist.st)||[]).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist></div></div>'
+        +'<div><div class="label">'+T('mgr_nirvana')+'</div><input id="regName" list="dlSt" value="'+esc(d.registrant||meStaffName()||'')+'" placeholder="'+esc(T('ph_input'))+'"><datalist id="dlSt">'+((DB.hist&&DB.hist.st)||[]).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist></div></div>'
       : '')
     +dateArea
     +'<div id="rows" style="margin-top:16px">'+blocks+'</div>'
@@ -757,7 +764,7 @@ function bindForm(){
     pushHist(DB.hist.ag,d.agent);pushHist(DB.hist.am,d.agentManager);pushHist(DB.hist.st,d.registrant);
     const req={id:Date.now(),no:DB[_sk],createdAt:Date.now(),status:'requested',direct:!!direct,
       quoteRequested:direct?false:((d.quoteKind||0)>0),quoteOnly:(d.quoteKind===1),quoteSent:false,answeredAt:null,
-      registrant:(ui.role==='agent'?'':((d.registrant||'심은선').trim()||'심은선')),agentManager:(d.agentManager||'').trim(), /* 2026-07-30: 에이전트 등록 건은 요청자 미지정 — 통계 오귀속 방지 */
+      registrant:(ui.role==='agent'?'':((d.registrant||meStaffName()||'').trim())),agentManager:(d.agentManager||'').trim(), /* 2026-07-30: 에이전트 등록 건은 요청자 미지정 — 통계 오귀속 방지 */
       mode:d.mode,startDate:d.startDate,sharedNights:d.sharedNights,agent:d.agent,manager:d.manager,notes:d.notes,
       rows:JSON.parse(JSON.stringify(d.rows)),ws:{},
       quote:d._quote?JSON.parse(JSON.stringify(d._quote)):{rate:40,pax:2,addl:[],override:null}};
@@ -923,7 +930,7 @@ function resultCardHTML(req,asReq){
     +'<div class="qc-sub" style="text-align:left;margin-top:3px">'+escT(reqNo(req))
       +(answered
         ?' · 담당 '+escT(nickOf(req.manager)||'-')+'<br>확인일 '+dotDateTime(req.answeredAt||req.createdAt) /* 2026-08-01: 최종 답변자 닉네임 + 확인일 줄바꿈 */
-        :' · '+escT(nickOf(req.agent)||'-')+(req.agentManager?' · '+escT(req.agentManager):(req.registrant?' · '+escT(nickOf(req.registrant)):''))+' · 요청일 '+dotDateTime(req.createdAt))+'</div>' /* 2026-07-31: 에이전시 · 담당자 · 요청일 형식 */
+        :' · '+escT(nickOf(req.agent)||'-')+(req.agentManager?' · '+escT(nickOf(req.agentManager)):(req.registrant?' · '+escT(nickOf(req.registrant)):''))+' · 요청일 '+dotDateTime(req.createdAt))+'</div>' /* 2026-07-31: 에이전시 · 담당자 · 요청일 형식 */
     +legs
     +(req.notes?'<div class="reqbox">📝 '+escT(req.notes)+'</div>':'')+'</div>';
 }
@@ -1369,8 +1376,8 @@ function quoteText(req){
   const c=quoteCalc(req);
   const optLine=o=>o.memo?o.memo:o.name;
   let t='The Nirvana · 여행 견적\n'
-    +'요청 : '+(req.agent||'-')+(req.agentManager?'-'+req.agentManager:'')+' · '+kdotDateTime(req.createdAt)+'\n'
-    +'발행 : '+(req.quoteBy||req.registrant||meStaffName())+' · '+kdotDateTime(req.quoteSentAt||Date.now())+'\n'; /* 2026-08-01: 요청/발행 각 한 줄 표시 */
+    +'요청 : '+(nickOf(req.agent)||'-')+(req.agentManager?'-'+nickOf(req.agentManager):'')+' · '+kdotDateTime(req.createdAt)+'\n'
+    +'발행 : '+nickOf(req.quoteBy||req.registrant||meStaffName())+' · '+kdotDateTime(req.quoteSentAt||Date.now())+'\n'; /* 2026-08-01: 요청/발행 각 한 줄 표시 */
   req.rows.forEach((row,i)=>{const dd=rDates(req,row,i);
     const sh=(row.options||[]).filter(o=>o.show&&o.name);
     t+='\n'+(i+1)+') '+kdstr(dd.checkIn)+' → '+kdstr(dd.checkOut)+' ('+dd.nights+'박)\n';
@@ -1407,7 +1414,7 @@ function quoteCardHTML(req){
   const qBy=req.quoteBy||req.registrant||meStaffName();
   const qAt=req.quoteSentAt||Date.now();
   return '<div class="quotecard" id="qcard'+req.id+'"><div class="qc-title" style="font-size:17px;letter-spacing:.6px">The Nirvana · 여행 견적</div>'
-    +'<div class="qc-sub" style="text-align:left;margin-top:8px;color:var(--sub);font-weight:700">요청 : '+escT((req.agent||'-')+(req.agentManager?'-'+req.agentManager:''))+' · <span style="font-weight:400">'+kdotDateTime(req.createdAt)+'</span></div>' /* 2026-08-01: 한 줄 표시 */
+    +'<div class="qc-sub" style="text-align:left;margin-top:8px;color:var(--sub);font-weight:700">요청 : '+escT((nickOf(req.agent)||'-')+(req.agentManager?'-'+nickOf(req.agentManager):''))+' · <span style="font-weight:400">'+kdotDateTime(req.createdAt)+'</span></div>' /* 2026-08-01: 한 줄 표시 */
     +'<div class="qc-sub" style="text-align:left;margin-top:2px;color:var(--sub);font-weight:700">발행 : '+escT(qBy)+' · <span style="font-weight:400">'+kdotDateTime(qAt)+'</span></div>'
     +legs+(incLines?'<div class="qc-leg qc-addl">'+incLines+'</div>':'')
     +(q.remark?'<div class="qc-remark">※ '+escT(q.remark).replace(/\n/g,'<br>')+'</div>':'')

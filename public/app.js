@@ -286,8 +286,9 @@ function myAgencyName(){
   if(!SRV.on||!SRV.me)return '';
   if(SRV.me.agent_company)return String(SRV.me.agent_company);
   const ag=SRV.me.agency;if(!ag||!ag.idx)return '';
-  /* 2026-08-01: 부계정은 본인 idx가 아니라 소속(parent) 에이전시 idx로 회사명을 찾아야 함 */
-  const a=(typeof AGENTS!=='undefined'?AGENTS:[]).find(x=>x&&x.api&&(x.idx===ag.idx||(ag.parent_idx&&x.idx===ag.parent_idx)));
+  /* 2026-08-01: 부계정은 본인 idx가 아니라 소속(parent) 에이전시 idx로 회사명을 찾아야 함
+     2026-08-06 수정: parent_idx가 있으면 parent로만 매칭 — 본인 idx가 다른 에이전시 idx와 겹치면 회사명이 잘못 표시됨 */
+  const a=(typeof AGENTS!=='undefined'?AGENTS:[]).find(x=>x&&x.api&&(ag.parent_idx?x.idx===ag.parent_idx:x.idx===ag.idx));
   return a?a.name:'';
 }
 /* 에이전트 페이지 기본값 (2026-07-30): 에이전트=소속 에이전시(회사), 담당자=본인 — 통계가 '에이전트 담당자'로 잡히도록 */

@@ -273,8 +273,9 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function row(u,withDecide){
   const dt=new Date(u.created_at);
   const when=dt.getFullYear()+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+String(dt.getDate()).padStart(2,'0');
-  /* 2026-07-31: 부계정은 역할명 대신 소속 에이전시(회사명) 표시 */
-  const _comp=u.ext?(u.agent_company||(window.AGC_MAP&&window.AGC_MAP[u.agency_idx])||''):'';
+  /* 2026-07-31: 부계정은 역할명 대신 소속 에이전시(회사명) 표시
+     2026-08-06 수정: 소속(parent) 에이전시 idx 우선 조회 — 부계정 자기 idx로 찾으면 다른 회사명이 표시됨 */
+  const _comp=u.ext?(u.agent_company||(window.AGC_MAP&&(window.AGC_MAP[u.agency_parent_idx]||window.AGC_MAP[u.agency_idx]))||''):'';
   const roleTag=(_comp?esc(_comp):(ROLE_KO[u.role]||u.role))+(u.ext?' <span class="rolechip">에이전시 부계정</span>':'')+(u.super?' <span class="rolechip">최고관리자</span>':(u.role==='admin'?' <span class="rolechip">관리자</span>':''));
   let btns='';
   if(withDecide){

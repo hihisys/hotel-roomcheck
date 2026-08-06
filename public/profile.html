@@ -194,8 +194,9 @@ document.querySelectorAll('.langbtn').forEach(btn=>{
     if(ME.role==='agent'){
       $('fAgentCompany').style.display='';
       $('agentCompany').value=ME.agent_company||'';
-      if(!ME.agent_company&&ME.agency&&ME.agency.idx){
-        fetch('api/agencies/'+ME.agency.idx,{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
+      if(!ME.agent_company&&ME.agency&&(ME.agency.parent_idx||ME.agency.idx)){
+        /* 2026-08-06 수정: 소속(parent) 에이전시 idx 우선 — 부계정 자기 idx로 조회하면 다른 회사명이 채워짐 */
+        fetch('api/agencies/'+(ME.agency.parent_idx||ME.agency.idx),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
           const nm=j&&j.agency&&j.agency.agency&&j.agency.agency.name;
           if(nm&&!$('agentCompany').value)$('agentCompany').value=nm;
         }).catch(()=>{});

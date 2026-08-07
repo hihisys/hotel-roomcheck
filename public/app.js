@@ -132,12 +132,18 @@ function sweep(){const now=Date.now();let ch=false;
     /* 2026-08-07 (사용자 확정): 답변 완료 여부를 항상 다시 계산한다.
        호텔이 여러 개인데 일부만 답변했거나, 요금이 비어 있으면 완료가 아니다(rowDone 규칙). */
     if(r.status==='answered'){const _c=allDone(r);if(r.answerComplete!==_c){r.answerComplete=_c;ch=true;}}
-    /* 2026-08-02 [012]: 모든 호텔 답변이 완료되면 곧바로 '완료' 탭으로 옮긴다.
+    /* 요청자·에이전트 화면에서 '완료'로 넘길 조건 (2026-08-07 사용자 확정)
+       ① 모든 호텔의 룸체크가 완료(가능여부 + 요금)되고
+       ② 견적 요청이 있는 건이면 견적 발송까지 끝나야 완료로 넘어간다.
+       → 견적 요청이 아직 해결되지 않았으면 답변이 다 왔어도 요청 리스트에 그대로 남는다.
+       (확인자 화면은 룸체크 완료 여부만 보므로 영향 없음 — 가능여부·요금을 넣으면 바로 완료 탭으로 이동) */
+    const _listDone=(r.status==='answered'&&!!r.answerComplete&&!(r.quoteRequested&&!r.quoteSent));
+    /* 2026-08-02 [012]: 조건을 만족하면 곧바로 '완료' 탭으로 옮긴다.
        archivedAt(=이동 시각)을 기준으로 하는 기존 삭제 규칙(이동 후 30일)은 그대로 유지된다. */
-    if(!r.archivedAt&&!r.contractedAt&&r.status==='answered'&&r.answerComplete){r.archivedAt=now;ch=true;}
-    /* 2026-08-07: 완료로 넘어갔던 건이 다시 미완료로 판정되면(요금 누락·부분 답변) 요청 목록으로 되돌린다.
-       사용자가 직접 '지난 리스트로' 옮긴 건(manualArc)은 그대로 둔다. */
-    if(r.archivedAt&&!r.contractedAt&&r.status==='answered'&&!r.answerComplete&&!r.manualArc){r.archivedAt=null;ch=true;}
+    if(!r.archivedAt&&!r.contractedAt&&_listDone){r.archivedAt=now;r.arcDone=true;ch=true;}
+    /* 2026-08-07: 완료로 넘어갔던 건이 조건에서 벗어나면(요금 누락·부분 답변·견적 미발송) 요청 리스트로 되돌린다.
+       직접 '완료로 이동'한 건(manualArc)과 7일 경과로 자동 이동된 오래된 건은 그대로 둔다. */
+    if(r.archivedAt&&!r.contractedAt&&!_listDone&&!r.manualArc&&(r.arcDone||now-(r.createdAt||0)<=WEEK_MS)){r.archivedAt=null;r.arcDone=false;ch=true;}
     if(!r.archivedAt&&!r.contractedAt){
       const base=r.quoteSent?(r.quoteSentAt||r.answeredAt||r.createdAt):r.createdAt;
       if(now-base>WEEK_MS){r.archivedAt=now;ch=true;}}

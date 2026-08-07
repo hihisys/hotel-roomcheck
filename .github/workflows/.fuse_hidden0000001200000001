@@ -1,0 +1,56 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+
+      - name: Build Docker image
+        run: |
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/hotel-roomcheck:latest .
+
+      - name: Push image to GCR
+        run: |
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/hotel-roomcheck:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy hotel-roomcheck \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/hotel-roomcheck:latest \
+            --platform managed \
+            --region us-central1 \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --port 8080 \
+            --memory 512Mi \
+            --allow-unauthenticated
+
+      - name: Display service URL
+        run: |
+          gcloud run services describe hotel-roomcheck \
+            --region us-central1 \
+            --project ${{ secrets.GCP_PROJECT_ID }} \
+            --format='value(status.url)'

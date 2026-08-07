@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>너바나 · 휴무일 등록</title>
+<link rel="stylesheet" href="style.css??v=20260722000000" />
+<style>
+.wrap{max-width:470px}
+.note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6}
+.backbtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer}
+.sechead2{font-size:14.5px;font-weight:800;margin:2px 0 4px}
+.msg{margin-top:12px;font-size:13px;font-weight:700;padding:10px 12px;border-radius:9px;display:none;line-height:1.5}
+.msg.err{background:var(--soBg);color:var(--so);display:block}
+.msg.ok{background:var(--avBg);color:var(--av);display:block}
+/* 휴무일 등록 — 월별 그리드 (2026-07-21 재설계, 2026-07-22 별도 페이지 분리 + 역할별 배색)
+   기존 사이트의 날짜 범위 선택 달력에서 쓰는 .calhead/.calnav/.calgrid/.cwd/.cd 클래스를 그대로 재사용해
+   토(파랑)/일·공휴일(빨강) 색상과 레이아웃을 별도 CSS 없이 일관되게 맞춘다.
+   역할별 배색은 로그인한 사용자의 역할에 따라 JS에서 --brand 커스텀 프로퍼티를 동적으로 바꿔서 적용한다
+   (2026-07-22, 사이트 전체 배색 일관성 정리): 이 페이지의 모든 요소가 var(--brand)/var(--brandDark)를
+   참조하므로, 최고관리자/요청자/확인자/에이전트 각자의 고유색(사이트 전역 배지 색과 동일)이 캘린더·버튼·
+   범례 등 모든 요소에 자동으로 일관되게 반영된다. */
+.offwk-head{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:14px 0 3px}
+.offgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:2px}
+.offgrid .cd{aspect-ratio:1;border:1px solid var(--line);border-radius:9px;font-family:var(--mono)}
+.offgrid .cd.off{background:var(--brand);border-color:var(--brand);color:#fff!important;font-weight:800}
+.offgrid .cd.workovr{border:2px solid var(--brand);background:var(--surface)}
+.offgrid .cd.today{box-shadow:0 0 0 2px var(--brand) inset}
+.offgrid .cd.dis{border-color:transparent}
+.offlegend{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:var(--muted);font-weight:700}
+.offlegend i{display:inline-block;width:13px;height:13px;border-radius:4px;vertical-align:-2px;margin-right:5px}
+.offlegend .lg-work{background:var(--surface);border:1px solid var(--line)}
+.offlegend .lg-off{background:var(--brand)}
+.offlegend .lg-ovr{background:var(--surface);border:2px solid var(--brand)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="hdrtop">
+      <div class="hdrbrand">
+        <img src="logo.png?v=20260730" class="hdrlogo" alt="THE NIRVANA">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="pagechip pc-agent" id="nameChip"></span><button class="backbtn" id="back" data-i="back">← 돌아가기</button></div>
+    </div>
+    <p class="lede" data-i="lede">휴무일을 등록하고 수정합니다.</p>
+  </header>
+  <section class="card" id="offCard">
+    <div class="sechead2" data-i="off_title">휴무일 등록</div>
+    <div class="note" data-i="off_desc">토·일·공휴일은 기본으로 휴무 처리됩니다. 탭하면 근무로 변경할 수 있어요. 평일도 탭해서 휴무를 추가할 수 있습니다.</div>
+    <div class="calhead" style="margin-top:14px">
+      <button type="button" class="calnav" id="offPrevM">‹</button>
+      <span id="offMLbl"></span>
+      <button type="button" class="calnav" id="offNextM">›</button>
+    </div>
+    <div class="offwk-head" id="offWkHead"></div>
+    <div id="offGrid" class="offgrid"></div>
+    <div class="offlegend"><span><i class="lg-work"></i><span data-i="off_lg_work">근무 (알림 받음)</span></span><span><i class="lg-off"></i><span data-i="off_lg_off">휴무 (알림 없음)</span></span><span><i class="lg-ovr"></i><span data-i="off_lg_ovr">기본 휴무 → 근무로 변경</span></span></div>
+    <button class="cta" id="offSave" style="margin-top:16px" data-i="off_save">휴무일 저장</button>
+    <div class="msg" id="msg3"></div>
+  </section>
+</div>
+<script>
+const LD={
+ko:{back:"← 돌아가기",lede:"휴무일을 등록하고 수정합니다.",
+ off_title:"휴무일 등록",off_desc:"토·일·공휴일은 기본으로 휴무 처리됩니다. 탭하면 근무로 변경할 수 있어요. 평일도 탭해서 휴무를 추가할 수 있습니다.",off_save:"휴무일 저장",off_saved:"휴무일이 저장되었습니다.",off_lg_work:"근무 (알림 받음)",off_lg_off:"휴무 (알림 없음)",off_lg_ovr:"기본 휴무 → 근무로 변경",noserver:"서버에 연결할 수 없습니다."},
+en:{back:"← Back",lede:"Register and update your days off.",
+ off_title:"Days Off",off_desc:"Sat/Sun/holidays are marked as off by default — tap to switch to working. You can also tap weekdays to add extra days off.",off_save:"Save days off",off_saved:"Your days off have been saved.",off_lg_work:"Working (notified)",off_lg_off:"Off (no alert)",off_lg_ovr:"Default day off → switched to working",noserver:"Cannot reach the server."},
+th:{back:"← กลับ",lede:"ลงทะเบียนและแก้ไขวันหยุดของคุณ",
+ off_title:"วันหยุด",off_desc:"วันเสาร์/อาทิตย์/วันหยุดนักขัตฤกษ์จะถูกทำเครื่องหมายว่าหยุดโดยอัตโนมัติ แตะเพื่อเปลี่ยนเป็นวันทำงาน และสามารถแตะวันธรรมดาเพื่อเพิ่มวันหยุดได้เช่นกัน",off_save:"บันทึกวันหยุด",off_saved:"บันทึกวันหยุดแล้ว",off_lg_work:"ทำงาน (รับแจ้งเตือน)",off_lg_off:"หยุด (ไม่แจ้งเตือน)",off_lg_ovr:"วันหยุดเริ่มต้น → เปลี่ยนเป็นทำงาน",noserver:"เชื่อมต่อเซิร์ฟเวอร์ไม่ได้"}};
+let L='ko', ME=null;
+const $=id=>document.getElementById(id);
+const FIXED_HOL=['01-01','03-01','05-05','06-06','08-15','10-03','10-09','12-25'];
+const LUNAR_HOL={2025:['01-28','01-29','01-30','03-03','05-06','10-05','10-06','10-07','10-08'],2026:['02-16','02-17','02-18','03-02','05-24','05-25','08-17','09-24','09-25','09-26','10-05'],2027:['02-06','02-07','02-08','02-09','05-13','08-16','09-14','09-15','09-16','10-04','10-11','12-27'],2028:['01-25','01-26','01-27','05-02','10-02','10-03','10-04','10-05']};
+const isHol=iso=>{const y=+iso.slice(0,4),md=iso.slice(5);return FIXED_HOL.includes(md)||((LUNAR_HOL[y]||[]).includes(md));};
+const isoOf=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+
+/* ===== 휴무일 등록: 월별 그리드 + 기본값 로직 (2026-07-21 재설계) =====
+   기본 규칙: 평일=기본 근무, 토/일/공휴일=기본 휴무.
+   - workOvr: 기본 휴무일(토/일/공휴일)인데 "근무로 변경"한 날짜
+   - extraOff: 평일인데 추가로 휴무 등록한 날짜
+   저장 시 이 두 집합으로 앞으로 OFF_HORIZON_DAYS일간의 최종 휴무일 목록을 계산해 그대로 전송한다
+   (서버 api/my-offdays 는 최종 확정된 flat 날짜 목록 dates[] 를 받고, work_overrides[] 는
+   다음 접속 시 이 화면이 기본값 로직을 올바르게 재구성하기 위한 추가 필드다). */
+const OFF_HORIZON_DAYS=400;
+let offY, offM, workOvr=new Set(), extraOff=new Set();
+function isDefaultOffDow(dow){ return dow===0 || dow===6; }
+/* 요일/월 표기 다국어 (2026-07-22): 한국어 선택 시에만 한글 표기, 그 외(en/th)는 영어 약자
+   (태국어는 요일·월 표기에 한해 영어 약자로 대체한다는 기존 정책과 동일하게 통일) */
+const DOW_KO=['일','월','화','수','목','금','토'], DOW_EN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MON_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function renderOffWkHead(){
+  const el=$('offWkHead'); if(!el) return;
+  const labels = L==='ko' ? DOW_KO : DOW_EN;
+  el.innerHTML = labels.map((t,i)=>'<span class="cwd'+(i===0?' hol':(i===6?' sat':''))+'">'+t+'</span>').join('');
+}
+function offLoadState(){
+  const wo=(ME.off_days&&ME.off_days.work_overrides)||[];
+  workOvr=new Set(wo);
+  const dts=(ME.off_days&&ME.off_days.dates)||[];
+  extraOff=new Set(dts.filter(iso=>{
+    const d=new Date(iso+'T00:00:00');
+    return !isDefaultOffDow(d.getDay()) && !isHol(iso);
+  }));
+}
+function renderOff(){
+  const grid=$('offGrid'); if(!grid) return;
+  const now=new Date(); now.setHours(0,0,0,0);
+  const todayIso=isoOf(now);
+  renderOffWkHead();
+  $('offMLbl').textContent = L==='ko' ? (offY+'년 '+offM+'월') : (MON_EN[offM-1]+' '+offY);
+  const first=new Date(offY,offM-1,1);
+  const startDow=first.getDay();
+  const dim=new Date(offY,offM,0).getDate();
+  const prevDim=new Date(offY,offM-1,0).getDate();
+  let cells=[];
+  for(let i=startDow-1;i>=0;i--) cells.push({d:prevDim-i, mute:true});
+  for(let d=1; d<=dim; d++) cells.push({d, mute:false});
+  let nx=1; while(cells.length%7!==0) cells.push({d:nx++, mute:true});
+  grid.innerHTML = cells.map(c=>{
+    if(c.mute) return '<button type="button" class="cd dis" disabled>'+c.d+'</button>';
+    const dObj = new Date(offY,offM-1,c.d);
+    const dow = dObj.getDay();
+    const iso = isoOf(dObj);
+    const hol = isHol(iso);
+    const cls=['cd'];
+    if(dow===6) cls.push('sat');
+    if(dow===0||hol) cls.push('hol');
+    const defOff = dow===0||dow===6||hol;
+    let off=false, ovr=false;
+    if(defOff){ ovr=workOvr.has(iso); off=!ovr; } else { off=extraOff.has(iso); }
+    if(off) cls.push('off');
+    if(ovr) cls.push('workovr');
+    if(iso<todayIso) cls.push('dis');
+    if(iso===todayIso) cls.push('today');
+    return '<button type="button" class="'+cls.join(' ')+'" data-iso="'+iso+'" data-defoff="'+(defOff?1:0)+'">'+c.d+'</button>';
+  }).join('');
+  grid.querySelectorAll('.cd:not(.dis)').forEach(b=>{
+    b.onclick=()=>{
+      const iso=b.dataset.iso, defOff=b.dataset.defoff==='1';
+      if(defOff){ workOvr.has(iso)?workOvr.delete(iso):workOvr.add(iso); }
+      else { extraOff.has(iso)?extraOff.delete(iso):extraOff.add(iso); }
+      renderOff();
+    };
+  });
+}
+$('offPrevM').onclick=()=>{ offM--; if(offM<1){offM=12;offY--;} renderOff(); };
+$('offNextM').onclick=()=>{ offM++; if(offM>12){offM=1;offY++;} renderOff(); };
+
+function tr(){const d=LD[L];document.querySelectorAll('[data-i]').forEach(el=>{if(d[el.dataset.i])el.textContent=d[el.dataset.i];});}
+function showMsg(id,kind,key){const m=$(id);m.className='msg '+kind;m.textContent=LD[L][key]||key;}
+$('back').onclick=()=>{const page={agent:'agent.html',sreq:'request.html',schk:'check.html',admin:'admin.html'}[ME?ME.role:'']||'login.html';location.href=page;};
+(async()=>{
+  try{
+    const r=await fetch('api/me',{cache:'no-store'});const j=await r.json();
+    if(!j.user){location.href='login.html';return;}
+    ME=j.user;
+    // 본인 휴무일 등록 대상이 아니면(요청자/확인자/승격된 관리자가 아니면) 회원정보로 돌려보낸다
+    if(!(ME.role==='sreq'||ME.role==='schk'||(ME.role==='admin'&&!ME.super))){ location.href='profile.html'; return; }
+    if(ME.lang&&LD[ME.lang])L=ME.lang;
+    document.body.classList.add('role-'+ME.role);
+    // 역할별 배색: 로그인한 사용자의 실제 역할에 맞춰 --brand를 동적으로 지정 (2026-07-22, 사이트 전체 배색 일관성 정리)
+    const ROLE_BRAND={sreq:'#2B5FA3',schk:'#B07908',admin:'#54406E'};
+    if(ROLE_BRAND[ME.role]) document.documentElement.style.setProperty('--brand',ROLE_BRAND[ME.role]);
+    $('nameChip').textContent=ME.nickname||(ME.agency&&ME.agency.nickname)||ME.name;
+    $('nameChip').className='pagechip pc-'+ME.role;
+    const t=new Date(); offY=t.getFullYear(); offM=t.getMonth()+1;
+    offLoadState();
+    renderOff();
+    tr();
+  }catch(e){location.href='login.html';}
+})();
+$('offSave').onclick=async()=>{
+  const now=new Date(); now.setHours(0,0,0,0);
+  const dates=[];
+  for(let i=0;i<OFF_HORIZON_DAYS;i++){
+    const d=new Date(now); d.setDate(now.getDate()+i);
+    const iso=isoOf(d);
+    const defOff=isDefaultOffDow(d.getDay())||isHol(iso);
+    const off = defOff ? !workOvr.has(iso) : extraOff.has(iso);
+    if(off) dates.push(iso);
+  }
+  const work_overrides=Array.from(workOvr).sort();
+  try{
+    const r=await fetch('api/my-offdays',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({dates:dates, weekdays:[], work_overrides:work_overrides})});
+    const j=await r.json();
+    if(j.ok){
+      ME.off_days=j.off_days||{dates:dates,weekdays:[],work_overrides:work_overrides};
+      offLoadState(); renderOff();
+      showMsg('msg3','ok','off_saved');return;
+    }
+    showMsg('msg3','err',j.error||'noserver');
+  }catch(e){showMsg('msg3','err','noserver');}
+};
+</script>
+</body>
+</html>

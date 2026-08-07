@@ -343,6 +343,7 @@ function route(string $path, string $method): void {
     $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
     foreach ($rows as &$r) {
       $r['tg'] = !empty($r['telegram_chat_id']);
+      $r['tg_chat'] = (string)($r['telegram_chat_id'] ?? ''); /* 2026-08-07: 관리자 화면 채널 ID 설정 프리필용 */
       $r['super'] = (strtolower((string)$r['email']) === $superEmail);
       $r['off_days'] = decodeOffDays($r['off_days'] ?? '');
       $r['ext'] = !empty($r['agency_idx']);
@@ -521,6 +522,19 @@ function route(string $path, string $method): void {
     if (!$st->fetch()) jsonOut(['error' => 'not_found'], 404);
     $pdo->prepare("UPDATE users SET telegram_chat_id=NULL, tg_link_code=NULL WHERE id=?")->execute([$id]);
     jsonOut(['ok' => true]);
+  }
+  /* 관리자가 직원의 텔레그램 채널/챗 ID를 직접 등록 (2026-08-07): 담당자별 알림 채널(Hotel_01~) 연결용.
+     빈 값으로 저장하면 해제. 기존 tg-link(개인 DM 연결 링크)와 병존한다. */
+  if ($path === 'admin/set-telegram' && $method === 'POST') {
+    requireAdmin();
+    $id = (int)($in['id'] ?? 0);
+    $chat = trim((string)($in['chat_id'] ?? ''));
+    if (!$id) jsonOut(['error' => 'invalid'], 422);
+    if ($chat !== '' && !preg_match('/^-?\d{5,20}$/', $chat)) jsonOut(['error' => 'invalid_chat_id'], 422);
+    $st = $pdo->prepare("SELECT id FROM users WHERE id=?"); $st->execute([$id]);
+    if (!$st->fetch()) jsonOut(['error' => 'not_found'], 404);
+    $pdo->prepare("UPDATE users SET telegram_chat_id=? WHERE id=?")->execute([$chat !== '' ? $chat : null, $id]);
+    jsonOut(['ok' => true, 'tg' => $chat !== '']);
   }
   /* 관리자 통계 (2026-07-18, 2026-08-02 [013] 개편)
      - from/to 로 기간 집계 (없으면 전체 기간 — 기존 동작 유지)

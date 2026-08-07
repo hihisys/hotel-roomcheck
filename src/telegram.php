@@ -21,21 +21,25 @@ function tgSend(string $chatId, string $text): bool {
   if ($res === false) { error_log('telegram send failed: ' . $chatId); return false; }
   return true;
 }
-/* 역할 대상 전원에게 전송 (승인 + chat_id 연결된 sreq/schk만) */
-function tgSendRole(PDO $pdo, string $role, callable $textForLang, ?int $excludeUser = null): void {
+/* 역할 대상 전원에게 전송 (승인 + chat_id 연결된 sreq/schk만)
+   2026-08-07 변경 (사용자 확정):
+   - 최고관리자도 텔레그램 수신 (Hotel_01 채널 연결) — 종전 제외 규칙 폐지
+   - 지역 존 필터: 관리지역(krabi/bangkok)이 있으면 해당 지역 요청만 수신, 지역 미지정(전체)은 모두 수신
+   - 단, 본인이 등록한 요청($alwaysUserId=created_by)은 관리지역과 무관하게 수신 */
+function tgSendRole(PDO $pdo, string $role, callable $textForLang, ?int $excludeUser = null, ?string $reqRegion = null, ?int $alwaysUserId = null): void {
   if (!in_array($role, ['sreq', 'schk'], true)) return; // 텔레그램은 요청자·확인자만
-  /* 2026-07-30: 일반 관리자(요청자→관리자 승격, 최고관리자 제외)는 요청자(sreq)로 취급해 함께 수신 */
+  /* 2026-07-30: 일반 관리자(요청자→관리자 승격)는 요청자(sreq)로 취급해 함께 수신 */
   if ($role === 'sreq') {
-    $st = $pdo->prepare("SELECT id,lang,telegram_chat_id,off_days,email,role FROM users WHERE role IN ('sreq','admin') AND status='approved' AND telegram_chat_id IS NOT NULL");
+    $st = $pdo->prepare("SELECT id,lang,telegram_chat_id,off_days,email,role,region FROM users WHERE role IN ('sreq','admin') AND status='approved' AND telegram_chat_id IS NOT NULL");
     $st->execute();
   } else {
-    $st = $pdo->prepare("SELECT id,lang,telegram_chat_id,off_days,email,role FROM users WHERE role=? AND status='approved' AND telegram_chat_id IS NOT NULL");
+    $st = $pdo->prepare("SELECT id,lang,telegram_chat_id,off_days,email,role,region FROM users WHERE role=? AND status='approved' AND telegram_chat_id IS NOT NULL");
     $st->execute([$role]);
   }
-  $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
   foreach ($st->fetchAll() as $u) {
-    if (($u['role'] ?? '') === 'admin' && strtolower((string)($u['email'] ?? '')) === $superEmail) continue; // 최고관리자 제외
     if ($excludeUser && (int)$u['id'] === $excludeUser) continue;
+    $ur = (string)($u['region'] ?? '');
+    if ($ur !== '' && $reqRegion && $ur !== $reqRegion && (int)$u['id'] !== (int)$alwaysUserId) continue; // 지역 존 필터 + 본인 등록 건 예외
     if (isOffDayToday($u['off_days'] ?? null)) continue; // skip on off-day
     tgSend($u['telegram_chat_id'], $textForLang($u['lang'] ?: 'ko'));
   }

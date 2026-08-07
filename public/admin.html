@@ -289,10 +289,12 @@ function row(u,withDecide){
     if(u.role==='sreq'||u.role==='schk'){btns+='<button class="bt-role" data-a="setrole" data-to="'+(u.role==='sreq'?'schk':'sreq')+'" data-id="'+u.id+'">'+(u.role==='sreq'?'확인자로 변경':'요청자로 변경')+'</button>';
       if(u.tg)btns+='<button class="bt-no" data-a="tgreset" data-id="'+u.id+'">📲 텔레그램 연결 해제</button>';
       else btns+='<button class="bt-ok" data-a="tglink" data-id="'+u.id+'">📲 텔레그램 연결</button>';
+      btns+='<button class="bt-ok" data-a="tgset" data-id="'+u.id+'" data-cur="'+esc(u.tg_chat||'')+'">📲 채널 ID 설정</button>'; /* 2026-08-07: 담당자 알림 채널 직접 등록 */
     }
   }else{ // 관리자 계정
     if(IS_SUPER&&!u.super)btns+='<button class="bt-demote" data-a="demote" data-id="'+u.id+'">관리자 해제</button>';
     else if(!u.super){btns+='<button class="bt-ok" data-a="tglink" data-id="'+u.id+'">📲 텔레그램 연결</button>';if(u.tg)btns+='<button class="bt-no" data-a="tgreset" data-id="'+u.id+'">📲 텔레그램 연결 해제</button>';}
+    if(!u.ext)btns+='<button class="bt-ok" data-a="tgset" data-id="'+u.id+'" data-cur="'+esc(u.tg_chat||'')+'">📲 채널 ID 설정</button>'; /* 2026-08-07: 최고관리자 포함 채널 등록 */
   }
   /* 에이전시 부계정/회원 상세 정보 표시 (2026-07-30): 닉네임·연락처·계좌·부계정 아이디 */
   const infoBits=[
@@ -668,6 +670,8 @@ async function load(){
     if(b.dataset.a==='setrole'){const _rr=await fetch('api/admin/setrole',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Number(b.dataset.id),to:b.dataset.to})});const _jj=await _rr.json();toast(_jj.ok?'역할을 변경했습니다':'변경하지 못했습니다');load();return;}
     if(b.dataset.a==='tglink'){try{const r=await fetch('api/admin/tg-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Number(b.dataset.id)})});const j=await r.json();if(j.ok&&j.url){navigator.clipboard.writeText(j.url);toast('텔레그램 연결 링크를 복사했습니다 (직원에게 전달하세요)');load();return;}toast('링크 생성에 실패했습니다');}catch(e){toast('서버에 연결할 수 없습니다');}return;}
     if(b.dataset.a==='tgreset'){if(!confirm('이 직원의 텔레그램 연결을 해제할까요?'))return;try{const r=await fetch('api/admin/tg-reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Number(b.dataset.id)})});const j=await r.json();toast(j.ok?'텔레그램 연결이 해제되었습니다':'해제하지 못했습니다');load();return;}catch(e){toast('서버에 연결할 수 없습니다');}return;}
+    /* 2026-08-07: 담당자별 알림 채널(Hotel_01~) ID 직접 등록 — 빈 값 저장 시 해제 */
+    if(b.dataset.a==='tgset'){const v=prompt('텔레그램 채널/챗 ID를 입력하세요 (예: -1001234567890)\n비우고 확인을 누르면 연결이 해제됩니다.',b.dataset.cur||'');if(v===null)return;try{const r=await fetch('api/admin/set-telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Number(b.dataset.id),chat_id:v.trim()})});const j=await r.json();toast(j.ok?(j.tg?'텔레그램 채널을 연결했습니다':'텔레그램 연결을 해제했습니다'):(j.error==='invalid_chat_id'?'ID 형식이 올바르지 않습니다':'저장하지 못했습니다'));load();return;}catch(e){toast('서버에 연결할 수 없습니다');}return;}
     const r2=await fetch('api/admin/decide',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({id:Number(b.dataset.id),action:b.dataset.a})});
     const j2=await r2.json();

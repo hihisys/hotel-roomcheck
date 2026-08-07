@@ -36,7 +36,7 @@ function currentUser(): ?array {
   startSession();
   $uid = $_SESSION['uid'] ?? null;
   if (!$uid) return null;
-  $st = db()->prepare("SELECT id,name,email,role,status,lang,telegram_chat_id,notif_read_at,phone,nickname,bank_account,agency_idx,agency_login_id,off_days,region FROM users WHERE id=?");
+  $st = db()->prepare("SELECT id,name,email,role,status,lang,telegram_chat_id,notif_read_at,phone,nickname,bank_account,agency_idx,agency_login_id,agent_company,off_days,region FROM users WHERE id=?");
   $st->execute([$uid]);
   $u = $st->fetch();
   return $u ?: null;
@@ -71,9 +71,18 @@ function publicUser(?array $u): ?array {
     'phone' => $u['phone'] ?? '', 'nickname' => $u['nickname'] ?? '', 'bank_account' => $u['bank_account'] ?? '', 'region' => $u['region'] ?? null,
     'super' => (strtolower((string)($u['email'] ?? '')) === strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'))),
     'ext' => !empty($u['agency_idx']),
+    'agent_company' => $u['agent_company'] ?? '',
     'off_days' => decodeOffDays($u['off_days'] ?? '')];
   // 에이전시 부계정으로 로그인한 세션이면 인증 정보 노출 (비밀번호 관련 값 없음)
   if (!empty($_SESSION['agency'])) $out['agency'] = $_SESSION['agency'];
+  // 세션 정보가 없어도 agency_idx가 있으면 agency 구조 구성 — 부계정 자동채우기용 (2026-07-30)
+  elseif (!empty($u['agency_idx'])) {
+    $out['agency'] = [
+      'idx' => (int)$u['agency_idx'],
+      'login_id' => $u['agency_login_id'] ?? '',
+      'nickname' => $u['nickname'] ?? '',
+    ];
+  }
   return $out;
 }
 /* 요청 payload에서 표시용 요약 추출 */
@@ -100,10 +109,30 @@ function isPendingForRequester(array $p): bool {
    - 최고관리자(super): 전체 요청
    - 일반 사용자: 본인 지역 + 본인이 요청한 것
    - 에이전트: 모든 요청 (지역 제한 없음) */
+/* 지역 존 매핑 (2026-08-01): users.region 저장값('krabi'|'bangkok') ↔ 요청 행의 한글 지역명 */
+function regionZone(?string $kr): ?string {
+  if (!$kr) return null;
+  $m = ['카오락' => 'krabi', '푸켓' => 'krabi', '크라비' => 'krabi', '방콕' => 'bangkok', '파타야' => 'bangkok',
+        'krabi' => 'krabi', 'bangkok' => 'bangkok'];
+  return $m[$kr] ?? null;
+}
+/* 요청이 속한 지역 존 목록 (상단 region + 각 행 지역) */
+function reqZones(array $p): array {
+  $z = [];
+  $zz = regionZone($p['region'] ?? null);
+  if ($zz) $z[] = $zz;
+  foreach (($p['rows'] ?? []) as $row) {
+    $zz = regionZone($row['region'] ?? null);
+    if ($zz) $z[] = $zz;
+  }
+  return array_values(array_unique($z));
+}
 function allRequests(PDO $pdo, ?array $currentUser = null): array {
   $out = [];
-  $isSuperAdmin = $currentUser && $currentUser['role'] === 'admin' &&
-                  (strtolower((string)($currentUser['email'] ?? '')) === strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local')));
+  // 2026-07-30: 사용자 없이 호출(시스템 컨텍스트 — 통계·다이제스트)이면 전체 조회
+  $isSuperAdmin = ($currentUser === null) ||
+                  ($currentUser && $currentUser['role'] === 'admin' &&
+                  (strtolower((string)($currentUser['email'] ?? '')) === strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'))));
   $userRegion = $currentUser['region'] ?? null;
   $userId = (int)($currentUser['id'] ?? 0);
   $userRole = $currentUser['role'] ?? '';
@@ -134,10 +163,13 @@ function allRequests(PDO $pdo, ?array $currentUser = null): array {
       continue;
     }
 
-    // 직원: 본인 지역의 요청만 포함
-    if (in_array($userRole, ['sreq', 'schk'], true)) {
-      $reqRegion = $p['region'] ?? null;
-      if ($userRegion && $reqRegion === $userRegion) {
+    // 직원: 요청의 지역(존)과 본인 관리지역 매칭 (2026-08-01 수정)
+    // - 요청 지역은 상단 region 또는 각 행(rows)의 지역에서 수집해 존(krabi/bangkok)으로 변환
+    //   (에이전트 등록 건은 상단 region이 없어 행 지역으로 판단)
+    // - 요청에 특정 지역이 없거나('전체'·기타 포함), 직원에게 지역 배정이 없으면 표시
+    if (in_array($userRole, ['sreq', 'schk', 'admin'], true)) {
+      $zones = reqZones($p);
+      if (!$userRegion || !$zones || in_array($userRegion, $zones, true)) {
         $out[] = $p;
       }
     }

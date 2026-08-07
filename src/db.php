@@ -13,7 +13,15 @@ function db(): PDO {
     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
   ]);
   if (str_starts_with($dsn, 'sqlite:')) $pdo->exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=3000;');
-  migrate($pdo);
+  /* 마이그레이션 1회 실행 가드 (2026-07-31): 스키마 버전이 같으면 매 요청 DDL 수십 개 실행을 건너뜀
+     ⚠️ migrate()에 컬럼/테이블을 추가하면 아래 버전 문자열을 반드시 올릴 것 */
+  $SCHEMA_VER = '2026-08-01b'; /* manager_overrides 테이블 추가 (에이전시 담당자 승인/중지/삭제) */
+  $need = true;
+  try {
+    $st = $pdo->query("SELECT v FROM meta WHERE k='schema_ver'");
+    if ($st && $st->fetchColumn() === json_encode($SCHEMA_VER)) $need = false;
+  } catch (Throwable $e) { /* meta 테이블 없음 → 최초 실행 */ }
+  if ($need) { migrate($pdo); metaSet($pdo, 'schema_ver', $SCHEMA_VER); }
   return $pdo;
 }
 function isMySQL(PDO $pdo): bool { return $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql'; }
@@ -57,6 +65,27 @@ function migrate(PDO $pdo): void {
     params $TXT NULL,
     created_at BIGINT NOT NULL
   )");
+  /* 에이전시 담당자 로컬 상태 (2026-08-01): 관리자가 담당자별 이용 중지/삭제 — 너바나 원본은 변경하지 않음 */
+  $pdo->exec("CREATE TABLE IF NOT EXISTS manager_overrides (
+    id $AI,
+    agency_idx BIGINT NOT NULL,
+    mname VARCHAR(120) NOT NULL,
+    status VARCHAR(10) NOT NULL,             -- 'blocked'(이용 중지) | 'deleted'(삭제)
+    created_at BIGINT NOT NULL
+  )");
+
+  /* 견적서 샘플 (2026-07-31): 요청자 전체 공유, 투어 종류·로케이션으로 검색 */
+  $pdo->exec("CREATE TABLE IF NOT EXISTS quote_samples (
+    id $AI,
+    name VARCHAR(200) NOT NULL,
+    tour_type VARCHAR(60) NULL,
+    location VARCHAR(60) NULL,
+    hotels $TXT NULL,                        -- 표시용 호텔 요약
+    payload $TXT NOT NULL,                   -- 요청+견적 스냅샷 JSON
+    created_by BIGINT NULL,
+    created_name VARCHAR(120) NULL,
+    created_at BIGINT NOT NULL
+  )");
   /* 에이전시 부계정 연동 컬럼 (2026-07-17): 외부 인증 사용자 식별 */
   ensureColumn($pdo, 'users', 'agency_idx', 'BIGINT NULL');
   ensureColumn($pdo, 'users', 'agency_parent_idx', 'BIGINT NULL');
@@ -69,6 +98,8 @@ function migrate(PDO $pdo): void {
   ensureColumn($pdo, 'users', 'orig_role', 'VARCHAR(10) NULL'); // 관리자 승격 전 원래 역할 (해제 시 복원)
   ensureColumn($pdo, 'users', 'off_days', 'LONGTEXT NULL'); // 휴무일 JSON {"dates":["YYYY-MM-DD"],"weekdays":[0..6]} (2026-07-18)
   ensureColumn($pdo, 'users', 'region', 'VARCHAR(20) NULL'); // 관할지역 (2026-07-22): 'krabi' | 'bangkok' | null
+  ensureColumn($pdo, 'notifications', 'region', 'VARCHAR(20) NULL'); // 알림 지역 존 (2026-08-01): 지역 배정 직원에게만 해당 지역 알림 표시
+  ensureColumn($pdo, 'users', 'agent_company', 'VARCHAR(120) NULL'); // 부계정 소속 에이전시(회사) — 이직 시 회원정보에서 변경 (2026-07-30)
   ensureColumn($pdo, 'requests', 'created_by', 'BIGINT NULL'); // 요청 생성자 ID (2026-07-22, 지역 필터링용)
   // 최초 관리자 계정 + env 변경 시 아이디·비밀번호 동기화 (2026-07-17)
   $adminEmail = env('ADMIN_EMAIL', 'admin@nirvana.local');

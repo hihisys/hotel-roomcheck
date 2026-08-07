@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>너바나 · 관리자</title>
-<link rel="stylesheet" href="style.css??v=20260719140000" />
+<link rel="stylesheet" href="style.css?v=20260803c" />
 <style>
 :root{--brand:#54406E;--brandDark:#3F3054;--paper:#EEEAF3;--line:#DCD4E6}
 .urow{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-top:10px;background:#fff}
@@ -52,6 +52,68 @@
 .amenu2 button{flex:1;border:none;background:none;padding:11px 6px;border-radius:9px;font-size:13.5px;font-weight:800;color:var(--muted);cursor:pointer;white-space:nowrap}
 .amenu2 button.on{background:var(--brand);color:#fff}
 
+/* ===== 통계 개편 (2026-08-02, [013]) ===== */
+.pfilter{display:flex;gap:5px;flex-wrap:wrap;margin:2px 0 0}
+.pfilter button{border:1px solid var(--line);background:#fff;border-radius:20px;padding:6px 11px;font-size:11.5px;font-weight:800;color:var(--muted);cursor:pointer}
+.pfilter button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.prange{display:none;gap:6px;align-items:center;margin:9px 0 0}
+.prange.on{display:flex}
+.prange input{flex:1 1 auto;width:100%;padding:7px 9px;border:1.5px solid var(--line);border-radius:9px;font-size:12px;font-family:var(--mono)}
+.prange button{border:1px solid var(--brand);background:var(--brand);color:#fff;border-radius:9px;padding:7px 11px;font-size:11.5px;font-weight:800;cursor:pointer;white-space:nowrap}
+.pnote{font-size:11px;color:var(--muted);font-weight:700;margin:9px 0 0;font-family:var(--mono)}
+.viewbar{display:flex;align-items:center;gap:8px;margin-top:12px}
+.viewbar .vt{font-size:11px;font-weight:800;color:var(--muted)}
+.vtog{margin-left:auto;display:flex;background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:2px;gap:2px}
+.vtog button{border:none;background:none;padding:6px 12px;border-radius:7px;font-size:11.5px;font-weight:800;color:var(--muted);cursor:pointer}
+.vtog button.on{background:var(--brand);color:#fff}
+.strow{grid-template-columns:1fr 36px 36px 36px 36px 44px}
+.strow.chk{grid-template-columns:1fr 44px 44px 56px}
+.rate{font-size:11.5px;font-weight:800;text-align:center;font-family:var(--mono);color:#0F7A5A}
+.rate.low{color:#C0392B}
+.stnum.dim{color:var(--muted);font-weight:600}
+.strow.exp{cursor:pointer}
+.strow.exp.on{background:var(--paper);border-radius:8px 8px 0 0}
+.strow.exp .stname{white-space:normal;line-height:1.35}
+.strow.exp .stname .sub{display:block;font-size:10.5px;padding-left:12px;margin-top:1px}
+.stname .car{display:inline-block;width:12px;color:var(--muted);font-size:10px;font-weight:800}
+.stname .sub{font-size:11px;color:var(--muted);font-weight:700}
+.strow.sub{font-size:12px;background:var(--paper);border-bottom:1px solid #E4DEEC}
+.strow.sub .stname{padding-left:16px;font-weight:700;color:var(--muted)}
+.subcap{background:var(--paper);font-size:10.5px;font-weight:800;color:var(--muted);padding:6px 4px 2px 18px}
+.tapnote{font-size:11px;color:var(--muted);font-weight:700;margin:8px 0 0;text-align:center}
+.sharebox{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:11px 12px;background:#fff}
+.sharehd{display:flex;align-items:baseline;gap:6px;font-size:12px;font-weight:800;margin-bottom:8px}
+.sharehd .tot{margin-left:auto;font-family:var(--mono);color:var(--brand)}
+.sharebar{display:flex;height:18px;border-radius:9px;overflow:hidden;background:var(--paper)}
+.sharebar span{display:block;height:100%}
+.sharelg{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:11px;font-weight:800;color:var(--muted)}
+.sharelg i{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.bcard{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-top:9px;background:#fff}
+.bhead{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.bhead .bnm{font-size:14px;font-weight:800}
+.bhead .bsub{font-size:11px;color:var(--muted);font-weight:700}
+.bhead .btot{margin-left:auto;font-size:12px;font-weight:800;font-family:var(--mono);color:var(--brand)}
+.brow{display:flex;align-items:center;gap:7px;margin-top:5px}
+.brow .bl{flex:0 0 42px;font-size:10.5px;font-weight:800;color:var(--muted)}
+.brow .bt{flex:1 1 auto;height:13px;background:var(--paper);border-radius:7px;overflow:hidden}
+.brow .bf{display:block;height:100%;border-radius:7px}
+.brow .bn{flex:0 0 30px;text-align:right;font-size:11.5px;font-weight:800;font-family:var(--mono)}
+.bf-req{background:#9C8AB8}.bf-cf{background:#54406E}.bf-q{background:#2B5FA3}.bf-ct{background:#0F7A5A}
+.bfoot{display:flex;gap:10px;margin-top:8px;padding-top:7px;border-top:1px dashed var(--line);font-size:11px;font-weight:800;color:var(--muted)}
+.bfoot .r{margin-left:auto;font-family:var(--mono)}
+.bfoot .r.low{color:#C0392B}.bfoot .r.hi{color:#0F7A5A}
+.bsub2{margin-top:9px;padding-top:8px;border-top:1px dashed var(--line)}
+.bsub2 .cap{font-size:10.5px;font-weight:800;color:var(--muted);margin-bottom:5px}
+.mrow{display:flex;align-items:center;gap:7px;margin-top:4px}
+.mrow .mn{flex:0 0 54px;font-size:11.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrow .mt{flex:1 1 auto;height:9px;background:var(--paper);border-radius:5px;overflow:hidden}
+.mrow .mf{display:block;height:100%;background:#9C8AB8;border-radius:5px}
+.mrow .mv{flex:0 0 82px;text-align:right;font-size:10.5px;font-weight:800;font-family:var(--mono);color:var(--muted);white-space:nowrap}
+.medal{font-size:13px}
+.slegend{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:12px;font-size:10.5px;font-weight:800;color:var(--muted)}
+.slegend i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.hintbox{margin-top:10px;background:var(--paper);border-radius:10px;padding:9px 11px;font-size:11.5px;color:var(--muted);font-weight:700;line-height:1.6}
+
 /* ===== 휴무일 관리 (2026-07-21) — 기존 .calhead/.calnav/.calgrid/.cwd/.cd 글로벌 클래스 재사용 */
 .offview{margin-top:4px}
 .offwk-head{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:10px 0 3px}
@@ -77,13 +139,24 @@
 .offregrid .cd.workovr{border:2px solid var(--brand);background:var(--surface)}
 .offregrid .cd.today{box-shadow:0 0 0 2px var(--brand) inset}
 </style>
+<!-- 홈 화면 앱 (2026-08-03, [017]) — 아이콘=회사 로고, 앱 이름=Room Check -->
+<link rel="manifest" href="manifest.webmanifest?v=20260803c" />
+<meta name="theme-color" content="#1F3A66" />
+<meta name="application-name" content="Room Check" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260803c" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260803c" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Room Check" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<script src="pwa.js?v=20260803c" defer></script>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div style="display:flex;align-items:flex-start;justify-content:space-between">
-      <div style="display:flex;align-items:center;gap:12px">
-        <img src="logo.png??v=20260718180000" class="hdrlogo" alt="THE NIRVANA" style="width:60px;height:60px">
+      <div style="display:flex;align-items:center;gap:12px;cursor:pointer" onclick="location.href='login.html'" title="기본 페이지로 이동">
+        <img src="logo.png?v=20260730" class="hdrlogo" alt="THE NIRVANA" style="width:60px;height:60px">
         <div><div style="font-size:16px;font-weight:800;color:var(--brand)">THE NIRVANA</div><p style="margin:2px 0 0;font-size:13px;color:var(--muted)">관리 콘솔</p></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;position:relative">
@@ -115,27 +188,41 @@
     <div class="label" style="margin-top:12px">이름</div><input id="nname" placeholder="직원 이름">
     <div class="label" style="margin-top:12px">아이디 (이메일 또는 영문 아이디)</div><input id="nid" placeholder="staff01 또는 staff@nirvana.com" autocomplete="off">
     <div class="label" style="margin-top:12px">비밀번호 (6자 이상)</div><input id="npw" placeholder="초기 비밀번호" autocomplete="off">
+    <div class="label" style="margin-top:12px">관리지역</div><select id="nregion"><option value="">전체 (지역 제한 없음)</option><option value="krabi">카오락 + 푸켓 + 크라비</option><option value="bangkok">방콕 + 파타야</option></select>
     <button class="cta" id="ncreate">계정 발행</button>
     <p class="small" style="margin:8px 0 0">발행 즉시 승인 상태로 로그인할 수 있습니다. 아이디·비밀번호를 직원에게 전달하세요. 비밀번호는 직원이 회원정보에서 직접 변경할 수 있습니다.</p>
   </section>
   <section class="card"><h3 style="margin:0 0 4px;font-size:16px;font-weight:800">전체 계정</h3><div class="seg" id="acctTabs" style="margin:8px 0"><button data-t="staff" class="on">직원</button><button data-t="agent">에이전시</button></div><div id="all"></div></section>
+
+  <section class="card"><h3 style="margin:0 0 4px;font-size:16px;font-weight:800">에이전시별 담당자 (부계정)</h3>
+    <div class="small" style="color:var(--muted);margin:4px 0 8px;line-height:1.5">너바나에서 만들어진 <b>부계정 담당자</b> 목록입니다. 너바나에 등록된 부계정은 <b>승인 없이 바로 로그인</b>됩니다.<br>이용을 막으려면 여기서 <b>이용 중지</b>하세요 (중지 시 로그인 차단, 승인하면 다시 사용 가능). 삭제 후 다시 로그인하면 재등록됩니다.</div>
+    <select id="agcSel"><option value="">에이전시 선택</option></select>
+    <div id="agcMgrs" style="margin-top:8px"></div>
+  </section>
   </div>
   <div id="pgStats" class="apage">
   <section class="card"><h3 style="margin:0 0 6px;font-size:16px;font-weight:800">통계</h3>
-    <p class="small" style="margin:0 0 8px">확정 = 확인자 답변 완료 건. 요청서에 입력된 이름 기준으로 집계됩니다.</p>
+    <p class="small" style="margin:0 0 8px" id="statLede"></p>
+    <!-- 지역별 통계 탭 (2026-08-07): 관리지역이 지정된 관리자에게는 숨겨지고 본인 지역만 집계된다 -->
+    <div class="seg" id="statZone" style="margin:0 0 8px"><button data-z="" class="on">전체 지역</button><button data-z="krabi">카오락+푸켓+크라비</button><button data-z="bangkok">방콕+파타야</button></div>
+    <div class="pfilter" id="statPf"></div>
+    <div class="prange" id="statPr"><input type="date" id="statD1"><span>~</span><input type="date" id="statD2"><button id="statGo">조회</button></div>
+    <div class="pnote" id="statNote"></div>
     <div id="statSummary"></div>
-    <div class="seg" id="statTab" style="margin-top:10px">
-      <button data-st="agents" class="on">에이전트</button>
+    <div class="seg" id="statTab" style="margin-top:12px">
+      <button data-st="agencies" class="on">에이전트</button>
       <button data-st="agentMgrs">담당자</button>
       <button data-st="requesters">요청자</button>
       <button data-st="checkers">확인자</button>
     </div>
+    <div class="viewbar"><span class="vt" id="statCount"></span>
+      <div class="vtog" id="statView"><button data-v="table" class="on">표</button><button data-v="chart">그래프</button></div></div>
     <div id="statBody"></div></section>
   </div>
   <div id="pgOff" class="apage" style="display:none">
   <section class="card">
     <h3 style="margin:0 0 8px;font-size:16px;font-weight:800">휴무일 관리</h3>
-    <p class="small" style="margin:0 0 8px">토·일·공휴일은 전 직원 기본 휴무로 처리됩니다. 개별 직원의 근무/휴무 조정은 아래 "휴일 등록"에서 할 수 있습니다.</p>
+    <p class="small" style="margin:0 0 8px">토·일·공휴일은 전 직원 기본 휴무로 처리됩니다. 개별 직원의 근무/휴무 조정은 아래 "휴일 등록"에서 할 수 있습니다.<span id="offRegionNote" style="display:block;margin-top:3px;font-weight:800;color:var(--brand)"></span></p>
     <div class="seg" id="offTabs">
       <button type="button" data-t="week" class="on">주간 확인</button>
       <button type="button" data-t="month">월별 현황판</button>
@@ -183,12 +270,16 @@ const ROLE_KO={agent:'에이전트',sreq:'직원 요청자',schk:'직원 확인�
 const ST_KO={pending:'대기',approved:'승인됨',rejected:'거절됨'};
 const LANG_KO={ko:'한국어',en:'영어',th:'태국어'};
 let IS_SUPER=false; // 로그인한 사람이 최고관리자(hihisys)인지
+let MY_REGION=''; // 2026-08-07: 로그인 관리자의 관리지역 ('krabi'/'bangkok'/''=전체) — 휴무일 관리 지역 제한용
 let _tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(_tt);_tt=setTimeout(()=>t.style.opacity='0',2000);}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function row(u,withDecide){
   const dt=new Date(u.created_at);
   const when=dt.getFullYear()+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+String(dt.getDate()).padStart(2,'0');
-  const roleTag=(ROLE_KO[u.role]||u.role)+(u.super?' <span class="rolechip">최고관리자</span>':(u.role==='admin'?' <span class="rolechip">관리자</span>':''));
+  /* 2026-07-31: 부계정은 역할명 대신 소속 에이전시(회사명) 표시
+     2026-08-06 수정: 소속(parent) 에이전시 idx 우선 조회 — 부계정 자기 idx로 찾으면 다른 회사명이 표시됨 */
+  const _comp=u.ext?(u.agent_company||(window.AGC_MAP&&(window.AGC_MAP[u.agency_parent_idx]||window.AGC_MAP[u.agency_idx]))||''):'';
+  const roleTag=(_comp?esc(_comp):(ROLE_KO[u.role]||u.role))+(u.ext?' <span class="rolechip">에이전시 부계정</span>':'')+(u.super?' <span class="rolechip">최고관리자</span>':(u.role==='admin'?' <span class="rolechip">관리자</span>':''));
   let btns='';
   if(withDecide){
     btns='<button class="bt-ok" data-a="approve" data-id="'+u.id+'">✓ 승인</button><button class="bt-no" data-a="reject" data-id="'+u.id+'">거절</button><button class="bt-del" data-a="delete" data-id="'+u.id+'">삭제</button>';
@@ -201,14 +292,33 @@ function row(u,withDecide){
     if(u.role==='sreq'||u.role==='schk'){btns+='<button class="bt-role" data-a="setrole" data-to="'+(u.role==='sreq'?'schk':'sreq')+'" data-id="'+u.id+'">'+(u.role==='sreq'?'확인자로 변경':'요청자로 변경')+'</button>';
       if(u.tg)btns+='<button class="bt-no" data-a="tgreset" data-id="'+u.id+'">📲 텔레그램 연결 해제</button>';
       else btns+='<button class="bt-ok" data-a="tglink" data-id="'+u.id+'">📲 텔레그램 연결</button>';
+      btns+='<button class="bt-ok" data-a="tgset" data-id="'+u.id+'" data-cur="'+esc(u.tg_chat||'')+'">📲 채널 ID 설정</button>'; /* 2026-08-07: 담당자 알림 채널 직접 등록 */
     }
   }else{ // 관리자 계정
     if(IS_SUPER&&!u.super)btns+='<button class="bt-demote" data-a="demote" data-id="'+u.id+'">관리자 해제</button>';
     else if(!u.super){btns+='<button class="bt-ok" data-a="tglink" data-id="'+u.id+'">📲 텔레그램 연결</button>';if(u.tg)btns+='<button class="bt-no" data-a="tgreset" data-id="'+u.id+'">📲 텔레그램 연결 해제</button>';}
+    if(!u.ext)btns+='<button class="bt-ok" data-a="tgset" data-id="'+u.id+'" data-cur="'+esc(u.tg_chat||'')+'">📲 채널 ID 설정</button>'; /* 2026-08-07: 최고관리자 포함 채널 등록 */
   }
+  /* 에이전시 부계정/회원 상세 정보 표시 (2026-07-30): 닉네임·연락처·계좌·부계정 아이디 */
+  const infoBits=[
+    u.agency_login_id?('📋 부계정 '+esc(u.agency_login_id)):'',
+    u.nickname?('닉네임 '+esc(u.nickname)):'',
+    u.phone?('☎ '+esc(u.phone)):'',
+    u.bank_account?('🏦 '+esc(u.bank_account)):''
+  ].filter(Boolean);
+  /* 관리지역 설정 (2026-08-01): 직원(요청자/확인자)·일반 관리자 행에서 관리자가 직접 변경 — 직원 본인은 변경 불가 */
+  const REGION_KO={'':'전체 (제한 없음)',krabi:'카오락 + 푸켓 + 크라비',bangkok:'방콕 + 파타야'};
+  if(!u.ext&&(u.role==='sreq'||u.role==='schk'||(u.role==='admin'&&!u.super))){
+    btns+='<label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:var(--muted)">🗺 관리지역 '
+      +'<select class="regionSel" data-id="'+u.id+'" style="font-size:12px;padding:4px 6px;border:1px solid var(--line);border-radius:7px">'
+      +Object.keys(REGION_KO).map(k=>'<option value="'+k+'"'+((u.region||'')===k?' selected':'')+'>'+REGION_KO[k]+'</option>').join('')
+      +'</select></label>';
+  }
+  const infoLine=infoBits.length?'<div class="meta">'+infoBits.join(' · ')+'</div>':'';
   return '<div class="urow"><div class="u1"><div><div class="nm">'+esc(u.name)+' <span class="small">· '+roleTag+'</span></div>'
-    +'<div class="em">'+esc(u.email)+'</div>'
-    +'<div class="meta">언어 '+(LANG_KO[u.lang]||u.lang)+' · 가입 '+when+(u.tg?' · 📲 텔레그램 연결됨':'')+'</div></div>'
+    +(u.ext?'':'<div class="em">'+esc(u.email)+'</div>') /* 부계정은 내부용 합성 이메일 숨김 (2026-07-31) */
+    +'<div class="meta">언어 '+(LANG_KO[u.lang]||u.lang)+' · 가입 '+when+(u.tg?' · 📲 텔레그램 연결됨':'')+'</div>'
+    +infoLine+'</div>'
     +'<span class="badge st-'+u.status+'">'+(ST_KO[u.status]||u.status)+'</span></div>'
     +(btns?'<div class="ubtns">'+btns+'</div>':'')
     +'</div>';
@@ -388,7 +498,12 @@ document.getElementById('offRegSave').onclick=async()=>{
 };
 
 function renderOffRoster(users){
-  offRoster = users.filter(u=>((u.role==='sreq'||u.role==='schk')||(u.role==='admin'&&!u.super)) && u.status==='approved');
+  /* 2026-08-07 (사용자 확정): 휴무일 관리는 지역별 — 관리지역이 지정된 관리자는 본인 지역 직원 + 전체(지역 미지정) 직원만
+     보고 등록할 수 있다. 최고관리자·전체 지역 관리자는 종전대로 전 직원. 서버(admin/offdays)에서도 동일 규칙 검증. */
+  const regionOK=u=>IS_SUPER||!MY_REGION||!u.region||u.region===MY_REGION;
+  offRoster = users.filter(u=>((u.role==='sreq'||u.role==='schk')||(u.role==='admin'&&!u.super)) && u.status==='approved' && regionOK(u));
+  const rn=document.getElementById('offRegionNote');
+  if(rn)rn.textContent=(!IS_SUPER&&MY_REGION)?('🗺 내 관리지역('+({krabi:'카오락+푸켓+크라비',bangkok:'방콕+파타야'}[MY_REGION]||MY_REGION)+') 직원과 전체 지역 직원만 표시됩니다.'):'';
   const t=new Date();
   if(!omY){ omY=t.getFullYear(); omM=t.getMonth()+1; }
   if(!regY){ regY=t.getFullYear(); regM=t.getMonth()+1; }
@@ -398,27 +513,160 @@ function renderOffRoster(users){
   renderOffMonth();
   renderOffReg();
 }
-/* ===== 통계 (2026-07-18) ===== */
-let STATS=null, statTab='agents';
-const STAT_LABEL={agents:'에이전트',agentMgrs:'담당자',requesters:'요청자',checkers:'확인자'};
+/* ===== 통계 (2026-07-18, 2026-08-02 [013] 개편) =====
+   기간(이번 달/지난달/최근 3개월/직접 지정) + 표/그래프 전환.
+   에이전트 탭은 에이전시별 합계를 보여주고, 누르면 소속 담당자별 숫자가 펼쳐진다.
+   확인자 탭은 요청을 전 직원이 함께 받는 구조라 '전체 중 처리 비중'으로 집계한다. */
+let STATS=null, statTab='agencies', statView='table', statPeriod='이번 달', statOpen={};
+let statZone=''; /* 2026-08-07: 통계 지역 ('' 전체 / krabi / bangkok) */
+const ZONE_KO={'':'전체 지역',krabi:'카오락+푸켓+크라비',bangkok:'방콕+파타야'};
+const STAT_PERIODS=['이번 달','지난달','최근 3개월','직접 지정'];
+const STAT_LABEL={agencies:'에이전시',agentMgrs:'담당자',requesters:'요청자',checkers:'확인자'};
+const STAT_HEAD={agencies:'에이전시',agentMgrs:'담당자',requesters:'요청자',checkers:'확인자'};
+const STAT_LEDE={agencies:'에이전시별 합계입니다. 이름을 누르면 그 에이전시의 담당자별 숫자가 펼쳐집니다.',
+  agentMgrs:'전체 에이전시의 담당자를 한 목록으로 보여줍니다. 확인 = 확인자 답변 완료 건',
+  requesters:'요청을 등록한 직원 기준입니다. 확인 = 확인자 답변 완료 건',
+  checkers:'요청은 전 직원이 함께 받습니다. 전체 요청 중 각자 몇 건을 처리했는지 보여줍니다.'};
+const SHARE_COLOR=['#54406E','#2B5FA3','#0F7A5A','#B07908','#9C8AB8','#8A6D3B','#4E7A9B','#7A5C3B'];
+const isoOfDate=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function statRange(){
+  const t=new Date(); t.setHours(0,0,0,0);
+  if(statPeriod==='이번 달')  return [isoOfDate(new Date(t.getFullYear(),t.getMonth(),1)), isoOfDate(new Date(t.getFullYear(),t.getMonth()+1,0))];
+  if(statPeriod==='지난달')   return [isoOfDate(new Date(t.getFullYear(),t.getMonth()-1,1)), isoOfDate(new Date(t.getFullYear(),t.getMonth(),0))];
+  if(statPeriod==='최근 3개월')return [isoOfDate(new Date(t.getFullYear(),t.getMonth()-2,1)), isoOfDate(new Date(t.getFullYear(),t.getMonth()+1,0))];
+  const d1=document.getElementById('statD1'),d2=document.getElementById('statD2');
+  return [(d1&&d1.value)||isoOfDate(t),(d2&&d2.value)||isoOfDate(t)];
+}
 async function loadStats(){
-  try{const r=await fetch('api/admin/stats',{cache:'no-store'});if(!r.ok)return;STATS=await r.json();renderStats();}catch(e){}
+  const [f,to]=statRange();
+  try{
+    const r=await fetch('api/admin/stats?from='+f+'&to='+to+'&zone='+encodeURIComponent(statZone),{cache:'no-store'});
+    if(!r.ok)return; STATS=await r.json();
+    if(STATS.zoneLocked)statZone=STATS.zone||''; /* 지역 지정 관리자는 서버가 고정한 지역을 따른다 */
+    renderStats();
+  }catch(e){}
 }
 function statCard(label,n){return '<div class="statcard"><div class="statn">'+(n||0)+'</div><div class="statl">'+label+'</div></div>';}
+function statRows(){return (STATS&&STATS[statTab])||[];}
+function rateHTML(ct,req){const r=req?Math.round(ct/req*100):0;return '<span class="rate'+(r<25?' low':'')+'">'+r+'%</span>';}
+function stdRowHTML(r,sub,cls){
+  return '<div class="strow'+(cls?' '+cls:'')+'"><span class="stname">'+esc(r.name)+(sub?' <span class="small" style="color:var(--muted)">· '+esc(sub)+'</span>':'')+'</span>'
+    +'<span class="stnum hl">'+r.requests+'</span><span class="stnum">'+r.confirmed+'</span><span class="stnum">'+r.quoteSent+'</span><span class="stnum">'+r.contracted+'</span>'
+    +rateHTML(r.contracted,r.requests)+'</div>';
+}
+function stdHead(){return '<div class="strow sthead"><span class="stname">'+STAT_HEAD[statTab]+'</span><span>요청</span><span>확인</span><span>견적</span><span>계약</span><span>전환율</span></div>';}
+function barHTML(l,v,mx,c){return '<div class="brow"><span class="bl">'+l+'</span><span class="bt"><span class="bf '+c+'" style="width:'+(mx?Math.round(v/mx*100):0)+'%"></span></span><span class="bn">'+v+'</span></div>';}
+function agTableHTML(){
+  const rows=statRows(); let h=stdHead();
+  rows.forEach(a=>{
+    const on=!!statOpen[a.name], ms=a.managers||[];
+    h+='<div class="strow exp'+(on?' on':'')+'" data-ag="'+esc(a.name)+'"><span class="stname"><span class="car">'+(on?'▾':'▸')+'</span>'+esc(a.name)
+      +' <span class="sub">담당자 '+ms.length+'</span></span>'
+      +'<span class="stnum hl">'+a.requests+'</span><span class="stnum">'+a.confirmed+'</span><span class="stnum">'+a.quoteSent+'</span><span class="stnum">'+a.contracted+'</span>'
+      +rateHTML(a.contracted,a.requests)+'</div>';
+    if(on){h+='<div class="subcap">담당자별</div>'+ms.map(m=>stdRowHTML(m,'','sub')).join('');}
+  });
+  return h+'<p class="tapnote">에이전시 이름을 누르면 담당자별 숫자가 열립니다</p>';
+}
+function agChartHTML(){
+  const rows=statRows(), mx=Math.max.apply(null,rows.map(r=>r.requests).concat([1])), med=['🥇','🥈','🥉'];
+  return rows.map((a,i)=>{
+    const on=!!statOpen[a.name], ms=a.managers||[], rt=a.requests?Math.round(a.contracted/a.requests*100):0;
+    let sub='';
+    if(on&&ms.length){
+      const mmx=Math.max.apply(null,ms.map(m=>m.requests).concat([1]));
+      sub='<div class="bsub2"><div class="cap">담당자별 요청</div>'+ms.map(m=>'<div class="mrow"><span class="mn">'+esc(m.name)+'</span>'
+        +'<span class="mt"><span class="mf" style="width:'+Math.round(m.requests/mmx*100)+'%"></span></span>'
+        +'<span class="mv">'+m.requests+'건 · 계약 '+m.contracted+'</span></div>').join('')+'</div>';
+    }
+    return '<div class="bcard" data-ag="'+esc(a.name)+'" style="cursor:pointer"><div class="bhead">'+(med[i]||'')
+      +'<span class="bnm">'+esc(a.name)+'</span><span class="bsub">'+(on?'▾':'▸')+' 담당자 '+ms.length+'</span><span class="btot">'+a.requests+'건</span></div>'
+      +barHTML('요청',a.requests,mx,'bf-req')+barHTML('확인',a.confirmed,mx,'bf-cf')+barHTML('견적',a.quoteSent,mx,'bf-q')+barHTML('계약',a.contracted,mx,'bf-ct')
+      +'<div class="bfoot"><span>계약 전환율</span><span class="r '+(rt<25?'low':'hi')+'">'+rt+'%</span></div>'+sub+'</div>';
+  }).join('')+'<p class="tapnote">카드를 누르면 담당자별 숫자가 열립니다</p>';
+}
+function stdTableHTML(){return stdHead()+statRows().map(r=>stdRowHTML(r,'')).join('');}
+function stdChartHTML(){
+  const rows=statRows(), mx=Math.max.apply(null,rows.map(r=>r.requests).concat([1])), med=['🥇','🥈','🥉'];
+  return rows.map((r,i)=>{const rt=r.requests?Math.round(r.contracted/r.requests*100):0;
+    return '<div class="bcard"><div class="bhead">'+(med[i]||'')+'<span class="bnm">'+esc(r.name)+'</span><span class="btot">'+r.requests+'건</span></div>'
+      +barHTML('요청',r.requests,mx,'bf-req')+barHTML('확인',r.confirmed,mx,'bf-cf')+barHTML('견적',r.quoteSent,mx,'bf-q')+barHTML('계약',r.contracted,mx,'bf-ct')
+      +'<div class="bfoot"><span>계약 전환율</span><span class="r '+(rt<25?'low':'hi')+'">'+rt+'%</span></div></div>';}).join('')
+    +'<div class="slegend"><span><i style="background:#9C8AB8"></i>요청</span><span><i style="background:#54406E"></i>확인</span>'
+    +'<span><i style="background:#2B5FA3"></i>견적</span><span><i style="background:#0F7A5A"></i>계약</span></div>';
+}
+function shareBoxHTML(){
+  const rows=statRows(), tot=((STATS&&STATS.total)||{}).requests||0;
+  if(!tot)return '';
+  const done=rows.reduce((a,r)=>a+r.done,0), rest=Math.max(0,tot-done);
+  let segs=rows.map((r,i)=>'<span style="width:'+(r.done/tot*100)+'%;background:'+SHARE_COLOR[i%SHARE_COLOR.length]+'"></span>').join('');
+  if(rest)segs+='<span style="width:'+(rest/tot*100)+'%;background:#D9D3E2"></span>';
+  const lg=rows.map((r,i)=>'<span><i style="background:'+SHARE_COLOR[i%SHARE_COLOR.length]+'"></i>'+esc(r.name)+' '+Math.round(r.done/tot*100)+'%</span>').join('')
+    +(rest?'<span><i style="background:#D9D3E2"></i>미처리 '+Math.round(rest/tot*100)+'%</span>':'');
+  return '<div class="sharebox"><div class="sharehd"><span>전체 요청 처리 분담</span><span class="tot">'+done+' / '+tot+'건</span></div>'
+    +'<div class="sharebar">'+segs+'</div><div class="sharelg">'+lg+'</div></div>';
+}
+function chkTableHTML(){
+  const rows=statRows(), tot=((STATS&&STATS.total)||{}).requests||0;
+  let h='<div class="strow sthead chk"><span class="stname">확인자</span><span>처리</span><span>전체</span><span>처리 비중</span></div>';
+  h+=rows.map(r=>{const p=tot?Math.round(r.done/tot*100):0;
+    return '<div class="strow chk"><span class="stname">'+esc(r.name)+'</span><span class="stnum hl">'+r.done+'</span>'
+      +'<span class="stnum dim">'+tot+'</span><span class="rate'+(p<15?' low':'')+'">'+p+'%</span></div>';}).join('');
+  return shareBoxHTML()+h+'<div class="hintbox">요청은 지역별로 전 직원에게 함께 전달되고, 먼저 확인한 사람이 답변을 등록합니다. 그래서 개인별 요청 건수 대신 <b>전체 중 처리 비중</b>으로 봅니다.</div>';
+}
+function chkChartHTML(){
+  const rows=statRows(), tot=((STATS&&STATS.total)||{}).requests||0;
+  const mx=Math.max.apply(null,rows.map(r=>r.done).concat([1])), med=['🥇','🥈','🥉'];
+  return shareBoxHTML()+rows.map((r,i)=>{const p=tot?Math.round(r.done/tot*100):0;
+    return '<div class="bcard"><div class="bhead">'+(med[i]||'')+'<span class="bnm">'+esc(r.name)+'</span><span class="btot">'+r.done+' / '+tot+'건</span></div>'
+      +barHTML('처리',r.done,mx,'bf-cf')
+      +'<div class="bfoot"><span>전체 중 처리 비중</span><span class="r '+(p<15?'low':'hi')+'">'+p+'%</span></div></div>';}).join('');
+}
 function renderStats(){
+  const lede=document.getElementById('statLede'); if(lede)lede.textContent=STAT_LEDE[statTab];
+  const pf=document.getElementById('statPf');
+  if(pf){pf.innerHTML=STAT_PERIODS.map(p=>'<button data-p="'+p+'"'+(p===statPeriod?' class="on"':'')+'>'+p+'</button>').join('');
+    pf.querySelectorAll('button').forEach(b=>b.onclick=()=>{statPeriod=b.dataset.p;statOpen={};
+      if(statPeriod==='직접 지정'){renderStats();}else{loadStats();}});}
+  const pr=document.getElementById('statPr'); if(pr)pr.className='prange'+(statPeriod==='직접 지정'?' on':'');
+  const [f,to]=statRange();
+  const d1=document.getElementById('statD1'),d2=document.getElementById('statD2');
+  if(d1&&!d1.value)d1.value=f; if(d2&&!d2.value)d2.value=to;
+  const go=document.getElementById('statGo'); if(go)go.onclick=()=>loadStats();
+  const note=document.getElementById('statNote'); if(note)note.textContent='집계 기간 · '+f+' ~ '+to+' · 지역 '+(ZONE_KO[statZone]||'전체 지역');
+  /* 지역 탭 (2026-08-07): 지역이 지정된 관리자는 탭을 감추고 본인 지역만 표시 */
+  const zt=document.getElementById('statZone');
+  if(zt){
+    const locked=!!(STATS&&STATS.zoneLocked);
+    zt.style.display=locked?'none':'';
+    zt.querySelectorAll('button').forEach(b=>{b.classList.toggle('on',(b.dataset.z||'')===statZone);
+      b.onclick=()=>{statZone=b.dataset.z||'';statOpen={};loadStats();};});
+  }
   if(!STATS)return;
   const t=STATS.total||{};
   const sb=document.getElementById('statSummary');
-  if(sb)sb.innerHTML='<div class="statgrid">'+statCard('전체 요청',t.requests)+statCard('확정',t.confirmed)+statCard('견적 발송',t.quoteSent)+statCard('계약 완료',t.contracted)+'</div>';
-  const rows=STATS[statTab]||[];
-  const head='<div class="strow sthead"><span class="stname">'+STAT_LABEL[statTab]+'</span><span>확정</span><span>요청</span><span>견적</span><span>계약</span></div>';
-  const body=rows.length?rows.map(r=>'<div class="strow"><span class="stname">'+esc(r.name)+'</span><span class="stnum hl">'+r.confirmed+'</span><span class="stnum">'+r.requests+'</span><span class="stnum">'+r.quoteSent+'</span><span class="stnum">'+r.contracted+'</span></div>').join(''):'<p class="small" style="margin:10px 0 2px">집계할 데이터가 없습니다.</p>';
-  const bd=document.getElementById('statBody');if(bd)bd.innerHTML=head+body;
-  document.querySelectorAll('#statTab button').forEach(b=>{b.classList.toggle('on',b.dataset.st===statTab);b.onclick=()=>{statTab=b.dataset.st;renderStats();};});
+  if(sb)sb.innerHTML='<div class="statgrid">'+statCard('전체 요청',t.requests)+statCard('확인 완료',t.confirmed)+statCard('견적 발송',t.quoteSent)+statCard('계약 완료',t.contracted)+'</div>';
+  const rows=statRows();
+  const cnt=document.getElementById('statCount');
+  if(cnt)cnt.textContent=STAT_LABEL[statTab]+' '+rows.length+(statTab==='agencies'?'곳':'명');
+  const vw=document.getElementById('statView');
+  if(vw)vw.querySelectorAll('button').forEach(b=>{b.classList.toggle('on',b.dataset.v===statView);
+    b.onclick=()=>{statView=b.dataset.v;renderStats();};});
+  let html;
+  if(!rows.length)html='<p class="small" style="margin:12px 0 2px">집계할 데이터가 없습니다.</p>';
+  else if(statTab==='agencies')html=(statView==='table')?agTableHTML():agChartHTML();
+  else if(statTab==='checkers')html=(statView==='table')?chkTableHTML():chkChartHTML();
+  else html=(statView==='table')?stdTableHTML():stdChartHTML();
+  const bd=document.getElementById('statBody'); if(bd)bd.innerHTML=html;
+  document.querySelectorAll('#statTab button').forEach(b=>{b.classList.toggle('on',b.dataset.st===statTab);
+    b.onclick=()=>{statTab=b.dataset.st;statOpen={};renderStats();};});
+  if(statTab==='agencies')document.querySelectorAll('[data-ag]').forEach(el=>el.onclick=()=>{
+    const k=el.dataset.ag; statOpen[k]=!statOpen[k]; renderStats();});
 }
 async function load(){
   let r;
   try{const me=await(await fetch('api/me',{cache:'no-store'})).json();IS_SUPER=!!(me.user&&me.user.super);
+    MY_REGION=(me.user&&me.user.region)||''; /* 2026-08-07: 휴무일 관리 지역 제한 */
     const mc=document.getElementById('meChip');if(mc&&me.user)mc.textContent=me.user.nickname||me.user.name||'관리자';}catch(e){}
   try{r=await fetch('api/admin/users');}catch(e){toast('서버에 연결할 수 없습니다');return;}
   if(r.status===401||r.status===403){location.href='login.html';return;}
@@ -426,6 +674,16 @@ async function load(){
   const pend=j.users.filter(u=>u.status==='pending');
   (function(){window.__atab=window.__atab||'staff';var stf=j.users.filter(function(u){return u.role!=='agent';});var ags=j.users.filter(function(u){return u.role==='agent';});var cur=window.__atab==='agent'?ags:stf;document.querySelectorAll('#acctTabs button').forEach(function(b){b.classList.toggle('on',b.dataset.t===window.__atab);b.onclick=function(){window.__atab=b.dataset.t;load();};});document.getElementById('all').innerHTML=cur.length?cur.map(function(u){return row(u,false);}).join(''):'<p class="small" style="margin:6px 0">계정 없음</p>';})();
   renderOffRoster(j.users);
+  /* 관리지역 변경 (2026-08-01) */
+  document.querySelectorAll('.regionSel').forEach(s=>s.onchange=async()=>{
+    try{
+      const r3=await fetch('api/admin/setregion',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id:Number(s.dataset.id),region:s.value||null})});
+      const j3=await r3.json();
+      toast(j3.ok?'관리지역을 변경했습니다':'변경하지 못했습니다');
+      if(!j3.ok)load();
+    }catch(e){toast('서버에 연결할 수 없습니다');}
+  });
   document.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{
     if(b.dataset.a==='delete'&&!confirm('이 계정을 삭제할까요?'))return;
     if(b.dataset.a==='promote'&&!confirm('이 계정을 관리자로 승격할까요? 승격 시 에이전트·직원 승인/취소 권한을 갖습니다.'))return;
@@ -433,6 +691,8 @@ async function load(){
     if(b.dataset.a==='setrole'){const _rr=await fetch('api/admin/setrole',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Number(b.dataset.id),to:b.dataset.to})});const _jj=await _rr.json();toast(_jj.ok?'역할을 변경했습니다':'변경하지 못했습니다');load();return;}
     if(b.dataset.a==='tglink'){try{const r=await fetch('api/admin/tg-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Number(b.dataset.id)})});const j=await r.json();if(j.ok&&j.url){navigator.clipboard.writeText(j.url);toast('텔레그램 연결 링크를 복사했습니다 (직원에게 전달하세요)');load();return;}toast('링크 생성에 실패했습니다');}catch(e){toast('서버에 연결할 수 없습니다');}return;}
     if(b.dataset.a==='tgreset'){if(!confirm('이 직원의 텔레그램 연결을 해제할까요?'))return;try{const r=await fetch('api/admin/tg-reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Number(b.dataset.id)})});const j=await r.json();toast(j.ok?'텔레그램 연결이 해제되었습니다':'해제하지 못했습니다');load();return;}catch(e){toast('서버에 연결할 수 없습니다');}return;}
+    /* 2026-08-07: 담당자별 알림 채널(Hotel_01~) ID 직접 등록 — 빈 값 저장 시 해제 */
+    if(b.dataset.a==='tgset'){const v=prompt('텔레그램 채널/챗 ID를 입력하세요 (예: -1001234567890)\n비우고 확인을 누르면 연결이 해제됩니다.',b.dataset.cur||'');if(v===null)return;try{const r=await fetch('api/admin/set-telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Number(b.dataset.id),chat_id:v.trim()})});const j=await r.json();toast(j.ok?(j.tg?'텔레그램 채널을 연결했습니다':'텔레그램 연결을 해제했습니다'):(j.error==='invalid_chat_id'?'ID 형식이 올바르지 않습니다':'저장하지 못했습니다'));load();return;}catch(e){toast('서버에 연결할 수 없습니다');}return;}
     const r2=await fetch('api/admin/decide',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({id:Number(b.dataset.id),action:b.dataset.a})});
     const j2=await r2.json();
@@ -451,7 +711,7 @@ document.getElementById('ncreate').onclick=async()=>{
   if(!name||!id||pw.length<6){toast('이름·아이디·비밀번호(6자 이상)를 확인해주세요');return;}
   try{
     const r=await fetch('api/admin/create-user',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name,email:id,password:pw,role:nrole,lang:(document.getElementById('nlang')||{}).value||''})});
+      body:JSON.stringify({name,email:id,password:pw,role:nrole,lang:(document.getElementById('nlang')||{}).value||'',region:(document.getElementById('nregion')||{}).value||''})});
     const j=await r.json();
     if(j.ok){toast('계정을 발행했습니다: '+id);
       document.getElementById('nname').value='';document.getElementById('nid').value='';document.getElementById('npw').value='';
@@ -484,6 +744,79 @@ var obs=null,pend=false;
 function walk(){var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,null,false);var nodes=[],n;while(n=w.nextNode())nodes.push(n);for(var q=0;q<nodes.length;q++){var node=nodes[q];if(node.__ko===undefined){if(!hasKo(node.nodeValue))continue;node.__ko=node.nodeValue;}var p=lt(node.__ko);if(!p[1])continue;var nv=p[0]+tr(p[1])+p[2];if(node.nodeValue!==nv)node.nodeValue=nv;}var els=document.body.querySelectorAll('[placeholder]');for(var j=0;j<els.length;j++){var el=els[j];if(el.__ko===undefined){if(!hasKo(el.placeholder))continue;el.__ko=el.placeholder;}var p2=lt(el.__ko);var v=p2[0]+tr(p2[1])+p2[2];if(el.placeholder!==v)el.placeholder=v;}}
 function retrans(){if(pend)return;pend=true;setTimeout(function(){pend=false;try{if(obs)obs.disconnect();}catch(e){}try{walk();}catch(e){}try{if(obs)obs.observe(document.body,{childList:true,subtree:true,characterData:true});}catch(e){}},80);}
 function chips(){var host=document.querySelector('header');var toBody=false;if(!host){host=document.body;toBody=true;}if(document.getElementById('admLang'))return;var d=document.createElement('div');d.id='admLang';d.style.cssText='display:flex;gap:6px;justify-content:flex-end;margin:8px 0 0';['ko','en','th'].forEach(function(l){var b=document.createElement('button');b.type='button';b.textContent=LN[l];b.setAttribute('data-l',l);b.style.cssText='font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;border:1px solid var(--line,#DDD5CC);cursor:pointer';d.appendChild(b);});if(toBody)host.insertBefore(d,host.firstChild);else host.appendChild(d);function paint(){var bs=d.querySelectorAll('button');for(var x=0;x<bs.length;x++){var on=bs[x].getAttribute('data-l')===AL;bs[x].style.background=on?'var(--brand,#A9562F)':'#fff';bs[x].style.color=on?'#fff':'var(--ink,#333)';}}d.addEventListener('click',function(e){var t=e.target&&e.target.closest?e.target.closest('button'):null;if(!t)return;AL=t.getAttribute('data-l');paint();retrans();});paint();}
+/* 에이전시별 담당자 (2026-07-30): 너바나 API에서 에이전시 목록·담당자 조회 (읽기 전용) */
+async function loadAgcList(){
+  try{const r=await fetch('api/agencies?active=Y',{cache:'no-store'});if(!r.ok)return;const j=await r.json();
+    const sel=document.getElementById('agcSel');if(!sel)return;
+    const list=(j&&j.agencies)||[];
+    window.AGC_MAP={};list.forEach(a=>{if(a&&a.idx)window.AGC_MAP[a.idx]=a.name;}); /* idx→회사명 매핑 (회원 목록 표시용) */
+    sel.innerHTML='<option value="">에이전시 선택 ('+list.length+'곳)</option>'+list.map(a=>'<option value="'+esc(a.idx)+'">'+esc(a.name)+'</option>').join('');
+    try{load();}catch(e){} /* 회사명 매핑 반영 위해 회원 목록 다시 그림 */
+  }catch(e){}
+}
+(function(){const sel=document.getElementById('agcSel');if(!sel)return;
+  sel.onchange=async e=>{
+    const idx=e.target.value;const box=document.getElementById('agcMgrs');
+    if(!idx){box.innerHTML='';return;}
+    box.innerHTML='<div class="small" style="color:var(--muted)">불러오는 중…</div>';
+    try{
+      /* 부계정 담당자 표시 (2026-08-01 최종): 너바나 부계정 목록 API + 이 사이트 계정 상태 병합.
+         목록 API가 아직 열리지 않았으면 로그인한 부계정만 표시 (API가 열리면 자동으로 전체 표시) */
+      const nidx=Number(idx);
+      const r=await fetch('api/admin/users',{cache:'no-store'});const j=await r.json();
+      const locals=((j&&j.users)||[]).filter(u=>u.role==='agent'&&u.ext&&(Number(u.agency_parent_idx)===nidx||Number(u.agency_idx)===nidx));
+      let ext=null,extPath='';
+      try{const r2=await fetch('api/admin/agency-sub-accounts?parent_idx='+nidx+'&force=1',{cache:'no-store'});
+        const j2=await r2.json();if(j2&&j2.ok){ext=j2.subs||[];extPath=j2.path||'';}}catch(e){}
+      const stBadge=st=>st==='approved'?'<span class="badge st-approved">승인됨</span>'
+        :st==='pending'?'<span class="badge st-pending">대기</span>'
+        :st==='rejected'?'<span class="badge st-rejected">이용 중지</span>'
+        :'<span class="badge" style="background:var(--paper);color:var(--muted);border:1px solid var(--line)">미로그인</span>';
+      const accBtns=u=>{let b='';
+        if(u.status!=='approved')b+='<button class="bt-ok" data-sacc="'+u.id+'" data-sact="approve">✓ 승인</button>';
+        if(u.status==='approved')b+='<button class="bt-no" data-sacc="'+u.id+'" data-sact="reject">이용 중지</button>';
+        b+='<button class="bt-del" data-sacc="'+u.id+'" data-sact="delete">삭제</button>';
+        return '<div class="ubtns">'+b+'</div>';};
+      const note=t=>'<div class="small" style="color:var(--muted);margin:0 0 8px">'+t+'</div>';
+      let html='';
+      if(ext){
+        /* 서버가 필드명을 정규화해서 내려줌: idx/parent_idx/parent_name/login_id/name/nickname/... */
+        const pname=(window.AGC_MAP&&window.AGC_MAP[nidx])||'';
+        const hasParent=ext.some(x=>Number(x.parent_idx)||x.parent_name);
+        const subs=!hasParent?ext:ext.filter(x=>Number(x.parent_idx)===nidx||(pname&&String(x.parent_name)===pname));
+        html=note('✅ 너바나 부계정 목록 연결됨 — '+subs.length+'명'+(extPath?' <span style="opacity:.6">('+esc(extPath)+')</span>':''));
+        html+=subs.length?subs.map(x=>{
+          const lu=locals.find(u=>Number(u.agency_idx)===Number(x.idx))
+            ||locals.find(u=>u.agency_login_id&&x.login_id&&String(u.agency_login_id).toLowerCase()===String(x.login_id).toLowerCase())
+            ||locals.find(u=>x.name&&u.name===x.name);
+          const meta=['📋 '+esc(x.login_id||'-'),x.nickname?'닉네임 '+esc(x.nickname):'',x.position?esc(x.position):'',
+            x.department?esc(x.department):'',x.phone?'☎ '+esc(x.phone):'',x.email?esc(x.email):''].filter(Boolean).join(' · ');
+          return '<div class="urow"><div class="u1"><div><div class="nm">'+esc(x.name||x.login_id)
+            +(x.active==='N'?' <span class="small" style="color:var(--so)">· 너바나 비활성</span>':'')+'</div>'
+            +'<div class="meta">'+meta+'</div>'
+            +(lu?'':'<div class="meta">아직 이 사이트에 로그인하지 않은 부계정입니다 — 첫 로그인 시 자동 등록됩니다.</div>')+'</div>'
+            +stBadge(lu?lu.status:null)+'</div>'+(lu?accBtns(lu):'')+'</div>';}).join('')
+          :'<div class="small" style="color:var(--muted)">이 에이전시에 등록된 부계정이 없습니다.</div>';
+      }else{
+        html=note('ℹ️ 너바나 부계정 목록 API가 아직 연결되지 않아, 이 사이트에 로그인한 부계정만 표시합니다.');
+        html+=locals.length?locals.map(u=>'<div class="urow"><div class="u1"><div><div class="nm">'+esc(u.name)+(u.nickname?' <span class="small">· '+esc(u.nickname)+'</span>':'')+'</div>'
+            +'<div class="meta">'+(u.agency_login_id?'📋 부계정 '+esc(u.agency_login_id):'')+(u.phone?' · ☎ '+esc(u.phone):'')+'</div></div>'
+            +stBadge(u.status)+'</div>'+accBtns(u)+'</div>').join('')
+          :'<div class="small" style="color:var(--muted)">이 에이전시의 부계정으로 로그인한 담당자가 아직 없습니다.<br>담당자가 부계정으로 처음 로그인하면 여기에 표시됩니다.</div>';
+      }
+      box.innerHTML=html;
+      box.querySelectorAll('[data-sacc]').forEach(b=>b.onclick=async()=>{
+        if(b.dataset.sact==='delete'&&!confirm('이 부계정 담당자를 삭제할까요?\n다시 로그인하면 재등록됩니다.'))return;
+        try{const r3=await fetch('api/admin/decide',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({id:Number(b.dataset.sacc),action:b.dataset.sact})});
+          const j3=await r3.json();
+          toast(j3.ok?({approve:'승인했습니다',reject:'이용 중지했습니다',delete:'삭제했습니다'}[b.dataset.sact]):'처리하지 못했습니다');
+          sel.onchange({target:{value:idx}});load();
+        }catch(e){toast('서버에 연결할 수 없습니다');}});
+    }catch(e){box.innerHTML='<div class="small" style="color:var(--muted)">불러오지 못했습니다.</div>';}
+  };
+  loadAgcList();
+})();
 function init(){try{chips();}catch(e){}try{obs=new MutationObserver(function(){retrans();});}catch(e){}retrans();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(init,250);});else setTimeout(init,250);
 }catch(e){}})();

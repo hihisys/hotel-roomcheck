@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>너바나 · 업무 통계</title>
-<link rel="stylesheet" href="style.css?v=20260807e" />
+<link rel="stylesheet" href="style.css?v=20260807f" />
 <style>
 /* 직원 업무 통계 (2026-08-02, [014])
    요청자·확인자가 "회사 전체 업무 중 내가 얼마나 처리했는지"를 확인하는 별도 페이지.
@@ -46,16 +46,16 @@
 .swempty{padding:18px 4px;text-align:center;font-size:12.5px;color:var(--muted);font-weight:700}
 </style>
 <!-- 홈 화면 앱 (2026-08-03, [017]) — 아이콘=회사 로고, 앱 이름=Room Check -->
-<link rel="manifest" href="manifest.webmanifest?v=20260807e" />
+<link rel="manifest" href="manifest.webmanifest?v=20260807f" />
 <meta name="theme-color" content="#1F3A66" />
 <meta name="application-name" content="Room Check" />
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260807e" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260807e" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260807f" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260807f" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Room Check" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<script src="pwa.js?v=20260807e" defer></script>
+<script src="pwa.js?v=20260807f" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -124,7 +124,10 @@ function renderFilter(){
   $('pr').className='prange'+(period===3?' on':'');
   $('go').onclick=()=>load();
   const [f,t]=rangeOf();
-  $('pnote').textContent=T.range+' · '+(f===t?f:(f+' ~ '+t));
+  /* 2026-08-07 (사용자 확정): 본인 관리지역 기준 통계임을 표시 */
+  const ZN={krabi:{ko:'카오락+푸켓+크라비',en:'Khaolak+Phuket+Krabi',th:'เขาหลัก+ภูเก็ต+กระบี่'},bangkok:{ko:'방콕+파타야',en:'Bangkok+Pattaya',th:'กรุงเทพ+พัทยา'}};
+  const zk=(DATA&&DATA.zone)||''; const zt=zk?('  ·  🗺 '+((ZN[zk]&&ZN[zk][L])||zk)):'';
+  $('pnote').textContent=T.range+' · '+(f===t?f:(f+' ~ '+t))+zt;
 }
 function render(){
   const T=LD[L];

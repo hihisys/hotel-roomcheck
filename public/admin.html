@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>너바나 · 관리자</title>
-<link rel="stylesheet" href="style.css?v=20260807e" />
+<link rel="stylesheet" href="style.css?v=20260803c" />
 <style>
 :root{--brand:#54406E;--brandDark:#3F3054;--paper:#EEEAF3;--line:#DCD4E6}
 .urow{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-top:10px;background:#fff}
@@ -140,16 +140,16 @@
 .offregrid .cd.today{box-shadow:0 0 0 2px var(--brand) inset}
 </style>
 <!-- 홈 화면 앱 (2026-08-03, [017]) — 아이콘=회사 로고, 앱 이름=Room Check -->
-<link rel="manifest" href="manifest.webmanifest?v=20260807e" />
+<link rel="manifest" href="manifest.webmanifest?v=20260803c" />
 <meta name="theme-color" content="#1F3A66" />
 <meta name="application-name" content="Room Check" />
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260807e" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260807e" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260803c" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260803c" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Room Check" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<script src="pwa.js?v=20260807e" defer></script>
+<script src="pwa.js?v=20260803c" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -203,6 +203,8 @@
   <div id="pgStats" class="apage">
   <section class="card"><h3 style="margin:0 0 6px;font-size:16px;font-weight:800">통계</h3>
     <p class="small" style="margin:0 0 8px" id="statLede"></p>
+    <!-- 지역별 통계 탭 (2026-08-07): 관리지역이 지정된 관리자에게는 숨겨지고 본인 지역만 집계된다 -->
+    <div class="seg" id="statZone" style="margin:0 0 8px"><button data-z="" class="on">전체 지역</button><button data-z="krabi">카오락+푸켓+크라비</button><button data-z="bangkok">방콕+파타야</button></div>
     <div class="pfilter" id="statPf"></div>
     <div class="prange" id="statPr"><input type="date" id="statD1"><span>~</span><input type="date" id="statD2"><button id="statGo">조회</button></div>
     <div class="pnote" id="statNote"></div>
@@ -516,6 +518,8 @@ function renderOffRoster(users){
    에이전트 탭은 에이전시별 합계를 보여주고, 누르면 소속 담당자별 숫자가 펼쳐진다.
    확인자 탭은 요청을 전 직원이 함께 받는 구조라 '전체 중 처리 비중'으로 집계한다. */
 let STATS=null, statTab='agencies', statView='table', statPeriod='이번 달', statOpen={};
+let statZone=''; /* 2026-08-07: 통계 지역 ('' 전체 / krabi / bangkok) */
+const ZONE_KO={'':'전체 지역',krabi:'카오락+푸켓+크라비',bangkok:'방콕+파타야'};
 const STAT_PERIODS=['이번 달','지난달','최근 3개월','직접 지정'];
 const STAT_LABEL={agencies:'에이전시',agentMgrs:'담당자',requesters:'요청자',checkers:'확인자'};
 const STAT_HEAD={agencies:'에이전시',agentMgrs:'담당자',requesters:'요청자',checkers:'확인자'};
@@ -536,8 +540,10 @@ function statRange(){
 async function loadStats(){
   const [f,to]=statRange();
   try{
-    const r=await fetch('api/admin/stats?from='+f+'&to='+to,{cache:'no-store'});
-    if(!r.ok)return; STATS=await r.json(); renderStats();
+    const r=await fetch('api/admin/stats?from='+f+'&to='+to+'&zone='+encodeURIComponent(statZone),{cache:'no-store'});
+    if(!r.ok)return; STATS=await r.json();
+    if(STATS.zoneLocked)statZone=STATS.zone||''; /* 지역 지정 관리자는 서버가 고정한 지역을 따른다 */
+    renderStats();
   }catch(e){}
 }
 function statCard(label,n){return '<div class="statcard"><div class="statn">'+(n||0)+'</div><div class="statl">'+label+'</div></div>';}
@@ -627,7 +633,15 @@ function renderStats(){
   const d1=document.getElementById('statD1'),d2=document.getElementById('statD2');
   if(d1&&!d1.value)d1.value=f; if(d2&&!d2.value)d2.value=to;
   const go=document.getElementById('statGo'); if(go)go.onclick=()=>loadStats();
-  const note=document.getElementById('statNote'); if(note)note.textContent='집계 기간 · '+f+' ~ '+to;
+  const note=document.getElementById('statNote'); if(note)note.textContent='집계 기간 · '+f+' ~ '+to+' · 지역 '+(ZONE_KO[statZone]||'전체 지역');
+  /* 지역 탭 (2026-08-07): 지역이 지정된 관리자는 탭을 감추고 본인 지역만 표시 */
+  const zt=document.getElementById('statZone');
+  if(zt){
+    const locked=!!(STATS&&STATS.zoneLocked);
+    zt.style.display=locked?'none':'';
+    zt.querySelectorAll('button').forEach(b=>{b.classList.toggle('on',(b.dataset.z||'')===statZone);
+      b.onclick=()=>{statZone=b.dataset.z||'';statOpen={};loadStats();};});
+  }
   if(!STATS)return;
   const t=STATS.total||{};
   const sb=document.getElementById('statSummary');

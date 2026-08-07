@@ -556,6 +556,14 @@ function route(string $path, string $method): void {
   if ($path === 'admin/stats' && $method === 'GET') {
     $u = requireAdmin();
     [$fromMs, $toMs] = statRangeMs($_GET['from'] ?? null, $_GET['to'] ?? null);
+    /* 지역별 통계 (2026-08-07 사용자 확정): zone=krabi(카오락+푸켓+크라비) | bangkok(방콕+파타야) | ''(전체)
+       - 관리지역이 지정된 관리자는 본인 지역만 볼 수 있다(휴무일 규칙과 동일). 최고관리자·전체 지역 관리자는 전환 가능.
+       - 판정은 요청에 포함된 호텔들의 지역(reqZones)으로 하며, 두 지역이 섞인 요청은 양쪽 모두에 집계된다. */
+    $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
+    $myZone = (strtolower((string)($u['email'] ?? '')) === $superEmail) ? '' : (string)($u['region'] ?? '');
+    $zone = trim((string)($_GET['zone'] ?? ''));
+    if (!in_array($zone, ['krabi', 'bangkok'], true)) $zone = '';
+    if ($myZone !== '') $zone = $myZone;                 // 지역 지정 관리자는 본인 지역 고정
     $byAgency = []; $byAgentMgr = []; $byRequester = []; $byChecker = [];
     $tot = ['requests' => 0, 'confirmed' => 0, 'quoteSent' => 0, 'contracted' => 0];
     /* 에이전트 탭은 실제 에이전시만 집계 (2026-07-31): 내부 직원·관리자 이름이 agent에 들어간 건 제외
@@ -567,6 +575,7 @@ function route(string $path, string $method): void {
     // 2026-07-30 버그 수정: 사용자 정보 없이 호출하면 지역 필터에 걸려 항상 0건이 되던 문제 → 관리자 정보 전달
     foreach (allRequests($pdo, $u) as $p) {
       if (!inStatRange($p, $fromMs, $toMs)) continue;
+      if ($zone !== '') { $zs = reqZones($p); if ($zs && !in_array($zone, $zs, true)) continue; } /* 2026-08-07: 지역 필터 (지역 미지정 요청은 항상 포함) */
       $answered = (($p['status'] ?? '') === 'answered');
       $confirmed = $answered && !empty($p['answerComplete']); // 확인자 답변 완료 = 확정
       $quoteSent = !empty($p['quoteSent']);
@@ -614,6 +623,7 @@ function route(string $path, string $method): void {
     jsonOut([
       'total' => $tot,
       'from' => $_GET['from'] ?? null, 'to' => $_GET['to'] ?? null,
+      'zone' => $zone, 'zoneLocked' => ($myZone !== ''), /* 2026-08-07: 적용된 지역 + 지역 고정 여부(탭 숨김용) */
       'agencies' => $agenciesOut,
       'agentMgrs' => $fmt($byAgentMgr),
       'requesters' => $fmt($byRequester),
@@ -628,9 +638,13 @@ function route(string $path, string $method): void {
     $u = requireApproved();
     if (!in_array($u['role'], ['sreq', 'schk', 'admin'], true)) jsonOut(['error' => 'forbidden'], 403);
     [$fromMs, $toMs] = statRangeMs($_GET['from'] ?? null, $_GET['to'] ?? null);
+    /* 2026-08-07 (사용자 확정): 직원은 본인 관리지역 통계만 본다. 지역 미지정(전체) 직원은 종전대로 전체. */
+    $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
+    $zone = (strtolower((string)($u['email'] ?? '')) === $superEmail) ? '' : (string)($u['region'] ?? '');
     $total = 0; $byChecker = [];
     foreach (allRequests($pdo, $u) as $p) {
       if (!inStatRange($p, $fromMs, $toMs)) continue;
+      if ($zone !== '') { $zs = reqZones($p); if ($zs && !in_array($zone, $zs, true)) continue; }
       $total++;
       if (($p['status'] ?? '') === 'answered') {
         $ck = trim((string)($p['manager'] ?? ''));
@@ -644,6 +658,7 @@ function route(string $path, string $method): void {
     usort($rows, fn($a, $b) => $b['done'] <=> $a['done']);
     $me = trim((string)($u['nickname'] ?? '')) ?: trim((string)($u['name'] ?? ''));
     jsonOut(['ok' => true, 'from' => $_GET['from'] ?? null, 'to' => $_GET['to'] ?? null,
+      'zone' => $zone, /* 2026-08-07: 적용된 관리지역 (화면 안내 표시용) */
       'total' => $total, 'me' => $me, 'staff' => $rows]);
   }
   /* 본인 휴무일 자가 등록 (2026-07-19, 2026-07-21 확장, 2026-07-22 추가관리자 허용): 요청자·확인자,

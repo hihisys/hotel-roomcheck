@@ -481,11 +481,19 @@ function route(string $path, string $method): void {
   /* 직원 휴무일 저장 (2026-07-18, 2026-07-21 확장): 관리자가 임의 직원의 휴무일을 등록/수정.
      dates=최종 확정 휴무일, work_overrides=기본 휴무일(토/일/공휴일)을 근무로 되돌린 날짜 */
   if ($path === 'admin/offdays' && $method === 'POST') {
-    requireAdmin();
+    $adm = requireAdmin();
     $id = (int)($in['id'] ?? 0);
     if (!$id) jsonOut(['error' => 'invalid'], 422);
-    $st = $pdo->prepare("SELECT id FROM users WHERE id=?"); $st->execute([$id]);
-    if (!$st->fetch()) jsonOut(['error' => 'not_found'], 404);
+    $st = $pdo->prepare("SELECT id,region FROM users WHERE id=?"); $st->execute([$id]);
+    $target = $st->fetch();
+    if (!$target) jsonOut(['error' => 'not_found'], 404);
+    /* 2026-08-07 (사용자 확정): 휴일 등록·관리는 본인 관리지역 직원만 — 관리지역이 지정된 관리자는
+       다른 지역 직원의 휴무일을 등록/수정할 수 없다 (지역 미지정 직원·전체 관리자는 제한 없음, 최고관리자 제외) */
+    $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
+    $isSuperAdm = strtolower((string)($adm['email'] ?? '')) === $superEmail;
+    $myRegion = (string)($adm['region'] ?? '');
+    $tRegion = (string)($target['region'] ?? '');
+    if (!$isSuperAdm && $myRegion !== '' && $tRegion !== '' && $tRegion !== $myRegion) jsonOut(['error' => 'region_forbidden'], 403);
     $dates = normDates((array)($in['dates'] ?? []));
     $workOvr = normDates((array)($in['work_overrides'] ?? []));
     $weekdays = [];
@@ -672,11 +680,16 @@ function route(string $path, string $method): void {
     if (!$isDate($from) || !$isDate($to) || $to < $from) jsonOut(['error' => 'bad_range'], 400);
     if ((strtotime($to) - strtotime($from)) > 120 * 86400) jsonOut(['error' => 'range_too_wide'], 400);
     $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
-    $st = $pdo->prepare("SELECT id,name,nickname,email,role,off_days FROM users WHERE status='approved' AND role IN ('sreq','schk','admin') ORDER BY id");
+    $st = $pdo->prepare("SELECT id,name,nickname,email,role,off_days,region FROM users WHERE status='approved' AND role IN ('sreq','schk','admin') ORDER BY id");
     $st->execute();
+    /* 2026-08-07 (사용자 확정): 휴일 근무 현황은 지역별 — 관리지역이 지정된 직원은 본인 지역 직원 + 전체(지역 미지정) 직원만 표시.
+       지역 미지정(전체) 사용자·최고관리자는 전 직원 표시 */
+    $myRegion = (strtolower((string)$u['email']) === $superEmail) ? '' : (string)($u['region'] ?? '');
     $staff = [];
     foreach ($st->fetchAll() as $r) {
       if ($r['role'] === 'admin' && strtolower((string)$r['email']) === $superEmail) continue; // 최고관리자는 근무표 대상 아님
+      $ur = (string)($r['region'] ?? '');
+      if ($myRegion !== '' && $ur !== '' && $ur !== $myRegion) continue; // 지역 필터 (전체 직원은 항상 포함)
       $od = decodeOffDays($r['off_days'] ?? '');
       $off = [];
       foreach ($od['dates'] as $d) { if (is_string($d) && $d >= $from && $d <= $to) $off[] = $d; }

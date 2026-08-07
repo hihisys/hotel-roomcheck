@@ -220,7 +220,7 @@
   <div id="pgOff" class="apage" style="display:none">
   <section class="card">
     <h3 style="margin:0 0 8px;font-size:16px;font-weight:800">휴무일 관리</h3>
-    <p class="small" style="margin:0 0 8px">토·일·공휴일은 전 직원 기본 휴무로 처리됩니다. 개별 직원의 근무/휴무 조정은 아래 "휴일 등록"에서 할 수 있습니다.</p>
+    <p class="small" style="margin:0 0 8px">토·일·공휴일은 전 직원 기본 휴무로 처리됩니다. 개별 직원의 근무/휴무 조정은 아래 "휴일 등록"에서 할 수 있습니다.<span id="offRegionNote" style="display:block;margin-top:3px;font-weight:800;color:var(--brand)"></span></p>
     <div class="seg" id="offTabs">
       <button type="button" data-t="week" class="on">주간 확인</button>
       <button type="button" data-t="month">월별 현황판</button>
@@ -268,6 +268,7 @@ const ROLE_KO={agent:'에이전트',sreq:'직원 요청자',schk:'직원 확인�
 const ST_KO={pending:'대기',approved:'승인됨',rejected:'거절됨'};
 const LANG_KO={ko:'한국어',en:'영어',th:'태국어'};
 let IS_SUPER=false; // 로그인한 사람이 최고관리자(hihisys)인지
+let MY_REGION=''; // 2026-08-07: 로그인 관리자의 관리지역 ('krabi'/'bangkok'/''=전체) — 휴무일 관리 지역 제한용
 let _tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(_tt);_tt=setTimeout(()=>t.style.opacity='0',2000);}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function row(u,withDecide){
@@ -495,7 +496,12 @@ document.getElementById('offRegSave').onclick=async()=>{
 };
 
 function renderOffRoster(users){
-  offRoster = users.filter(u=>((u.role==='sreq'||u.role==='schk')||(u.role==='admin'&&!u.super)) && u.status==='approved');
+  /* 2026-08-07 (사용자 확정): 휴무일 관리는 지역별 — 관리지역이 지정된 관리자는 본인 지역 직원 + 전체(지역 미지정) 직원만
+     보고 등록할 수 있다. 최고관리자·전체 지역 관리자는 종전대로 전 직원. 서버(admin/offdays)에서도 동일 규칙 검증. */
+  const regionOK=u=>IS_SUPER||!MY_REGION||!u.region||u.region===MY_REGION;
+  offRoster = users.filter(u=>((u.role==='sreq'||u.role==='schk')||(u.role==='admin'&&!u.super)) && u.status==='approved' && regionOK(u));
+  const rn=document.getElementById('offRegionNote');
+  if(rn)rn.textContent=(!IS_SUPER&&MY_REGION)?('🗺 내 관리지역('+({krabi:'카오락+푸켓+크라비',bangkok:'방콕+파타야'}[MY_REGION]||MY_REGION)+') 직원과 전체 지역 직원만 표시됩니다.'):'';
   const t=new Date();
   if(!omY){ omY=t.getFullYear(); omM=t.getMonth()+1; }
   if(!regY){ regY=t.getFullYear(); regM=t.getMonth()+1; }
@@ -646,6 +652,7 @@ function renderStats(){
 async function load(){
   let r;
   try{const me=await(await fetch('api/me',{cache:'no-store'})).json();IS_SUPER=!!(me.user&&me.user.super);
+    MY_REGION=(me.user&&me.user.region)||''; /* 2026-08-07: 휴무일 관리 지역 제한 */
     const mc=document.getElementById('meChip');if(mc&&me.user)mc.textContent=me.user.nickname||me.user.name||'관리자';}catch(e){}
   try{r=await fetch('api/admin/users');}catch(e){toast('서버에 연결할 수 없습니다');return;}
   if(r.status===401||r.status===403){location.href='login.html';return;}

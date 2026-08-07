@@ -129,10 +129,15 @@ function sweep(){const now=Date.now();let ch=false;
       DB.vault.push(r);ch=true;return false;}
     return true;});
   DB.requests.forEach(r=>{
-    if(r.status==='answered'&&r.answerComplete===undefined){r.answerComplete=allDone(r);ch=true;}
+    /* 2026-08-07 (사용자 확정): 답변 완료 여부를 항상 다시 계산한다.
+       호텔이 여러 개인데 일부만 답변했거나, 요금이 비어 있으면 완료가 아니다(rowDone 규칙). */
+    if(r.status==='answered'){const _c=allDone(r);if(r.answerComplete!==_c){r.answerComplete=_c;ch=true;}}
     /* 2026-08-02 [012]: 모든 호텔 답변이 완료되면 곧바로 '완료' 탭으로 옮긴다.
        archivedAt(=이동 시각)을 기준으로 하는 기존 삭제 규칙(이동 후 30일)은 그대로 유지된다. */
     if(!r.archivedAt&&!r.contractedAt&&r.status==='answered'&&r.answerComplete){r.archivedAt=now;ch=true;}
+    /* 2026-08-07: 완료로 넘어갔던 건이 다시 미완료로 판정되면(요금 누락·부분 답변) 요청 목록으로 되돌린다.
+       사용자가 직접 '지난 리스트로' 옮긴 건(manualArc)은 그대로 둔다. */
+    if(r.archivedAt&&!r.contractedAt&&r.status==='answered'&&!r.answerComplete&&!r.manualArc){r.archivedAt=null;ch=true;}
     if(!r.archivedAt&&!r.contractedAt){
       const base=r.quoteSent?(r.quoteSentAt||r.answeredAt||r.createdAt):r.createdAt;
       if(now-base>WEEK_MS){r.archivedAt=now;ch=true;}}
@@ -505,7 +510,17 @@ function availOf(req,row,i){
   if(sts.some(s=>!s))return{k:'un',t:T('av_un')};
   if(sts.some(s=>s==='rq'))return{k:'rq',t:T('av_rq')};
   return{k:'un',t:T('av_un')};}
-function rowDone(req,row,i){const ds=rDates(req,row,i).dates;return ds.length>0&&ds.every(iso=>(((req.ws||{})[row.id+'|'+iso]||{}).status));}
+/* 룸체크 완료 판정 (2026-08-07 사용자 확정 강화)
+   ① 그 호텔의 모든 날짜에 가능여부(AV/RQ/S/O)가 입력되어야 하고
+   ② 예약 가능(AV)·요청중(RQ)인 날짜는 호텔 요금까지 입력되어야 완료로 본다. (S/O=만실은 요금 불필요)
+   → 호텔이 여러 개면 전부 답변해야 하고, 요금이 비어 있으면 '요청 목록'에 그대로 남는다. */
+function cellDone(c){
+  if(!c||!c.status)return false;
+  if(c.status==='so')return true;                       // 만실은 요금 없이도 완료
+  const p=String(c.price==null?'':c.price).trim();
+  return p!==''&&Number(p)>0;                           // 가능·요청중은 요금 필수
+}
+function rowDone(req,row,i){const ds=rDates(req,row,i).dates;return ds.length>0&&ds.every(iso=>cellDone((req.ws||{})[row.id+'|'+iso]));}
 function doneCount(req){return req.rows.filter((r,i)=>rowDone(req,r,i)).length;}
 function allDone(req){return doneCount(req)===req.rows.length;}
 function agentLine(req){const p=[];if(req.agent)p.push(T('agent_w')+' '+nickOf(req.agent));if(req.manager)p.push(T('mgr_w')+' '+nickOf(req.manager));return p.join(' · ')||T('no_mgr');}
@@ -1111,7 +1126,8 @@ function bindCommonList(){
     else{r.contractedAt=Date.now();toast(T('t_contract')+reqNo(r));}
     saveDB();renderApp();});
   document.querySelectorAll('[data-topast]').forEach(b=>b.onclick=()=>{const r=byId(Number(b.dataset.topast));if(!r)return;
-    r.archivedAt=Date.now();ui.sel=null;ui.ssel=null;saveDB();renderApp();toast(T('t_topast')+reqNo(r));});
+    r.archivedAt=Date.now();r.manualArc=true; /* 2026-08-07: 사용자가 직접 옮긴 건 — 미완료여도 되돌리지 않음 */
+    ui.sel=null;ui.ssel=null;saveDB();renderApp();toast(T('t_topast')+reqNo(r));});
   document.querySelectorAll('[data-recheck]').forEach(b=>b.onclick=()=>{const r=byId(Number(b.dataset.recheck));if(!r)return;
     draft=draftFromReq(r);ui.sel=null;ui.ssel=null;ui.qbOpen=null;renderApp();
     window.scrollTo({top:0,behavior:'smooth'});

@@ -51,7 +51,7 @@ function route(string $path, string $method): void {
     $pw = $in['password'] ?? ''; $role = $in['role'] ?? ''; $lang = $in['lang'] ?? 'ko';
     if (!$name || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($pw) < 6) jsonOut(['error' => 'invalid_input'], 422);
     if (!in_array($role, ['agent', 'sreq', 'schk'], true)) jsonOut(['error' => 'invalid_role'], 422);
-    $allowed = ['agent' => ['ko'], 'sreq' => ['en', 'ko'], 'schk' => ['th', 'en']][$role];
+    $allowed = ['agent' => ['ko'], 'sreq' => ['ko', 'en'], 'schk' => ['th', 'en']][$role]; /* 2026-08-07: 요청자 기본 한국어 */
     if (!in_array($lang, $allowed, true)) $lang = $allowed[0];
     try {
       $st = $pdo->prepare("INSERT INTO users (name,email,pass_hash,role,status,lang,created_at) VALUES (?,?,?,?, 'pending', ?,?)");
@@ -72,7 +72,9 @@ function route(string $path, string $method): void {
     session_regenerate_id(true);
     $_SESSION['uid'] = (int)$u['id'];
     unset($_SESSION['agency']);
-    setRememberCookie(!empty($in['remember'])); // 자동 로그인 (2026-07-18)
+    /* 2026-08-07 (사용자 확정): 로그인 유지를 기본값으로 — 텔레그램 알림 링크로 들어와도 재로그인 없이 바로 열리도록.
+       remember를 명시적으로 false로 보낸 경우에만 해제한다 (미지정이면 유지 ON). */
+    setRememberCookie(!array_key_exists('remember', $in) || !empty($in['remember']));
     jsonOut(['ok' => true, 'user' => publicUser($u)]);
   }
   /* 에이전시 부계정 로그인 — 외부 인증 API를 서버 사이드에서 호출 (agency.php) */
@@ -84,7 +86,8 @@ function route(string $path, string $method): void {
   if ($path === 'me' && $method === 'PATCH') {
     $u = requireApproved();
     if (isset($in['lang'])) {
-      $allowed = ['agent' => ['ko'], 'sreq' => ['en', 'ko'], 'schk' => ['th', 'en'], 'admin' => ['ko']][$u['role']];
+      /* 2026-08-07 (사용자 확정): 요청자·관리자=한국어/영어, 확인자=태국어/영어, 에이전트=한국어 */
+      $allowed = ['agent' => ['ko'], 'sreq' => ['ko', 'en'], 'schk' => ['th', 'en'], 'admin' => ['ko', 'en']][$u['role']];
       if (in_array($in['lang'], $allowed, true)) {
         $pdo->prepare("UPDATE users SET lang=? WHERE id=?")->execute([$in['lang'], $u['id']]);
       }

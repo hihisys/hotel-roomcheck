@@ -339,7 +339,10 @@ async function srvInit(){
     if(!r.ok)throw 0;
     const j=await r.json();
     if(!j||typeof j!=='object'||!('user' in j))throw 0;
-    if(!j.user){location.href='login.html?to='+encodeURIComponent(ui.role);return false;}
+    /* 2026-08-07: 텔레그램 알림 링크(#req=...)로 들어왔다가 로그인이 필요하면, 로그인 후 그 요청으로 바로 돌아가도록
+       현재 주소(해시 포함)를 next로 넘긴다 */
+    if(!j.user){const _nx=location.pathname.split('/').pop()+location.search+location.hash;
+      location.href='login.html?to='+encodeURIComponent(ui.role)+'&next='+encodeURIComponent(_nx);return false;}
     const pageOf={agent:'agent.html',sreq:'request.html',schk:'check.html',admin:'admin.html'};
     if(j.user.role!==ui.role&&j.user.role!=='admin'){location.href=pageOf[j.user.role]||'index.html';return false;}
     SRV.on=true;SRV.me=j.user;

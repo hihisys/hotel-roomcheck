@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>룸 체크 · 로그인</title>
-<link rel="stylesheet" href="style.css?v=20260803c" />
+<link rel="stylesheet" href="style.css?v=20260807c" />
 <style>
 body{background:#F3F5FA}
 .wrap{max-width:440px}
@@ -46,16 +46,16 @@ body{background:#F3F5FA}
 .msg.ok{background:#EAF7EE;color:#1E7B45;display:block}
 </style>
 <!-- 홈 화면 앱 (2026-08-03, [017]) — 아이콘=회사 로고, 앱 이름=Room Check -->
-<link rel="manifest" href="manifest.webmanifest?v=20260803c" />
+<link rel="manifest" href="manifest.webmanifest?v=20260807c" />
 <meta name="theme-color" content="#1F3A66" />
 <meta name="application-name" content="Room Check" />
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260803c" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260803c" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260807c" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260807c" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Room Check" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<script src="pwa.js?v=20260803c" defer></script>
+<script src="pwa.js?v=20260807c" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -76,7 +76,7 @@ body{background:#F3F5FA}
       <input class="lg-input" id="pw" type="password" autocomplete="current-password">
     </div>
     <label class="lg-check">
-      <input type="checkbox" id="remember">
+      <input type="checkbox" id="remember" checked>
       <span class="lg-box"><svg width="13" height="13" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.2l2.6 2.6L10 3" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
       <span data-i="autologin">자동 로그인</span>
     </label>
@@ -119,6 +119,17 @@ function tr(){const d=LD[L];document.querySelectorAll('[data-i]').forEach(el=>{c
 function showMsg(kind,key){const m=$('msg');m.className='msg '+kind;m.textContent=LD[L][key]||key;}
 $('lnkJoin').onclick=()=>showMsg('err','closed');
 $('lnkFind').onclick=()=>showMsg('ok','findpw_notice');
+/* 로그인 후 돌아갈 대상 (2026-08-07): 텔레그램 알림 링크(check.html#req=A-0001 등)로 들어와 로그인이 필요했던 경우,
+   로그인 성공 시 원래 요청 페이지로 바로 이동한다. 외부 주소로 튀지 않도록 같은 사이트 내부 경로만 허용. */
+function nextTarget(){
+  try{
+    const nx=new URLSearchParams(location.search).get('next')||'';
+    if(!nx) return '';
+    if(/^(https?:)?\/\//.test(nx)||nx.startsWith('/')) return ''; // 외부·절대 경로 차단
+    if(!/^[a-z0-9_-]+\.html([?#].*)?$/i.test(nx)) return '';
+    return nx;
+  }catch(e){return '';}
+}
 $('lnkLang').onclick=()=>$('langOpts').classList.toggle('on');
 document.querySelectorAll('#langOpts button').forEach(b=>b.onclick=()=>{L=b.dataset.lang;tr();$('langOpts').classList.remove('on');});
 $('go').onclick=async()=>{
@@ -131,14 +142,14 @@ $('go').onclick=async()=>{
     if(j.ok){let page={agent:'agent.html',sreq:'request.html',schk:'check.html',admin:'admin.html'}[j.user.role]||'index.html';
       /* 일반 관리자(요청자→관리자 승격, 최고관리자 아님)는 요청자 페이지가 기본 (2026-07-30) */
       if(j.user.role==='admin'&&!j.user.super)page='request.html';
-      location.href=page;return;}
+      location.href=nextTarget()||page;return;} /* 2026-08-07: 텔레그램 링크로 들어온 경우 그 요청 페이지로 복귀 */
     if(j.error==='pending'){showMsg('err','pending');return;}
     if(j.error==='rejected'){showMsg('err','rejected');return;}
     // 일반 로그인 실패 → 에이전시 계정으로 재시도 (통합 로그인)
     const r2=await fetch('api/agency-login',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({login_id:email,password:pw})});
     const j2=await r2.json();
-    if(j2.ok){location.href='agent.html';return;}
+    if(j2.ok){location.href=nextTarget()||'agent.html';return;}
     if(j2.error==='pending'){showMsg('err','pending');return;}   /* 부계정 승인 대기 (2026-08-01) */
     if(j2.error==='rejected'){showMsg('err','rejected');return;}
     /* 인증 서버 장애·미설정을 '비밀번호 오류'로 오인하지 않도록 구분 (2026-08-01) */
@@ -156,7 +167,8 @@ tr();
   if(j&&j.user&&j.user.status==='approved'){
     let page={agent:'agent.html',sreq:'request.html',schk:'check.html',admin:'admin.html'}[j.user.role]||'';
     if(j.user.role==='admin'&&!j.user.super)page='request.html';
-    if(page)location.replace(page);
+    const nx=nextTarget(); /* 2026-08-07: 이미 로그인 상태면 텔레그램 링크 대상으로 바로 이동 */
+    if(nx||page)location.replace(nx||page);
   }
 }catch(e){}})();
 </script>

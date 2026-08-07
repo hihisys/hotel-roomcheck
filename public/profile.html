@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>너바나 · 회원정보</title>
-<link rel="stylesheet" href="style.css?v=20260803c" />
+<link rel="stylesheet" href="style.css?v=20260807c" />
 <style>
 .wrap{max-width:470px}
 .field{margin-top:12px}
@@ -17,16 +17,16 @@
 .sechead2{font-size:14.5px;font-weight:800;margin:2px 0 4px}
 </style>
 <!-- 홈 화면 앱 (2026-08-03, [017]) — 아이콘=회사 로고, 앱 이름=Room Check -->
-<link rel="manifest" href="manifest.webmanifest?v=20260803c" />
+<link rel="manifest" href="manifest.webmanifest?v=20260807c" />
 <meta name="theme-color" content="#1F3A66" />
 <meta name="application-name" content="Room Check" />
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260803c" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260803c" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260807c" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260807c" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Room Check" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<script src="pwa.js?v=20260803c" defer></script>
+<script src="pwa.js?v=20260807c" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -179,6 +179,11 @@ document.querySelectorAll('.langbtn').forEach(btn=>{
     if(!j.user){location.href='login.html';return;}
     ME=j.user;
     if(ME.lang&&LD[ME.lang])L=ME.lang;
+    /* 2026-08-07 (사용자 확정): 역할별 선택 가능 언어만 표시 — 요청자·관리자=한글/영어, 확인자=태국어/영어, 에이전트=한글 */
+    const LANG_OK={agent:['ko'],sreq:['ko','en'],schk:['th','en'],admin:['ko','en']}[ME.role]||['ko'];
+    document.querySelectorAll('.langbtn').forEach(b=>{ if(!LANG_OK.includes(b.dataset.lang)) b.style.display='none'; });
+    if(!LANG_OK.includes(L)) L=LANG_OK[0];
+    document.querySelectorAll('.langbtn').forEach(b=>b.classList.toggle('on',b.dataset.lang===L));
     // 역할별 배색: 로그인한 사용자의 실제 역할에 맞춰 --brand를 동적으로 지정 (2026-07-22, 사이트 전체 배색 일관성 정리)
     const ROLE_BRAND={sreq:'#2B5FA3',schk:'#B07908',admin:'#54406E'};
     if(ROLE_BRAND[ME.role]) document.documentElement.style.setProperty('--brand',ROLE_BRAND[ME.role]);

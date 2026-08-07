@@ -41,7 +41,11 @@ function tgSendRole(PDO $pdo, string $role, callable $textForLang, ?int $exclude
     $ur = (string)($u['region'] ?? '');
     if ($ur !== '' && $reqRegion && $ur !== $reqRegion && (int)$u['id'] !== (int)$alwaysUserId) continue; // 지역 존 필터 + 본인 등록 건 예외
     if (isOffDayToday($u['off_days'] ?? null)) continue; // skip on off-day
-    $lang = $u['lang'] ?: 'ko';
+    /* 2026-08-07 (사용자 확정): 역할별 허용 언어로 보정 — 요청자·관리자=한국어/영어, 확인자=태국어/영어.
+       계정 언어가 허용 범위를 벗어나 저장돼 있어도 텔레그램 문구는 항상 역할에 맞는 언어로 나간다. */
+    $allow = ($u['role'] === 'schk') ? ['th', 'en'] : ['ko', 'en'];
+    $lang = $u['lang'] ?: '';
+    if (!in_array($lang, $allow, true)) $lang = $allow[0];
     $text = $textForLang($lang);
     /* 2026-08-07: 요청 바로가기 링크 — 클릭 시 역할별 페이지(#req=번호)로 이동해 해당 요청 자동 열림 */
     $site = rtrim((string)env('SITE_URL', ''), '/');

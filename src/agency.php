@@ -141,6 +141,7 @@ function agencyLoginRoute(PDO $pdo, array $in): void {
   session_regenerate_id(true);
   $_SESSION['uid'] = (int)$u['id'];
   $_SESSION['agency'] = $agency;              // idx / parent_idx / kind 세션 보관
+  setRememberCookie(true);                    // 2026-08-07: 부계정도 로그인 유지 기본 (알림 링크 재로그인 방지)
   $u['name'] = $name;
   jsonOut(['ok' => true, 'user' => publicUser($u)]);
 }

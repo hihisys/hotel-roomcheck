@@ -1601,6 +1601,23 @@ let _tt;function toast(m){const t=document.getElementById('toast');t.textContent
     history.replaceState(null,'',location.pathname+location.search);
     toast(TF('t_imported',{no:reqNo(imp)}));
   }
+  /* 텔레그램 알림 딥링크 (2026-08-07): #req=A-00001 → 해당 요청 자동 선택·이동 (인앱 알림 클릭과 동일 동작) */
+  const _mReq=(location.hash||'').match(/^#req=([ADad]-[0-9A-Za-z]+)$/);
+  if(_mReq){
+    const _no=_mReq[1].toUpperCase();
+    history.replaceState(null,'',location.pathname+location.search);
+    const _r=(DB.requests||[]).find(x=>{try{return reqNo(x)===_no;}catch(e){return false;}});
+    if(_r){
+      if(ui.role==='schk'){
+        ui.listTab=(_r.status==='answered'&&_r.answerComplete)?(isFullbookReq(_r)?'full':'done'):'act';
+        ui.ssel=_r.id;
+      }else{
+        ui.listTab=_r.contractedAt?'con':(_r.archivedAt?'past':'act');
+        ui.sel=_r.id;ui.ssel=_r.id;
+      }
+      setTimeout(()=>{const t=document.querySelector('[data-sel="'+_r.id+'"],[data-ssel="'+_r.id+'"]');if(t)t.scrollIntoView({behavior:'smooth',block:'start'});},300);
+    }else{toast('해당 요청을 찾을 수 없습니다');}
+  }
   renderApp();
   setTimeout(function(){ensureH2C();},1200); /* 2026-08-01: html2canvas 미리 로드 — 이미지 저장 클릭 시 지연·실패 방지 */
 })();

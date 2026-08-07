@@ -51,9 +51,9 @@ function detectEvents(PDO $pdo, ?array $old, array $new, array $actor): void {
       // 대상 사용자가 없어도 알림 1건 기록 (관리자 전체 열람용, 2026-07-30)
       if (!$matched) $notifSt->execute([$targetRole, $uid, 'new_request', $no, $payload, nowMs(), $reqRegion]);
     }
-    /* 2026-08-07: 지역 존 + 본인 등록 건 규칙 적용 */
-    tgSendRole($pdo, 'schk', fn($lang) => tgT($lang, 'new_request', array_merge(['no' => $no, 'hotels' => $hotels, 'dates' => reqDates($new)], ['agent' => $new['agent'] ?? ''])), $uid, $reqRegion, $createdBy);
-    if ($role === 'agent') tgSendRole($pdo, 'sreq', fn($lang) => tgT($lang, 'new_request', array_merge(['no' => $no, 'hotels' => $hotels, 'dates' => reqDates($new)], ['agent' => $new['agent'] ?? ''])), $uid, $reqRegion, $createdBy);
+    /* 2026-08-07: 지역 존 + 본인 등록 건 규칙 적용 + 요청 바로가기 링크 */
+    tgSendRole($pdo, 'schk', fn($lang) => tgT($lang, 'new_request', array_merge(['no' => $no, 'hotels' => $hotels, 'dates' => reqDates($new)], ['agent' => $new['agent'] ?? ''])), $uid, $reqRegion, $createdBy, $no);
+    if ($role === 'agent') tgSendRole($pdo, 'sreq', fn($lang) => tgT($lang, 'new_request', array_merge(['no' => $no, 'hotels' => $hotels, 'dates' => reqDates($new)], ['agent' => $new['agent'] ?? ''])), $uid, $reqRegion, $createdBy, $no);
     return;
   }
 
@@ -85,10 +85,13 @@ function detectEvents(PDO $pdo, ?array $old, array $new, array $actor): void {
       foreach ($matched as $u) $notifSt->execute([$targetRole, $uid, $notifyType, $no, $payload, nowMs(), $reqRegion]);
       if (!$matched) $notifSt->execute([$targetRole, $uid, $notifyType, $no, $payload, nowMs(), $reqRegion]); // 대상 없어도 기록 (2026-07-30)
     }
-    /* 2026-08-07 (사용자 확정): 답변 도착·부분 답변도 텔레그램 발송 — 요청자(+관리자) 채널, 지역 존 + 본인 등록 건 규칙 */
+    /* 2026-08-07 (사용자 확정): 답변 도착·부분 답변도 텔레그램 발송 — 요청자(+관리자) 채널, 지역 존 + 본인 등록 건 규칙.
+       답변자(담당자) 닉네임 표기 + 요청 바로가기 링크 포함 */
     $tgType = !empty($new['answerComplete']) ? 'answered' : 'partial';
-    $tgParams = ['no' => $no, 'hotels' => $hotels, 'n' => $new['_doneCount'] ?? '?', 't' => $rows];
-    tgSendRole($pdo, 'sreq', fn($lang) => tgT($lang, $tgType, $tgParams), $uid, $reqRegion, $createdBy);
+    $mgr = trim((string)($new['manager'] ?? ''));
+    $tgParams = ['no' => $no, 'hotels' => $hotels, 'n' => $new['_doneCount'] ?? '?', 't' => $rows,
+                 'mgr' => $mgr !== '' ? "\n👤 " . $mgr : ''];
+    tgSendRole($pdo, 'sreq', fn($lang) => tgT($lang, $tgType, $tgParams), $uid, $reqRegion, $createdBy, $no);
   }
 
   // 3) 견적 요청됨 (에이전트 → 요청자)
@@ -100,8 +103,8 @@ function detectEvents(PDO $pdo, ?array $old, array $new, array $actor): void {
     $payload = json_encode(['hotels' => $hotels, 'agent' => trim($new['agent'] ?? ''), 'agentManager' => trim($new['agentManager'] ?? '')], JSON_UNESCAPED_UNICODE);
     foreach ($matched as $u) $notifSt->execute(['sreq', $uid, 'quote_requested', $no, $payload, nowMs(), $reqRegion]);
     if (!$matched) $notifSt->execute(['sreq', $uid, 'quote_requested', $no, $payload, nowMs(), $reqRegion]); // 대상 없어도 기록 (2026-07-30)
-    /* 2026-08-07 (사용자 확정): 견적 요청도 텔레그램 발송 — 요청자(+관리자) 채널 */
-    tgSendRole($pdo, 'sreq', fn($lang) => tgT($lang, 'quote_requested', ['no' => $no]), $uid, $reqRegion, $createdBy);
+    /* 2026-08-07 (사용자 확정): 견적 요청도 텔레그램 발송 — 요청자(+관리자) 채널, 요청 바로가기 링크 포함 */
+    tgSendRole($pdo, 'sreq', fn($lang) => tgT($lang, 'quote_requested', ['no' => $no]), $uid, $reqRegion, $createdBy, $no);
   }
 
   // 4) 견적 발송됨 (요청자 → 에이전트)

@@ -72,6 +72,8 @@ ENV TELEGRAM_WEBHOOK_SECRET=qYgyAJ8HXip7sx7xlN3CmwHmFGahCH21
 ENV CRON_KEY=3bQaKHPq3aSwu0Fhn59WQwoxGWLz8MZX
 ENV ADMIN_EMAIL=hihisys@gmail.com
 ENV ADMIN_PASSWORD=123456
+# 텔레그램 메시지의 '요청 바로 열기' 링크 기준 주소 (2026-08-07)
+ENV SITE_URL=https://hotel-roomcheck-356950571433.asia-southeast1.run.app
 EXPOSE 8080
 
 # Start Apache

@@ -797,6 +797,8 @@ function bindForm(){
       rDates(req,row,i).dates.forEach((iso,k)=>{const v=arr[k]||arr[arr.length-1];
         if(v&&v.price){req.ws[row.id+'|'+iso]={price:v.price};}});});
     upsert(req);draft=newDraft(d);
+    /* 2026-08-07 (사용자 확정): 요청자 페이지는 등록 후에도 에이전트 칸을 비운다 (다음 요청에 이전 에이전시가 남지 않도록) */
+    if(ui.role==='sreq'){draft.agent='';draft.agentManager='';}
     if(ui.role==='agent')ui.sel=req.id;else ui.ssel=req.id;
     renderApp();
     toast((direct?T('t_direct_reg'):T('t_registered'))+reqNo(req));
@@ -1621,7 +1623,10 @@ let _tt;function toast(m){const t=document.getElementById('toast');t.textContent
   if(SRV.on&&SRV.me){
     /* 2026-07-30: 에이전트=소속 에이전시(회사명), 담당자=본인 — 통계가 '에이전트 담당자'로 잡히도록 */
     if(ui.role==='agent'){applyAgentDefaults();if(!draft.agent)draft.agent=meNick()||DB.agentName||'';}
-    if(ui.role==='sreq'&&!draft.agent)draft.agent=meNick()||DB.agentName||'';
+    /* 2026-08-07 (사용자 확정): 요청자 페이지는 에이전트 칸을 비워 둔다 — 직전에 쓴 에이전시가 자동으로
+       채워져 있어 다른 에이전시 요청을 등록할 때 잘못 남는 문제. 매번 목록에서 새로 고르도록 placeholder(선택·입력) 표시.
+       (에이전트 콘솔은 본인 소속 에이전시 자동 채움 규칙 그대로 유지) */
+    if(ui.role==='sreq')draft.agent='';
     if(ui.role==='sreq'&&meNick())draft.registrant=meNick();
   }
   sweep();

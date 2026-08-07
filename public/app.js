@@ -1167,7 +1167,8 @@ async function saveImg(id,name){const node=document.getElementById(id);
 async function saveFullImg(req){
   if(!await ensureH2C()){toast(T('t_img_need_net'));return;}
   FORCE_KO=true;let html='';
-  try{html=resultCardHTML(req)+(req.quoteSent||ui.qOpen||ui.qbOpen?quoteCardHTML(req):'');}
+  /* 2026-08-07 (사용자 확정): 관리자 이미지 저장은 발행·화면 상태와 무관하게 항상 룸체크 결과 + 견적 전체(담당 정보 포함) 저장 */
+  try{html=resultCardHTML(req)+(req.quote?quoteCardHTML(req,true):'');}
   catch(e){html='';}
   finally{FORCE_KO=false;}
   if(!html){toast(T('t_img_fail'));return;} /* 2026-08-01: 렌더 실패 시 무반응 대신 안내 */
@@ -1391,7 +1392,10 @@ function quoteText(req){
   if(req.quote.remark)t+='\n※ '+req.quote.remark+'\n';
   t+='\n견적금액 · 1인 '+manwonF(c.perMan)+'\n'+c.pax+'인 기준 '+manwonF(c.totalMan);
   return t;}
-function quoteCardHTML(req){
+/* 2026-08-07 (사용자 확정): 견적서 카드 2모드
+   - 손님용(기본): 담당자 이름 없이 '발행일'(날짜만) 한 줄 — 견적.png로 손님에게 나가는 형태
+   - 관리자용(forStaff=true): 종전대로 요청·발행 담당자·시각 표시 — 관리자 전체 이미지 저장에 사용 */
+function quoteCardHTML(req,forStaff){
   const c=quoteCalc(req),q=req.quote;
   const answered=req.status==='answered';
   const legs=req.rows.map((row,i)=>{const dd=rDates(req,row,i);
@@ -1415,9 +1419,12 @@ function quoteCardHTML(req){
   const incLines=q.addl.filter(x=>x.show&&(x.memo||x.desc)).map(x=>'<div style="margin-top:2px"><span class="qc-addl-txt">'+escT(x.memo||x.desc)+'</span></div>').join('');
   const qBy=req.quoteBy||req.registrant||meStaffName();
   const qAt=req.quoteSentAt||Date.now();
+  const headLines=forStaff
+    ? '<div class="qc-sub" style="text-align:left;margin-top:8px;color:var(--sub);font-weight:700">요청 : '+escT((nickOf(req.agent)||'-')+(req.agentManager?'-'+nickOf(req.agentManager):''))+' · <span style="font-weight:400">'+kdotDateTime(req.createdAt)+'</span></div>' /* 2026-08-01: 한 줄 표시 */
+      +'<div class="qc-sub" style="text-align:left;margin-top:2px;color:var(--sub);font-weight:700">발행 : '+escT(qBy)+' · <span style="font-weight:400">'+kdotDateTime(qAt)+'</span></div>'
+    : '<div class="qc-sub" style="text-align:left;margin-top:8px;color:var(--sub);font-weight:700">발행일 : <span style="font-weight:400">'+dotDate(qAt)+'</span></div>'; /* 손님용: 날짜만 */
   return '<div class="quotecard" id="qcard'+req.id+'"><div class="qc-title" style="font-size:17px;letter-spacing:.6px">The Nirvana · 여행 견적</div>'
-    +'<div class="qc-sub" style="text-align:left;margin-top:8px;color:var(--sub);font-weight:700">요청 : '+escT((nickOf(req.agent)||'-')+(req.agentManager?'-'+nickOf(req.agentManager):''))+' · <span style="font-weight:400">'+kdotDateTime(req.createdAt)+'</span></div>' /* 2026-08-01: 한 줄 표시 */
-    +'<div class="qc-sub" style="text-align:left;margin-top:2px;color:var(--sub);font-weight:700">발행 : '+escT(qBy)+' · <span style="font-weight:400">'+kdotDateTime(qAt)+'</span></div>'
+    +headLines
     +legs+(incLines?'<div class="qc-leg qc-addl">'+incLines+'</div>':'')
     +(q.remark?'<div class="qc-remark">※ '+escT(q.remark).replace(/\n/g,'<br>')+'</div>':'')
     +'<hr class="qc-sep"><div class="qc-final"><span class="lbl">견적금액 · 1인</span><span class="amt">'+manwonF(c.perMan)+'</span></div>'

@@ -62,11 +62,14 @@ function route(string $path, string $method): void {
   if ($path === 'login' && $method === 'POST') {
     startSession();
     /* 2026-07-30: 부계정이 이 사이트 전용 비밀번호를 설정한 경우 부계정 아이디로도 로컬 로그인 허용 */
+    /* 2026-08-10: 이메일 대소문자 구분 없게 수정 (LOWER 함수 사용) */
     $loginId = strtolower(trim($in['email'] ?? ''));
-    $st = $pdo->prepare("SELECT * FROM users WHERE email=? OR (agency_login_id IS NOT NULL AND lower(agency_login_id)=?)");
+    $st = $pdo->prepare("SELECT * FROM users WHERE LOWER(email)=? OR (agency_login_id IS NOT NULL AND lower(agency_login_id)=?)");
     $st->execute([$loginId, $loginId]);
     $u = $st->fetch();
-    if (!$u || !password_verify($in['password'] ?? '', $u['pass_hash'])) jsonOut(['error' => 'bad_credentials'], 401);
+    if (!$u) jsonOut(['error' => 'bad_credentials'], 401);
+    /* 비밀번호: 소문자/대문자 구분됨 (password_verify는 bcrypt 해시 검증) */
+    if (empty($u['pass_hash']) || !password_verify($in['password'] ?? '', $u['pass_hash'])) jsonOut(['error' => 'bad_credentials'], 401);
     if ($u['status'] === 'rejected') jsonOut(['error' => 'rejected'], 403);
     if ($u['status'] !== 'approved') jsonOut(['error' => 'pending'], 403);
     session_regenerate_id(true);
@@ -546,6 +549,23 @@ function route(string $path, string $method): void {
     if (!$st->fetch()) jsonOut(['error' => 'not_found'], 404);
     $pdo->prepare("UPDATE users SET telegram_chat_id=? WHERE id=?")->execute([$chat !== '' ? $chat : null, $id]);
     jsonOut(['ok' => true, 'tg' => $chat !== '']);
+  }
+  /* 관리자 비밀번호 리셋 (2026-08-10): 관리자가 사용자의 비밀번호를 초기화 */
+  if ($path === 'admin/reset-password' && $method === 'POST') {
+    requireAdmin();
+    $id = (int)($in['id'] ?? 0);
+    $newPassword = (string)($in['new_password'] ?? '');
+    if (!$id || strlen($newPassword) < 6) jsonOut(['error' => 'invalid_input'], 422);
+    $st = $pdo->prepare("SELECT id, agency_idx FROM users WHERE id=?");
+    $st->execute([$id]);
+    $target = $st->fetch();
+    if (!$target) jsonOut(['error' => 'not_found'], 404);
+    // 외부 계정(agency_idx가 있으면)은 비밀번호 변경 불가
+    if (!empty($target['agency_idx'])) jsonOut(['error' => 'external_account'], 403);
+    // 비밀번호 해시 저장
+    $pdo->prepare("UPDATE users SET pass_hash=? WHERE id=?")
+        ->execute([password_hash($newPassword, PASSWORD_DEFAULT), $id]);
+    jsonOut(['ok' => true, 'message' => '비밀번호가 초기화되었습니다.']);
   }
   /* 관리자 통계 (2026-07-18, 2026-08-02 [013] 개편)
      - from/to 로 기간 집계 (없으면 전체 기간 — 기존 동작 유지)

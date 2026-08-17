@@ -771,7 +771,7 @@ function bindForm(){
     const hx=el.querySelector('.hnText');if(hx)hx.oninput=e=>{row.note=e.target.value;};
     el.querySelector('.btnDel').onclick=()=>{if(d.rows.length>1){d.rows=d.rows.filter(r=>r.id!==id);renderApp();}};
   });
-  document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[]});renderApp();};
+  document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[]});renderApp();};
   function doSubmit(direct){
     if(!d.rows.some(r=>r.hotel.trim())){toast(T('t_need_hotel1'));return;}
     if(d.mode==='parallel')d.rows.forEach(r=>{r.rooms=Math.max(1,Number(d.sharedRooms)||1);});
@@ -811,13 +811,14 @@ function bindForm(){
 function reqSummaryHTML(req){
   return req.rows.map((row,i)=>{const dd=rDates(req,row,i);
       const opts=(row.options||[]).filter(o=>o.name).map(o=>'<span class="optchip">'+escT(optLabel(o))+'</span>').join('');
+      const subs=(row.subOptions||[]).map((sub,si)=>'<div class="rq-sub" style="margin-top:4px;padding:4px 0;border-top:1px solid #ddd;font-size:12px"><span style="font-weight:700;color:var(--brand)">📌 '+(si+2)+'순위</span> '+escT(dHotel(sub.hotel)||'미정')+' ('+escT(dRoom(sub.roomType)||'-')+')</div>').join('');
       return '<div class="rq-item rq-plain">'
         +'<div class="rq-datebar">'+fdate(dd.checkIn)+' → '+fdate(dd.checkOut)+' <span class="nightsb">'+dd.nights+T('n_sfx')+'</span><span class="rq-idx">'+T('hotel_n')+' '+(i+1)+'</span></div>'
         +'<div class="rq-body">'
         +(row.region&&row.region!=='전체'?'<div class="rq-region">'+escT(dRegion(row.region))+'</div>':'')
         +'<div class="rq-line"><span class="rq-hotel">'+escT(dHotel(row.hotel)||T('no_hotel'))+'</span><span class="rq-type">'+escT(dRoom(row.roomType)||'-')+' <span class="sm">· '+row.rooms+T('r_sfx')+'</span></span></div>'
         +(row.note?'<div class="rq-note">📝 '+escT(row.note)+'</div>':'')
-        +(opts?'<div>'+opts+'</div>':'')+'</div></div>';
+        +(opts?'<div>'+opts+'</div>':'')+(subs?'<div>'+subs+'</div>':'')+'</div></div>';
     }).join('')
     +(req.notes?'<div class="reqbox">📝 '+escT(req.notes)+'</div>':'')
     +(req.fromSample?'<div class="small" style="margin-top:6px;color:var(--muted)">📑 견적서 샘플에서 복사'+(req.fromSample.name?': '+escT(req.fromSample.name):'')+'</div>':'') /* 2026-08-01 */

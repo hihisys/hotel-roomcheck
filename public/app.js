@@ -666,8 +666,10 @@ function formHTML(){
             +(custom?'<input class="inOptName" style="margin-top:6px" value="'+esc(o.name)+'" placeholder="'+esc(T('ph_opt_custom'))+'">':'')
             +'</div>';}).join('')
         +'<button class="addbtn sm addOpt">'+T('add_opt')+'</button></div>'
+      +(row.subOptions||[]).length ? '<div style="margin-top:12px;padding:12px;background:#f9f9f9;border-radius:4px">'+(row.subOptions||[]).map((sub,si)=>'<div style="margin-bottom:12px">'+'<div style="font-size:12px;font-weight:700;color:var(--brand);margin-bottom:6px">📌 '+(si+2)+'순위</div>'+'<div class="line lhotel">'+'<div><div class="label">'+T('region')+'</div><select class="selRegionSub" data-subidx="'+si+'">'+rlist+'</select></div>'+'<div><div class="label">'+T('hotel_sel')+'</div><input class="inHotelSub" data-subidx="'+si+'" list="hdl'+row.id+'-'+(si+2)+'" value="'+esc(dHotel(sub.hotel))+'" placeholder="'+esc(T('ph_hotel'))+'"><datalist id="hdl'+row.id+'-'+(si+2)+'">'+hdl+'</datalist></div>'+'<div><div class="label">'+T('room_sel')+'</div><input class="inRoomSub" data-subidx="'+si+'" list="rdl'+row.id+'-'+(si+2)+'" value="'+esc(dRoom(sub.roomType))+'" placeholder="'+esc(T('ph_room'))+'"><datalist id="rdl'+row.id+'-'+(si+2)+'">'+rdl+'</datalist></div>'+'<button class="del delSubOpt" data-subidx="'+si+'">−</button></div></div>').join('')+'</div>' : ''
       +'<div style="margin-top:8px"><button class="linkbtn hnTog">'+((ui.hnOpen.has(row.id)||row.note)?'▾':'▸')+' '+T('hotel_note')+'</button>'
         +((ui.hnOpen.has(row.id)||row.note)?'<textarea class="hnText" placeholder="'+esc(T('ph_hotel_note'))+'">'+escT(row.note||'')+'</textarea>':'')+'</div>'
+      +'<div style="margin-top:8px"><button class="addbtn sm addSubOpt" data-rowid="'+row.id+'">+ 추가 룸첍 (같은 기간 다른 호텔)</button></div>'
       +'</div>';
   }).join('');
   return '<section class="card">'
@@ -770,8 +772,12 @@ function bindForm(){
     const ht=el.querySelector('.hnTog');if(ht)ht.onclick=()=>{ui.hnOpen.has(id)?ui.hnOpen.delete(id):ui.hnOpen.add(id);renderApp();};
     const hx=el.querySelector('.hnText');if(hx)hx.oninput=e=>{row.note=e.target.value;};
     el.querySelector('.btnDel').onclick=()=>{if(d.rows.length>1){d.rows=d.rows.filter(r=>r.id!==id);renderApp();}};
+    const asb=el.querySelector('.addSubOpt');if(asb)asb.onclick=()=>{row.subOptions=row.subOptions||[];row.subOptions.push({hotel:'',roomType:''});renderApp();};
+    el.querySelectorAll('.inHotelSub').forEach(inp=>{const si=Number(inp.dataset.subidx);const sub=(row.subOptions||[])[si];if(sub){inp.oninput=e=>{sub.hotel=HOTEL_KO[e.target.value]||e.target.value;};inp.onchange=e=>{sub.hotel=HOTEL_KO[e.target.value]||e.target.value;renderApp();};}});
+    el.querySelectorAll('.inRoomSub').forEach(inp=>{const si=Number(inp.dataset.subidx);const sub=(row.subOptions||[])[si];if(sub){inp.oninput=e=>{sub.roomType=RT_KO[e.target.value]||e.target.value;};inp.onchange=e=>{sub.roomType=RT_KO[e.target.value]||e.target.value;renderApp();};}});
+    el.querySelectorAll('.delSubOpt').forEach(btn=>{btn.onclick=()=>{const si=Number(btn.dataset.subidx);row.subOptions=(row.subOptions||[]).filter((_,idx)=>idx!==si);renderApp();};});
   });
-  document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[]});renderApp();};
+  document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[]});renderApp();};
   function doSubmit(direct){
     if(!d.rows.some(r=>r.hotel.trim())){toast(T('t_need_hotel1'));return;}
     if(d.mode==='parallel')d.rows.forEach(r=>{r.rooms=Math.max(1,Number(d.sharedRooms)||1);});
@@ -811,14 +817,13 @@ function bindForm(){
 function reqSummaryHTML(req){
   return req.rows.map((row,i)=>{const dd=rDates(req,row,i);
       const opts=(row.options||[]).filter(o=>o.name).map(o=>'<span class="optchip">'+escT(optLabel(o))+'</span>').join('');
-      const subs=(row.subOptions||[]).map((sub,si)=>'<div class="rq-sub" style="margin-top:4px;padding:4px 0;border-top:1px solid #ddd;font-size:12px"><span style="font-weight:700;color:var(--brand)">📌 '+(si+2)+'순위</span> '+escT(dHotel(sub.hotel)||'미정')+' ('+escT(dRoom(sub.roomType)||'-')+')</div>').join('');
       return '<div class="rq-item rq-plain">'
         +'<div class="rq-datebar">'+fdate(dd.checkIn)+' → '+fdate(dd.checkOut)+' <span class="nightsb">'+dd.nights+T('n_sfx')+'</span><span class="rq-idx">'+T('hotel_n')+' '+(i+1)+'</span></div>'
         +'<div class="rq-body">'
         +(row.region&&row.region!=='전체'?'<div class="rq-region">'+escT(dRegion(row.region))+'</div>':'')
         +'<div class="rq-line"><span class="rq-hotel">'+escT(dHotel(row.hotel)||T('no_hotel'))+'</span><span class="rq-type">'+escT(dRoom(row.roomType)||'-')+' <span class="sm">· '+row.rooms+T('r_sfx')+'</span></span></div>'
         +(row.note?'<div class="rq-note">📝 '+escT(row.note)+'</div>':'')
-        +(opts?'<div>'+opts+'</div>':'')+(subs?'<div>'+subs+'</div>':'')+'</div></div>';
+        +(opts?'<div>'+opts+'</div>':'')+'</div></div>';
     }).join('')
     +(req.notes?'<div class="reqbox">📝 '+escT(req.notes)+'</div>':'')
     +(req.fromSample?'<div class="small" style="margin-top:6px;color:var(--muted)">📑 견적서 샘플에서 복사'+(req.fromSample.name?': '+escT(req.fromSample.name):'')+'</div>':'') /* 2026-08-01 */

@@ -1621,6 +1621,15 @@ function renderCal(){
 
 /* ================= 토스트 & 초기화 ================= */
 let _tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(_tt);_tt=setTimeout(()=>t.style.opacity='0',2000);}
+
+/* 전역 객체 초기화 보장 (2026-08-17: 일부 브라우저에서 ui/draft 미초기화 이슈 수정) */
+if(typeof ui==='undefined'){
+  ui={role:(typeof PAGE!=='undefined'?PAGE:'agent'),sel:null,ssel:null,notesOpen:false,open:new Set(),optOpen:new Set(),hnOpen:new Set(),qOpen:false,pastOpen:false,conOpen:false,qbOpen:null,phAdd:new Set()};
+}
+if(typeof draft==='undefined'){
+  draft=newDraft();
+}
+
 (async function init(){
   applyChrome();
   if(!await srvInit())return;

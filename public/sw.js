@@ -14,6 +14,11 @@ self.addEventListener('activate', function (e) {
   );
 });
 self.addEventListener('fetch', function (e) {
-  /* 통과만 — 저장하지 않는다 */
-  e.respondWith(fetch(e.request));
+  /* 통과만 — 저장하지 않는다. 네트워크 실패 시 브라우저 기본 동작으로 폴백 */
+  e.respondWith(
+    fetch(e.request).catch(function () {
+      /* 네트워크 오류 시, 브라우저의 오프라인 페이지로 넘김 */
+      return new Response('', { status: 503, statusText: 'Service Unavailable' });
+    })
+  );
 });

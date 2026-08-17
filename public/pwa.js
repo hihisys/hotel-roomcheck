@@ -5,6 +5,6 @@
   if (!('serviceWorker' in navigator)) return;
   if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('sw.js').catch(function () { /* 실패해도 사이트 동작에는 영향 없음 */ });
+    navigator.serviceWorker.register('sw.js?v=20260817h').catch(function () { /* 실패해도 사이트 동작에는 영향 없음 */ });
   });
 })();

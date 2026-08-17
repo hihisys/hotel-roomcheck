@@ -777,7 +777,7 @@ function bindForm(){
     el.querySelectorAll('.inRoomSub').forEach(inp=>{const si=Number(inp.dataset.subidx);const sub=(row.subOptions||[])[si];if(sub){inp.oninput=e=>{sub.roomType=RT_KO[e.target.value]||e.target.value;};inp.onchange=e=>{sub.roomType=RT_KO[e.target.value]||e.target.value;renderApp();};}});
     el.querySelectorAll('.delSubOpt').forEach(btn=>{btn.onclick=()=>{const si=Number(btn.dataset.subidx);row.subOptions=(row.subOptions||[]).filter((_,idx)=>idx!==si);renderApp();};});
   });
-  document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[]});renderApp();};
+  document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[]});renderApp();};
   function doSubmit(direct){
     if(!d.rows.some(r=>r.hotel.trim())){toast(T('t_need_hotel1'));return;}
     if(d.mode==='parallel')d.rows.forEach(r=>{r.rooms=Math.max(1,Number(d.sharedRooms)||1);});

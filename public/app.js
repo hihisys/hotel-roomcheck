@@ -479,7 +479,7 @@ function draftFromReq(r){const base=Date.now();
 function newDraft(prev){return {mode:'multi',startDate:todayISO(),sharedNights:1,sharedRooms:1,
   agent:prev?prev.agent:(DB.agentName||''),agentManager:prev?prev.agentManager:'',registrant:prev?prev.registrant:(meStaffName()||''),manager:'',notes:'',quoteAsk:false,
   agentName:prev?prev.agentName:'',agentNickname:prev?prev.agentNickname:'',agentPhone:prev?prev.agentPhone:'',agentBank:prev?prev.agentBank:'',
-  rows:[{id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[]}]};}
+  rows:[{id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[]}]};}
 let draft=newDraft();
 
 /* ================= 상태/뱃지 ================= */
@@ -666,8 +666,10 @@ function formHTML(){
             +(custom?'<input class="inOptName" style="margin-top:6px" value="'+esc(o.name)+'" placeholder="'+esc(T('ph_opt_custom'))+'">':'')
             +'</div>';}).join('')
         +'<button class="addbtn sm addOpt">'+T('add_opt')+'</button></div>'
+      +(row.subOptions||[]).length ? '<div style="margin-top:12px;padding:12px;background:#f9f9f9;border-radius:4px">'+(row.subOptions||[]).map((sub,si)=>'<div style="margin-bottom:12px">'+'<div style="font-size:12px;font-weight:700;color:var(--brand);margin-bottom:6px">📌 '+(si+2)+'순위</div>'+'<div class="line lhotel">'+'<div><div class="label">'+T('region')+'</div><select class="selRegionSub" data-subidx="'+si+'">'+rlist+'</select></div>'+'<div><div class="label">'+T('hotel_sel')+'</div><input class="inHotelSub" data-subidx="'+si+'" list="hdl'+row.id+'-'+(si+2)+'" value="'+esc(dHotel(sub.hotel))+'" placeholder="'+esc(T('ph_hotel'))+'"><datalist id="hdl'+row.id+'-'+(si+2)+'">'+hdl+'</datalist></div>'+'<div><div class="label">'+T('room_sel')+'</div><input class="inRoomSub" data-subidx="'+si+'" list="rdl'+row.id+'-'+(si+2)+'" value="'+esc(dRoom(sub.roomType))+'" placeholder="'+esc(T('ph_room'))+'"><datalist id="rdl'+row.id+'-'+(si+2)+'">'+rdl+'</datalist></div>'+'<button class="del delSubOpt" data-subidx="'+si+'">−</button></div></div>').join('')+'</div>' : ''
       +'<div style="margin-top:8px"><button class="linkbtn hnTog">'+((ui.hnOpen.has(row.id)||row.note)?'▾':'▸')+' '+T('hotel_note')+'</button>'
         +((ui.hnOpen.has(row.id)||row.note)?'<textarea class="hnText" placeholder="'+esc(T('ph_hotel_note'))+'">'+escT(row.note||'')+'</textarea>':'')+'</div>'
+      +'<div style="margin-top:8px"><button class="addbtn sm addSubOpt" data-rowid="'+row.id+'">+ 추가 룸첍 (같은 기간 다른 호텔)</button></div>'
       +'</div>';
   }).join('');
   return '<section class="card">'
@@ -770,8 +772,12 @@ function bindForm(){
     const ht=el.querySelector('.hnTog');if(ht)ht.onclick=()=>{ui.hnOpen.has(id)?ui.hnOpen.delete(id):ui.hnOpen.add(id);renderApp();};
     const hx=el.querySelector('.hnText');if(hx)hx.oninput=e=>{row.note=e.target.value;};
     el.querySelector('.btnDel').onclick=()=>{if(d.rows.length>1){d.rows=d.rows.filter(r=>r.id!==id);renderApp();}};
+    const asb=el.querySelector('.addSubOpt');if(asb)asb.onclick=()=>{row.subOptions=row.subOptions||[];row.subOptions.push({hotel:'',roomType:''});renderApp();};
+    el.querySelectorAll('.inHotelSub').forEach(inp=>{const si=Number(inp.dataset.subidx);const sub=(row.subOptions||[])[si];if(sub){inp.oninput=e=>{sub.hotel=HOTEL_KO[e.target.value]||e.target.value;};inp.onchange=e=>{sub.hotel=HOTEL_KO[e.target.value]||e.target.value;renderApp();};}});
+    el.querySelectorAll('.inRoomSub').forEach(inp=>{const si=Number(inp.dataset.subidx);const sub=(row.subOptions||[])[si];if(sub){inp.oninput=e=>{sub.roomType=RT_KO[e.target.value]||e.target.value;};inp.onchange=e=>{sub.roomType=RT_KO[e.target.value]||e.target.value;renderApp();};}});
+    el.querySelectorAll('.delSubOpt').forEach(btn=>{btn.onclick=()=>{const si=Number(btn.dataset.subidx);row.subOptions=(row.subOptions||[]).filter((_,idx)=>idx!==si);renderApp();};});
   });
-  document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[]});renderApp();};
+  document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[]});renderApp();};
   function doSubmit(direct){
     if(!d.rows.some(r=>r.hotel.trim())){toast(T('t_need_hotel1'));return;}
     if(d.mode==='parallel')d.rows.forEach(r=>{r.rooms=Math.max(1,Number(d.sharedRooms)||1);});
@@ -1033,8 +1039,8 @@ function loadSampleToDraft(s){
   draft.mode=p.mode||'multi';
   draft.sharedNights=p.sharedNights||1;
   draft.rows=(p.rows||[]).map((row,i)=>({id:Date.now()+i,region:row.region||'전체',hotel:row.hotel||'',roomType:row.roomType||'',
-    rooms:row.rooms||1,nights:row.nights||1,note:row.note||'',options:JSON.parse(JSON.stringify(row.options||[]))}));
-  if(!draft.rows.length)draft.rows=[{id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[]}];
+    rooms:row.rooms||1,nights:row.nights||1,note:row.note||'',options:JSON.parse(JSON.stringify(row.options||[])),subOptions:JSON.parse(JSON.stringify(row.subOptions||[]))}));
+  if(!draft.rows.length)draft.rows=[{id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[]}];
   draft.notes=p.notes||'';
   draft._quote=p.quote?JSON.parse(JSON.stringify(p.quote)):null;
   if(ui.role==='sreq'&&meNick())draft.registrant=meNick();
@@ -1615,6 +1621,15 @@ function renderCal(){
 
 /* ================= 토스트 & 초기화 ================= */
 let _tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(_tt);_tt=setTimeout(()=>t.style.opacity='0',2000);}
+
+/* 전역 객체 초기화 보장 (2026-08-17: 일부 브라우저에서 ui/draft 미초기화 이슈 수정) */
+if(typeof ui==='undefined'){
+  ui={role:(typeof PAGE!=='undefined'?PAGE:'agent'),sel:null,ssel:null,notesOpen:false,open:new Set(),optOpen:new Set(),hnOpen:new Set(),qOpen:false,pastOpen:false,conOpen:false,qbOpen:null,phAdd:new Set()};
+}
+if(typeof draft==='undefined'){
+  draft=newDraft();
+}
+
 (async function init(){
   applyChrome();
   if(!await srvInit())return;

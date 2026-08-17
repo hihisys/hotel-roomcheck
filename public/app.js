@@ -479,7 +479,7 @@ function draftFromReq(r){const base=Date.now();
 function newDraft(prev){return {mode:'multi',startDate:todayISO(),sharedNights:1,sharedRooms:1,
   agent:prev?prev.agent:(DB.agentName||''),agentManager:prev?prev.agentManager:'',registrant:prev?prev.registrant:(meStaffName()||''),manager:'',notes:'',quoteAsk:false,
   agentName:prev?prev.agentName:'',agentNickname:prev?prev.agentNickname:'',agentPhone:prev?prev.agentPhone:'',agentBank:prev?prev.agentBank:'',
-  rows:[{id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[]}]};}
+  rows:[{id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[]}]};}
 let draft=newDraft();
 
 /* ================= 상태/뱃지 ================= */
@@ -1039,8 +1039,8 @@ function loadSampleToDraft(s){
   draft.mode=p.mode||'multi';
   draft.sharedNights=p.sharedNights||1;
   draft.rows=(p.rows||[]).map((row,i)=>({id:Date.now()+i,region:row.region||'전체',hotel:row.hotel||'',roomType:row.roomType||'',
-    rooms:row.rooms||1,nights:row.nights||1,note:row.note||'',options:JSON.parse(JSON.stringify(row.options||[]))}));
-  if(!draft.rows.length)draft.rows=[{id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[]}];
+    rooms:row.rooms||1,nights:row.nights||1,note:row.note||'',options:JSON.parse(JSON.stringify(row.options||[])),subOptions:JSON.parse(JSON.stringify(row.subOptions||[]))}));
+  if(!draft.rows.length)draft.rows=[{id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[]}];
   draft.notes=p.notes||'';
   draft._quote=p.quote?JSON.parse(JSON.stringify(p.quote)):null;
   if(ui.role==='sreq'&&meNick())draft.registrant=meNick();

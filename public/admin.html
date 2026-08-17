@@ -293,6 +293,7 @@ function row(u,withDecide){
       if(u.tg)btns+='<button class="bt-no" data-a="tgreset" data-id="'+u.id+'">📲 텔레그램 연결 해제</button>';
       else btns+='<button class="bt-ok" data-a="tglink" data-id="'+u.id+'">📲 텔레그램 연결</button>';
       btns+='<button class="bt-ok" data-a="tgset" data-id="'+u.id+'" data-cur="'+esc(u.tg_chat||'')+'">📲 채널 ID 설정</button>'; /* 2026-08-07: 담당자 알림 채널 직접 등록 */
+      btns+='<button class="bt-ok" data-a="resetpw" data-id="'+u.id+'">🔑 비밀번호 초기화</button>'; /* 2026-08-10: 관리자가 직원 비밀번호 초기화 */
     }
   }else{ // 관리자 계정
     if(IS_SUPER&&!u.super)btns+='<button class="bt-demote" data-a="demote" data-id="'+u.id+'">관리자 해제</button>';
@@ -693,6 +694,8 @@ async function load(){
     if(b.dataset.a==='tgreset'){if(!confirm('이 직원의 텔레그램 연결을 해제할까요?'))return;try{const r=await fetch('api/admin/tg-reset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Number(b.dataset.id)})});const j=await r.json();toast(j.ok?'텔레그램 연결이 해제되었습니다':'해제하지 못했습니다');load();return;}catch(e){toast('서버에 연결할 수 없습니다');}return;}
     /* 2026-08-07: 담당자별 알림 채널(Hotel_01~) ID 직접 등록 — 빈 값 저장 시 해제 */
     if(b.dataset.a==='tgset'){const v=prompt('텔레그램 채널/챗 ID를 입력하세요 (예: -1001234567890)\n비우고 확인을 누르면 연결이 해제됩니다.',b.dataset.cur||'');if(v===null)return;try{const r=await fetch('api/admin/set-telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Number(b.dataset.id),chat_id:v.trim()})});const j=await r.json();toast(j.ok?(j.tg?'텔레그램 채널을 연결했습니다':'텔레그램 연결을 해제했습니다'):(j.error==='invalid_chat_id'?'ID 형식이 올바르지 않습니다':'저장하지 못했습니다'));load();return;}catch(e){toast('서버에 연결할 수 없습니다');}return;}
+    /* 2026-08-10: 관리자가 직원 비밀번호 초기화 */
+    if(b.dataset.a==='resetpw'){if(!confirm('이 직원의 비밀번호를 초기화할까요?'))return;const pw=prompt('새로운 임시 비밀번호 (6자 이상):');if(!pw||pw.length<6){toast('비밀번호는 6자 이상이어야 합니다');return;}try{const r=await fetch('api/admin/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:Number(b.dataset.id),new_password:pw})});const j=await r.json();toast(j.ok?'비밀번호를 초기화했습니다':'초기화하지 못했습니다');load();return;}catch(e){toast('서버에 연결할 수 없습니다');}return;}
     const r2=await fetch('api/admin/decide',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({id:Number(b.dataset.id),action:b.dataset.a})});
     const j2=await r2.json();

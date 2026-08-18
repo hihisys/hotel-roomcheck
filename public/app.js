@@ -682,7 +682,7 @@ function formHTML(){
         +'<div><div class="label">'+T('mgr_nirvana')+'</div><input id="regName" list="dlSt" value="'+esc(d.registrant||meStaffName()||'')+'" placeholder="'+esc(T('ph_input'))+'"><datalist id="dlSt">'+((DB.hist&&DB.hist.st)||[]).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist></div></div>'
       : '')
     +dateArea
-    +'<div id="rows" style="margin-top:16px">'+blocks+'</div>'
+    +'<div id="rows" style="margin-top:16px">'+blocks.join('')+'</div>'
     +'<button id="addRow" class="addbtn">'+T('add_hotel')+'</button>'
     +'<div class="memo"><div class="memohead" id="notesHead"><span class="chev'+(ui.notesOpen?' open':'')+'">▶</span> '+T('notes')+'</div>'
     +'<div class="memobody" id="notesBody" style="display:'+(ui.notesOpen?'block':'none')+'"><textarea id="notes" placeholder="'+esc(T('ph_notes'))+'">'+escT(d.notes)+'</textarea></div></div>'

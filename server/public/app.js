@@ -313,10 +313,10 @@ function draftFromReq(r){const base=Date.now();
     _quote:r.quote?JSON.parse(JSON.stringify(r.quote)):null,
     _wsn:r.rows.map((row,i)=>rDates(r,row,i).dates.map(iso=>{const c=(r.ws||{})[row.id+'|'+iso]||{};return {price:c.price||''};})),
     rows:r.rows.map((row,i)=>({id:base+i,region:row.region||'전체',hotel:row.hotel||'',roomType:row.roomType||'',rooms:row.rooms||1,nights:row.nights||1,note:row.note||'',
-      options:(row.options||[]).map((o,j)=>({id:base+100+i*10+j,name:o.name,qty:o.qty||1,amt:o.amt||0,show:o.show!==false,memo:o.memo||''}))}))};}
+      options:(row.options||[]).map((o,j)=>({id:base+100+i*10+j,name:o.name,qty:o.qty||1,amt:o.amt||0,show:o.show!==false,memo:o.memo||''})),checkRequests:(row.checkRequests||[])}))};}
 function newDraft(prev){return {mode:'multi',startDate:todayISO(),sharedNights:1,sharedRooms:1,
   agent:prev?prev.agent:(DB.agentName||''),agentManager:prev?prev.agentManager:'',registrant:prev?prev.registrant:'심은선',manager:'',notes:'',quoteAsk:false,
-  rows:[{id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[]}]};}
+  rows:[{id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],checkRequests:[]}]};}
 let draft=newDraft();
 
 /* ================= 상태/뱃지 ================= */
@@ -421,6 +421,17 @@ function formHTML(){
         +'<button class="addbtn sm addOpt">'+T('add_opt')+'</button></div>'
       +'<div style="margin-top:8px"><button class="linkbtn hnTog">'+((ui.hnOpen.has(row.id)||row.note)?'▾':'▸')+' '+T('hotel_note')+'</button>'
         +((ui.hnOpen.has(row.id)||row.note)?'<textarea class="hnText" placeholder="'+esc(T('ph_hotel_note'))+'">'+escT(row.note||'')+'</textarea>':'')+'</div>'
+      +'<button class="btn-add-check" onclick="openAddCheckModal('+row.id+')">➕ 추가 룸체크</button>'
+      +'<div class="check-requests-list">'
+        +(row.checkRequests&&row.checkRequests.length
+          ? '<div class="check-requests-title">추가 호텔 확인:</div>'
+            +row.checkRequests.map((req,j)=>'<div class="check-request-item" data-id="'+req.id+'">'
+              +'<span><strong>'+esc(req.hotel)+'</strong> ('+esc(req.roomType)+')</span>'
+              +'<span class="status-badge status-'+req.status+'">'+req.status+'</span>'
+              +'<button class="del" onclick="removeCheckRequest('+row.id+','+req.id+')">✕</button>'
+            +'</div>').join('')
+          : '')
+      +'</div>'
       +'</div>';
   }).join('');
   return '<section class="card">'
@@ -495,7 +506,38 @@ function bindForm(){
     const hx=el.querySelector('.hnText');if(hx)hx.oninput=e=>{row.note=e.target.value;};
     el.querySelector('.btnDel').onclick=()=>{if(d.rows.length>1){d.rows=d.rows.filter(r=>r.id!==id);renderApp();}};
   });
-  document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[]});renderApp();};
+  document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[],checkRequests:[]});renderApp();};
+  /* ✅ Phase 1: 추가 룸체크 함수 */
+  window.openAddCheckModal=function(rowId){
+    const row=draft.rows.find(r=>r.id===rowId);
+    if(!row)return;
+    console.log('추가 룸체크 모달 열기:', rowId, row);
+    alert('Phase 2에서 구현: '+row.hotel+' ('+row.roomType+')에 대한 추가 호텔 확인 요청');
+  };
+  window.removeCheckRequest=function(rowId,reqId){
+    const row=draft.rows.find(r=>r.id===rowId);
+    if(!row||!row.checkRequests)return;
+    row.checkRequests=row.checkRequests.filter(r=>r.id!==reqId);
+    saveDraft();
+    renderApp();
+  };
+  window.addSampleCheckRequest=function(rowId){
+    const row=draft.rows.find(r=>r.id===rowId);
+    if(!row){row.checkRequests=[];}
+    row.checkRequests.push({
+      id:Date.now(),
+      region:'카오락',
+      hotel:'카오락 에메랄드 비치 리조트',
+      roomType:'프리미어 디럭스',
+      checkInDate:row.chkIn,
+      checkOutDate:row.chkOut,
+      status:'pending',
+      requestedBy:ui.role,
+      notes:''
+    });
+    saveDraft();
+    renderApp();
+  };
   function doSubmit(direct){
     if(!d.rows.some(r=>r.hotel.trim())){toast(T('t_need_hotel1'));return;}
     if(d.mode==='parallel')d.rows.forEach(r=>{r.rooms=Math.max(1,Number(d.sharedRooms)||1);});

@@ -495,6 +495,8 @@ function formHTML(){
 window.addCheckRequest=function(rowId){
   const rowIndex=draft.rows.findIndex(r=>r.id===rowId);
   if(rowIndex<0)return;
+  const rowIndex=draft.rows.findIndex(r=>r.id===rowId);
+  if(rowIndex<0)return;
   const row=draft.rows[rowIndex];
   const hotel=(document.querySelector('.checkHotel[data-row="'+rowId+'"]')?.value||'').trim();
   const roomType=(document.querySelector('.checkRoom[data-row="'+rowId+'"]')?.value||'').trim();

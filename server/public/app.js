@@ -932,30 +932,24 @@ function resultCardHTML(req,asReq){
     /* Phase 2: 추가 호텔들 표시 */
     let checkReqsHTML='';
     if(row.checkRequests&&row.checkRequests.length>0){
-      checkReqsHTML='<div style="margin-top:12px;padding:12px;background:#f5f7fa;border-radius:6px">'
-        +'<div style="font-weight:600;font-size:13px;color:#666;margin-bottom:8px">▸ 추가 룸체크</div>';
-      row.checkRequests.forEach(req_ch=>{
+      checkReqsHTML='<div style="margin-top:12px">';
+      row.checkRequests.forEach((req_ch,ci)=>{
         const crDateArr=Array.from({length:diffD(req_ch.checkInDate,req_ch.checkOutDate)},(_,k)=>addDays(req_ch.checkInDate,k));
-        checkReqsHTML+='<div style="margin-top:8px;padding:8px;background:#fff;border-radius:4px;border:1px solid var(--line)">'
-          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
-            +'<span style="font-weight:600;font-size:13px">'+escT(dRegion(req_ch.region||'전체'))+' · '+escT(dHotel(req_ch.hotel))+' · '+escT(dRoom(req_ch.roomType))+'</span>'
-            +'<span class="status-badge" style="padding:3px 6px;border-radius:3px;font-size:11px;background:'
-              +(req_ch.status==='confirmed'?'#10b981':req_ch.status==='rejected'?'#ef4444':'#f59e0b')
-              +';color:#fff">'
-              +(req_ch.status==='confirmed'?'✅ 확인':req_ch.status==='rejected'?'❌ 거절':'⏳ 대기')
-            +'</span>'
-          +'</div>'
-          +'<div style="font-size:12px;color:#666;margin-bottom:6px">In '+fdate(req_ch.checkInDate)+' / Out '+fdate(req_ch.checkOutDate)+' · '+diffD(req_ch.checkInDate,req_ch.checkOutDate)+T("n_sfx")+'</div>'
-          +(crDateArr.length>0?'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px">'+
-            crDateArr.map((iso,di)=>'<div style="display:flex;align-items:center;gap:4px;padding:4px;background:#fafafa;border-radius:3px;font-size:11px">'
-              +'<span style="flex:1">'+fdshort(iso)+'</span>'
-              +'<span style="padding:2px 4px;background:'+(req_ch.status==='confirmed'?'#10b981':req_ch.status==='rejected'?'#ef4444':'#f59e0b')+';color:#fff;border-radius:2px">'
-                +(req_ch.status==='confirmed'?'✅':req_ch.status==='rejected'?'❌':'⏳')
-              +'</span>'
-              +(req_ch.price?'<span style="font-weight:600">'+won(req_ch.price)+'</span>':'')
-            +'</div>').join('')+
-          '</div>':'')
-        +'</div>';
+        const crAv={k:'un',t:'확인 중'};
+        let crDl='';
+        if(answered&&(crAv.k==='part'||crAv.k==='rq'||crAv.k==='un')){
+          crDl='<div class="daychips">'+crDateArr.map(iso=>'<span class="daychip dc-un">'+fdshort(iso)+' ⏳ 대기</span>').join('')+'</div>';
+        }
+        checkReqsHTML+='<div class="rq-item" style="opacity:0.85">'
+          +'<div class="rq-datebar">'+fdate(req_ch.checkInDate)+' → '+fdate(req_ch.checkOutDate)+' <span class="nightsb">'+diffD(req_ch.checkInDate,req_ch.checkOutDate)+'박</span><span class="rq-idx">추가 호텔 '+(ci+1)+'</span></div>'
+          +'<div class="rq-body">'
+          +(req_ch.region&&req_ch.region!=='전체'?'<div class="rq-region">'+escT(dRegion(req_ch.region))+'</div>':'')
+          +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(req_ch.hotel)||'-')+'</span><span class="rq-type">'+escT(dRoom(req_ch.roomType)||'-')+'</span></span>'
+          +'<span class="avbig av-'+(req_ch.status==='confirmed'?'ok':req_ch.status==='rejected'?'no':'un')+'" style="margin-top:0">'
+            +(req_ch.status==='confirmed'?'✅ 확인':req_ch.status==='rejected'?'❌ 거절':'⏳ 대기')
+          +'</span></div>'
+          +(crDateArr.length>0?'<div class="daychips">'+crDateArr.map((iso,di)=>'<span class="daychip '+(req_ch.status==='confirmed'?'dc-av':req_ch.status==='rejected'?'dc-so':'dc-un')+'" style="display:inline-flex;align-items:center;gap:4px"><span>'+fdshort(iso)+'</span><span>'+(req_ch.status==='confirmed'?'✅':req_ch.status==='rejected'?'❌':'⏳')+'</span>'+(req_ch.price?'<span style="font-weight:600">'+won(req_ch.price)+'</span>':'')+'</span>').join('')+'</div>':'')
+          +'</div></div>';
       });
       checkReqsHTML+='</div>';
     }

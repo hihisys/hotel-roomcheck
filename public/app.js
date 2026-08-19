@@ -493,14 +493,15 @@ function formHTML(){
 }
 /* ✅ Phase 2: 토글 방식 추가 룸테크 함수 */
 window.addCheckRequest=function(rowId){
-  const row=draft.rows.find(r=>r.id===rowId);
-  if(!row)return;
+  const rowIndex=draft.rows.findIndex(r=>r.id===rowId);
+  if(rowIndex<0)return;
+  const row=draft.rows[rowIndex];
   const hotel=(document.querySelector('.checkHotel[data-row="'+rowId+'"]')?.value||'').trim();
   const roomType=(document.querySelector('.checkRoom[data-row="'+rowId+'"]')?.value||'').trim();
   const region=document.querySelector('.checkRegion[data-row="'+rowId+'"]')?.value||row.region;
   const notes=(document.querySelector('.checkNotes[data-row="'+rowId+'"]')?.value||'').trim();
   if(!hotel){alert('호텔명을 입력하세요');return;}
-  const dd=dDate(draft,row);
+  const dd=rDates(draft,row,rowIndex);
   row.checkRequests=row.checkRequests||[];
   row.checkRequests.push({
     id:Date.now(),

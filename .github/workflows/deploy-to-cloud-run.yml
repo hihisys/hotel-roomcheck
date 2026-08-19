@@ -16,7 +16,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
@@ -30,12 +29,12 @@ jobs:
         run: gcloud auth configure-docker
 
       - name: Build Docker image
-        run: |
-          docker build -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/hotel-roomcheck:latest .
+        run: docker build --no-cache -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/hotel-roomcheck:latest -t gcr.io/${{ secrets.GCP_PROJECT_ID }}/hotel-roomcheck:${{ github.run_id }} .
 
       - name: Push image to GCR
         run: |
           docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/hotel-roomcheck:latest
+          docker push gcr.io/${{ secrets.GCP_PROJECT_ID }}/hotel-roomcheck:${{ github.run_id }}
 
       - name: Deploy to Cloud Run
         run: |

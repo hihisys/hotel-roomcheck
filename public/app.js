@@ -426,7 +426,7 @@ function formHTML(){
       +'<div style="margin-top:8px"><button class="linkbtn hnTog">'+((ui.hnOpen.has(row.id)||row.note)?'▾':'▸')+' '+T('hotel_note')+'</button>'
         +((ui.hnOpen.has(row.id)||row.note)?'<textarea class="hnText" placeholder="'+esc(T('ph_hotel_note'))+'">'+escT(row.note||'')+'</textarea>':'')+'</div>'
       /* Phase 2: 토글 방식 추가 룸테크 섹션 */
-      +'<div style="margin-top:12px"><button class="linkbtn checkTog" data-row="'+row.id+'">'+((ui.open.has(row.id))?'▾':'▸')+' ➕ 추가 룸테크</button>'
+      +'<div style="margin-top:12px"><button class="linkbtn checkTog" data-row="'+row.id+'" style="color:#22C55E;font-weight:600">'+((ui.open.has(row.id))?'▾':'▸')+' ➕ 추가 룸체크</button>'
         +((ui.open.has(row.id))?'<div class="check-add-section" style="margin-top:8px;padding:12px;background:#F5F7FA;border-radius:6px">'
           +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
             +'<div><div class="label" style="font-size:12px;font-weight:600;margin-bottom:4px">지역</div>'

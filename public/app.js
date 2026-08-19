@@ -983,26 +983,34 @@ function resultCardHTML(req,asReq){
         const dc=c.status==='av'?'dc-av':c.status==='so'?'dc-so':c.status==='rq'?'dc-rq':'dc-un';
         return '<span class="daychip '+dc+'">'+fdshort(iso)+' '+statusLabel(c.status)+'</span>';}).join('')+'</div>';
     }
-    /* Phase 2: 추가 호텔들 표시 */
+    /* Phase 2: 추가 호텔들 표시 - 기본 호텔과 동일한 형식 */
     let checkReqsHTML='';
     if(row.checkRequests&&row.checkRequests.length>0){
-      checkReqsHTML='<div style="margin-top:12px">';
+      checkReqsHTML='<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">';
       row.checkRequests.forEach((req_ch,ci)=>{
         const crDateArr=Array.from({length:diffD(req_ch.checkInDate,req_ch.checkOutDate)},(_,k)=>addDays(req_ch.checkInDate,k));
-        const crAv={k:'un',t:'확인 중'};
+        const crAv={k:req_ch.status==='confirmed'?'ok':req_ch.status==='rejected'?'no':'un',
+                   t:req_ch.status==='confirmed'?'✅ 확인':req_ch.status==='rejected'?'❌ 거절':'⏳ 대기'};
         let crDl='';
-        if(answered&&(crAv.k==='part'||crAv.k==='rq'||crAv.k==='un')){
-          crDl='<div class="daychips">'+crDateArr.map(iso=>'<span class="daychip dc-un">'+fdshort(iso)+' ⏳ 대기</span>').join('')+'</div>';
+        if(crDateArr.length>0){
+          crDl='<div class="daychips">'+crDateArr.map((iso,di)=>{
+            const statusDisplay=req_ch.status==='confirmed'?'✅ AV':req_ch.status==='rejected'?'❌ SO':'⏳ RQ';
+            const priceDisplay=req_ch.price?'<span style="font-weight:600">'+won(req_ch.price)+'</span>':'';
+            return '<span class="daychip '+(req_ch.status==='confirmed'?'dc-av':req_ch.status==='rejected'?'dc-so':'dc-un')+'" style="display:inline-flex;align-items:center;gap:4px">'
+              +'<span>'+fdshort(iso)+'</span>'
+              +'<span style="padding:2px 4px;background:rgba(0,0,0,0.05);border-radius:2px;font-size:11px">'+statusDisplay+'</span>'
+              +(priceDisplay?'<span style="border-left:1px solid currentColor;padding-left:4px">'+priceDisplay+'</span>':'')
+              +'</span>';
+          }).join('')+'</div>';
         }
-        checkReqsHTML+='<div class="rq-item" style="opacity:0.85">'
+        checkReqsHTML+='<div class="rq-item">'
           +'<div class="rq-datebar">'+fdate(req_ch.checkInDate)+' → '+fdate(req_ch.checkOutDate)+' <span class="nightsb">'+diffD(req_ch.checkInDate,req_ch.checkOutDate)+'박</span><span class="rq-idx">추가 호텔 '+(ci+1)+'</span></div>'
           +'<div class="rq-body">'
           +(req_ch.region&&req_ch.region!=='전체'?'<div class="rq-region">'+escT(dRegion(req_ch.region))+'</div>':'')
           +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(req_ch.hotel)||'-')+'</span><span class="rq-type">'+escT(dRoom(req_ch.roomType)||'-')+'</span></span>'
-          +'<span class="avbig av-'+(req_ch.status==='confirmed'?'ok':req_ch.status==='rejected'?'no':'un')+'" style="margin-top:0">'
-            +(req_ch.status==='confirmed'?'✅ 확인':req_ch.status==='rejected'?'❌ 거절':'⏳ 대기')
-          +'</span></div>'
-          +(crDateArr.length>0?'<div class="daychips">'+crDateArr.map((iso,di)=>'<span class="daychip '+(req_ch.status==='confirmed'?'dc-av':req_ch.status==='rejected'?'dc-so':'dc-un')+'" style="display:inline-flex;align-items:center;gap:4px"><span>'+fdshort(iso)+'</span><span>'+(req_ch.status==='confirmed'?'✅':req_ch.status==='rejected'?'❌':'⏳')+'</span>'+(req_ch.price?'<span style="font-weight:600">'+won(req_ch.price)+'</span>':'')+'</span>').join('')+'</div>':'')
+          +'<span class="avbig av-'+crAv.k+'" style="margin-top:0">'+crAv.t+'</span></div>'
+          +(req_ch.price?'<div style="margin-top:6px;padding:6px 8px;background:#f9fafb;border-radius:4px;font-size:13px"><span style="color:#666">요금: </span><span style="font-weight:600;color:#22C55E">'+won(req_ch.price)+'</span></div>':'')
+          +crDl
           +'</div></div>';
       });
       checkReqsHTML+='</div>';

@@ -146,7 +146,7 @@ function copyText(t,msg){(navigator.clipboard?navigator.clipboard.writeText(t):P
     try{document.execCommand('copy');toast(msg);}catch(e){toast('복사 실패 — 길게 눌러 복사하세요');}document.body.removeChild(ta);});}
 
 /* ================= UI 상태 ================= */
-let ui={role:(typeof PAGE!=='undefined'?PAGE:'agent'),sel:null,ssel:null,notesOpen:false,open:new Set(),optOpen:new Set(),hnOpen:new Set(),qOpen:false,pastOpen:false,conOpen:false,qbOpen:null,phAdd:new Set()};
+let ui={role:(typeof PAGE!=='undefined'?PAGE:'agent'),sel:null,ssel:null,notesOpen:false,open:new Set(),optOpen:new Set(),hnOpen:new Set(),checkReqOpen:new Set(),qOpen:false,pastOpen:false,conOpen:false,qbOpen:null,phAdd:new Set()};
 /* ================= 언어 (i18n.js의 LPACK 사용) ================= */
 function lang(){if(FORCE_KO)return 'ko';DB.langs=DB.langs||{};const a=LANG_ALLOWED[ui.role]||['ko'];let l=DB.langs[ui.role]||a[0];if(!a.includes(l))l=a[0];return l;}
 function T(k){const p=LPACK[lang()]||LPACK.ko;const s=p[k]!==undefined?p[k]:LPACK.ko[k];return s===undefined?k:s;}
@@ -425,27 +425,56 @@ function formHTML(){
         +'<button class="addbtn sm addOpt">'+T('add_opt')+'</button></div>'
       +'<div style="margin-top:8px"><button class="linkbtn hnTog">'+((ui.hnOpen.has(row.id)||row.note)?'▾':'▸')+' '+T('hotel_note')+'</button>'
         +((ui.hnOpen.has(row.id)||row.note)?'<textarea class="hnText" placeholder="'+esc(T('ph_hotel_note'))+'">'+escT(row.note||'')+'</textarea>':'')+'</div>'
-      /* Phase 2: 추가 룸체크 섹션 (간소화) */
+      /* Phase 2: 추가 룸체크 섹션 - 누적 입력 방식 */
       +'<div style="margin-top:12px"><button class="linkbtn checkTog" data-row="'+row.id+'" style="color:#22C55E;font-weight:600">'+((ui.open.has(row.id))?'▾':'▸')+' ➕ 추가 룸체크</button>'
-        +((ui.open.has(row.id))?'<div class="check-list-section" style="margin-top:8px;padding:12px;background:#F5F7FA;border-radius:6px">'
+        +((ui.open.has(row.id))?'<div class="check-section" style="margin-top:8px;padding:12px;background:#F5F7FA;border-radius:6px">'
           +'<button class="linkbtn" id="addCheckBtn'+row.id+'" style="color:#22C55E;font-weight:600;margin-bottom:8px">+ 호텔 추가</button>'
-          +'<div class="check-input-row" id="checkInputRow'+row.id+'" style="display:none;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #e0e0e0">'
-            +'<select class="checkRegion" data-row="'+row.id+'" style="flex:0.8;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">'
-              +'<option value="">지역</option>'
-              +REGIONS.map(r=>'<option value="'+esc(r)+'">'+esc(r)+'</option>').join('')
-            +'</select>'
-            +'<input type="text" class="checkHotel" data-row="'+row.id+'" placeholder="호텔명" list="checkHL'+row.id+'" style="flex:1.2;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">'
-            +'<datalist id="checkHL'+row.id+'"></datalist>'
-            +'<input type="text" class="checkRoom" data-row="'+row.id+'" placeholder="룸타입" list="checkRL'+row.id+'" style="flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">'
-            +'<datalist id="checkRL'+row.id+'"></datalist>'
-            +'<button class="addbtn sm" onclick="addCheckRequest('+row.id+')" style="background:#22C55E;color:#fff;border:none;padding:6px 10px;font-size:13px;flex:0 0 auto">✓</button>'
-            +'<button class="addbtn sm" id="cancelCheckBtn'+row.id+'" style="background:#f5f5f5;color:#666;border:none;padding:6px 10px;font-size:13px;flex:0 0 auto">✕</button>'
-          +'</div>'
+          +'<div class="check-inputs-container" id="checkInputs'+row.id+'" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px">'
+            +((ui.checkInputs&&ui.checkInputs[row.id])?ui.checkInputs[row.id].map((inp)=>'<div class="check-input-row" style="display:flex;gap:8px;padding:8px;background:#fff;border:1px solid var(--line);border-radius:4px">'
+              +'<select class="checkRegion" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" style="flex:0.8;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">'
+                +'<option value="">지역</option>'
+                +REGIONS.map(r=>'<option value="'+esc(r)+'"'+(inp.region===r?' selected':'')+'>'+esc(r)+'</option>').join('')
+              +'</select>'
+              +'<input type="text" class="checkHotel" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" placeholder="호텔명" value="'+esc(inp.hotel)+'" style="flex:1.2;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">'
+              +'<input type="text" class="checkRoom" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" placeholder="룸타입" value="'+esc(inp.roomType)+'" style="flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">'
+              +'<button class="del" style="padding:4px 8px;flex:0 0 auto" onclick="removeCheckInputRow('+row.id+',\''+inp.tempId+'\')">−</button>'
+            +'</div>').join(''):''
+          )+'</div>'
           +(row.checkRequests&&row.checkRequests.length
-            ? row.checkRequests.map((req,j)=>'<div style="display:flex;align-items:center;gap:8px;padding:8px;background:#fff;border:1px solid var(--line);border-radius:4px;margin-bottom:6px">'
-                +'<span style="flex:1;font-size:13px">'+escT(dRegion(req.region||'전체'))+' · <strong>'+escT(dHotel(req.hotel))+'</strong> · '+escT(dRoom(req.roomType))+'</span>'
-                +'<button class="del" onclick="removeCheckRequest('+row.id+','+req.id+')" style="padding:4px 8px">−</button>'
-              +'</div>').join('')
+            ? row.checkRequests.map((req,j)=>{
+                const reqDateArr=Array.from({length:diffD(req.checkInDate,req.checkOutDate)},(_,k)=>addDays(req.checkInDate,k));
+                const isOpen=ui.checkReqOpen.has(req.id);
+                return '<div style="margin-top:12px;padding:12px;background:#f9f9f9;border:1px solid var(--line);border-radius:6px">'
+                  +'<div class="flex between aic" style="margin-bottom:'+(isOpen?'8':'0')+'px;cursor:pointer" onclick="toggleCheckRequest('+row.id+','+req.id+')">'
+                    +'<div style="display:flex;align-items:center;gap:8px;flex:1">'
+                      +'<span style="font-weight:600;color:#666">'+(isOpen?'▼':'▶')+'</span>'
+                      +'<span style="font-weight:600;font-size:14px">'+escT(dRegion(req.region||'전체'))+'</span>'
+                      +'<span>·</span>'
+                      +'<span style="font-weight:600">'+escT(dHotel(req.hotel))+'</span>'
+                      +'<span>·</span>'
+                      +'<span>'+escT(dRoom(req.roomType))+'</span>'
+                    +'</div>'
+                    +'<button class="del" onclick="event.stopPropagation();removeCheckRequest('+row.id+','+req.id+')" style="padding:4px 8px">−</button>'
+                  +'</div>'
+                  +(isOpen?
+                    '<div style="display:flex;gap:8px;margin-bottom:8px;padding:8px;background:#fff;border-radius:4px;font-size:13px">'
+                      +'In '+fdate(req.checkInDate)+' / Out '+fdate(req.checkOutDate)+' · '+diffD(req.checkInDate,req.checkOutDate)+T("n_sfx")
+                    +'</div>'
+                    +(reqDateArr.length>0?'<div style="padding:8px;background:#fff;border-radius:4px">'+
+                      reqDateArr.map((iso,di)=>'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0">'
+                        +'<span style="flex:0 0 80px;font-size:12px">'+fdate(iso)+'</span>'
+                        +'<span class="status-badge" style="flex:0 0 auto;padding:4px 8px;border-radius:3px;font-size:11px;background:'+
+                          (req.status==='confirmed'?'#10b981':req.status==='rejected'?'#ef4444':'#f59e0b')+
+                          ';color:#fff">'+
+                          (req.status==='confirmed'?'✅ 확인':req.status==='rejected'?'❌ 거절':'⏳ 대기')+
+                        '</span>'
+                        +'<span style="flex:0 0 20px;text-align:center">💰</span>'
+                        +'<span style="flex:0 0 80px;font-weight:600">'+won(req.price||0)+'</span>'
+                      +'</div>').join('')+
+                    '</div>':'')
+                    :'')
+                +'</div>';
+              }).join('')
             : '<div style="color:#999;font-size:12px;padding:8px;text-align:center">추가된 호텔이 없습니다</div>')
         +'</div>':'')+'</div>'
       +'</div>';
@@ -479,34 +508,53 @@ function formHTML(){
         +'</div>')
     +'</section>';
 }
-/* ✅ Phase 2: 토글 방식 추가 룸테크 함수 */
-window.addCheckRequest=function(rowId){
+/* Phase 2: 누적 입력 방식 - 새로운 입력 행 추가 */
+window.addCheckInputRow=function(rowId){
+  if(!ui.checkInputs)ui.checkInputs={};
+  if(!ui.checkInputs[rowId])ui.checkInputs[rowId]=[];
+  const tempId=Date.now()+'_'+(Math.random()*1e6|0);
+  ui.checkInputs[rowId].push({tempId:tempId,region:'',hotel:'',roomType:''});
+  renderApp();
+};
+
+/* Phase 2: 임시 입력 행 삭제 */
+window.removeCheckInputRow=function(rowId,tempId){
+  if(!ui.checkInputs||!ui.checkInputs[rowId])return;
+  ui.checkInputs[rowId]=ui.checkInputs[rowId].filter(r=>r.tempId!==tempId);
+  renderApp();
+};
+
+/* Phase 2: 모든 입력을 최종 저장 */
+window.saveCheckRequestsFromInputs=function(rowId){
   const rowIndex=draft.rows.findIndex(r=>r.id===rowId);
   if(rowIndex<0)return;
   const row=draft.rows[rowIndex];
-  const hotel=(document.querySelector('.checkHotel[data-row="'+rowId+'"]')?.value||'').trim();
-  const roomType=(document.querySelector('.checkRoom[data-row="'+rowId+'"]')?.value||'').trim();
-  const region=document.querySelector('.checkRegion[data-row="'+rowId+'"]')?.value||row.region;
-  const notes=(document.querySelector('.checkNotes[data-row="'+rowId+'"]')?.value||'').trim();
-  if(!hotel){alert('호텔명을 입력하세요');return;}
+  if(!ui.checkInputs||!ui.checkInputs[rowId]||ui.checkInputs[rowId].length===0){
+    alert('추가할 호텔을 입력하세요');return;
+  }
+  const invalidInputs=ui.checkInputs[rowId].filter(inp=>!inp.hotel.trim());
+  if(invalidInputs.length>0){alert('모든 호텔명을 입력하세요');return;}
   const dd=rDates(draft,row,rowIndex);
   row.checkRequests=row.checkRequests||[];
-  row.checkRequests.push({
-    id:Date.now(),
-    region:region,
-    hotel:hotel,
-    roomType:roomType||'(미지정)',
-    checkInDate:dd.checkIn,
-    checkOutDate:dd.checkOut,
-    status:'pending',
-    requestedBy:ui.role,
-    notes:notes,
-    price:0,
-    priceNotes:''
+  ui.checkInputs[rowId].forEach(inp=>{
+    row.checkRequests.push({
+      id:Date.now()+'_'+(Math.random()*1e6|0),
+      region:inp.region||row.region,
+      hotel:inp.hotel.trim(),
+      roomType:inp.roomType.trim()||'(미지정)',
+      checkInDate:dd.checkIn,
+      checkOutDate:dd.checkOut,
+      status:'pending',
+      requestedBy:ui.role,
+      notes:'',
+      price:0,
+      priceNotes:''
+    });
   });
+  delete ui.checkInputs[rowId];
   saveDraft();
   renderApp();
-  toast('✅ 호텔 추가 요청이 등록되었습니다');
+  toast('✅ '+ui.checkInputs[rowId].length+'개 호텔이 추가되었습니다');
 };
 window.removeCheckRequest=function(rowId,reqId){
   const row=draft.rows.find(r=>r.id===rowId);
@@ -516,6 +564,12 @@ window.removeCheckRequest=function(rowId,reqId){
   saveDraft();
   renderApp();
   toast('✅ 요청이 삭제되었습니다');
+};
+
+window.toggleCheckRequest=function(rowId,reqId){
+  if(!ui.checkReqOpen)ui.checkReqOpen=new Set();
+  ui.checkReqOpen.has(reqId)?ui.checkReqOpen.delete(reqId):ui.checkReqOpen.add(reqId);
+  renderApp();
 };
 
 /* Phase 2: 호텔/룸타입 목록 업데이트 */
@@ -630,31 +684,8 @@ function bindForm(){
     renderApp();
     toast((direct?T('t_direct_reg'):T('t_registered'))+reqNo(req));
   }
-  document.getElementById('run').onclick=()=>doSubmit(false);
-  const rd=document.getElementById('runDirect');if(rd)rd.onclick=()=>doSubmit(true);
-
-  /* Phase 2: 추가 룸체크 토글 및 입력 행 이벤트 핸들러 */
-  document.querySelectorAll('.checkTog').forEach(btn=>{
-    btn.onclick=e=>{
-      e.preventDefault();
-      const rowId=Number(btn.dataset.row);
-      ui.open.has(rowId)?ui.open.delete(rowId):ui.open.add(rowId);
-      renderApp();
-    };
-  });
-  /* 호텔/룸타입 입력 필드 이벤트 */
-  document.querySelectorAll('.checkHotel').forEach(inp=>{
-    inp.addEventListener('input',e=>{
-      const rowId=Number(inp.dataset.row);
-      updateCheckListsForRow(rowId);
-    });
-  });
-  document.querySelectorAll('.checkRoom').forEach(inp=>{
-    inp.addEventListener('input',e=>{
-      const rowId=Number(inp.dataset.row);
-      updateCheckListsForRow(rowId);
-    });
-  });
+  document.getElementById('run').onclick=()=>{saveAllCheckInputs();doSubmit(false);};
+  const rd=document.getElementById('runDirect');if(rd)rd.onclick=()=>{saveAllCheckInputs();doSubmit(true);};
 
   /* Phase 2: 추가 룸체크 토글 버튼 */
   document.querySelectorAll('.checkTog').forEach(btn=>{
@@ -666,24 +697,58 @@ function bindForm(){
     };
   });
 
-  /* Phase 2: 호텔 추가 버튼 */
+  /* Phase 2: 호텔 추가 버튼 - 새로운 입력 행 생성 */
   d.rows.forEach(row=>{
     const addBtn=document.getElementById('addCheckBtn'+row.id);
     if(addBtn){
       addBtn.onclick=()=>{
-        const inputRow=document.getElementById('checkInputRow'+row.id);
-        if(inputRow)inputRow.style.display='flex';
+        addCheckInputRow(row.id);
       };
     }
-    const cancelBtn=document.getElementById('cancelCheckBtn'+row.id);
-    if(cancelBtn){
-      cancelBtn.onclick=()=>{
-        const inputRow=document.getElementById('checkInputRow'+row.id);
-        if(inputRow)inputRow.style.display='none';
-        document.querySelector('.checkRegion[data-row="'+row.id+'"]').value='';
-        document.querySelector('.checkHotel[data-row="'+row.id+'"]').value='';
-        document.querySelector('.checkRoom[data-row="'+row.id+'"]').value='';
-      };
+  });
+
+  /* Phase 2: 임시 입력 행 데이터 바인딩 */
+  document.querySelectorAll('.checkHotel').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const rowId=Number(inp.dataset.row);
+      const tempId=inp.dataset.tempid;
+      if(tempId&&ui.checkInputs&&ui.checkInputs[rowId]){
+        const inp_row=ui.checkInputs[rowId].find(r=>r.tempId===tempId);
+        if(inp_row)inp_row.hotel=e.target.value;
+      }
+      updateCheckListsForRow(rowId);
+    });
+  });
+  document.querySelectorAll('.checkRoom').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const rowId=Number(inp.dataset.row);
+      const tempId=inp.dataset.tempid;
+      if(tempId&&ui.checkInputs&&ui.checkInputs[rowId]){
+        const inp_row=ui.checkInputs[rowId].find(r=>r.tempId===tempId);
+        if(inp_row)inp_row.roomType=e.target.value;
+      }
+      updateCheckListsForRow(rowId);
+    });
+  });
+  document.querySelectorAll('.checkRegion').forEach(sel=>{
+    sel.addEventListener('change',e=>{
+      const rowId=Number(sel.dataset.row);
+      const tempId=sel.dataset.tempid;
+      if(tempId&&ui.checkInputs&&ui.checkInputs[rowId]){
+        const inp_row=ui.checkInputs[rowId].find(r=>r.tempId===tempId);
+        if(inp_row)inp_row.region=e.target.value;
+      }
+    });
+  });
+}
+
+/* doSubmit 전에 모든 임시 입력 저장 */
+function saveAllCheckInputs(){
+  const d=draft;
+  if(!d||!d.rows)return;
+  d.rows.forEach(row=>{
+    if(ui.checkInputs&&ui.checkInputs[row.id]&&ui.checkInputs[row.id].length>0){
+      saveCheckRequestsFromInputs(row.id);
     }
   });
 }

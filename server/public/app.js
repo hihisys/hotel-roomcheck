@@ -962,6 +962,25 @@ function staffWorkInner(req){
           : '<button class="linkbtn optTog" data-id="'+row.id+'">'+T('ws_opt_open')+'</button>')
         +'</div>';
     }
+    /* Phase 2: 추가 호텔 확인 섹션 (호텔1 카드 내 sub-card) */
+    if(row.checkRequests&&row.checkRequests.length){
+      row.checkRequests.forEach((chk,ci)=>{
+        detail+='<div class="wscard" style="margin-top:8px;border-color:rgba(30,99,200,0.3);background:rgba(30,99,200,0.02)">'
+          +'<div class="wshead" style="display:block;padding:0">'
+            +'<div class="rq-datebar"><span style="color:#1E63C8">➕</span> '+fdate(dd.checkIn)+' → '+fdate(dd.checkOut)+' <span class="nightsb">'+dd.nights+T('n_sfx')+'</span><span class="rq-idx" style="color:#666">추가 호텔</span></div>'
+            +'<div class="rq-body">'
+              +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(chk.hotel))+'</span><span class="rq-type">'+escT(dRoom(chk.roomType)||'-')+'</span></span>'
+              +(ui.role==='schk'?'<span style="display:flex;gap:4px;align-items:center;flex:0 0 auto">'
+                +(chk.price?'<span style="font-size:13px;color:var(--brand);font-weight:600">฿ '+chk.price.toLocaleString()+'</span>':'<span style="font-size:12px;color:#999">금액 미입력</span>')
+                +'<span style="font-size:12px;padding:2px 6px;border-radius:3px;font-weight:600;'
+                  +(chk.status==='pending'?'background:#fef3cd;color:#856404':chk.status==='confirmed'?'background:#d4edda;color:#155724':'background:#f8d7da;color:#721c24')+'">'
+                  +(chk.status==='pending'?'⏳':'✅')+'</span></span>':'')
+              +'</div>'
+            +'</div>'
+          +'</div>'
+        +'</div>';
+      });
+    }
     return '<div class="wscard">'+head+detail+'</div>';
   }).join('');
   const legend='<div class="legend">'

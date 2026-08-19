@@ -166,6 +166,11 @@
 .lhotel{display:grid;gap:9px;grid-template-columns:88px 1.5fr 1fr}
 /* 요청 내용: 지역 위, 호텔·룸타입 한 줄 */
 .rq-region{display:inline-block;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:800;color:var(--sub);margin-bottom:5px}
+/* 워크시트 전용 (2026-08-02): 지역 칩 축소 + 전화 걸기 아이콘 버튼 최소 폭 */
+.rq-region.wsRegion{padding:2px 6px;font-size:10px;letter-spacing:-.2px;max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip.phCall{padding:7px 10px;line-height:0;flex:0 0 auto;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;border-color:var(--brandDark)}
+.chip.phCall svg{display:block}
+.chip.phCall:active{filter:brightness(.92)}
 .rq-line{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0}
 .rq-type{font-weight:800;font-size:13.5px;color:var(--brand);white-space:nowrap}
 .rq-type .sm{font-weight:600;color:var(--muted);font-size:12px}
@@ -328,14 +333,19 @@ input[type=number]::selection{background:var(--brand);color:#fff}
 .lstitem.ls-pastitem .badge{background:var(--paper);color:var(--muted);border:1px solid var(--line)}
 
 /* 견적서 숙박기간 강조 바 */
-.qc-dbar{display:flex;align-items:center;gap:7px;background:#F1F4F2;border-left:4px solid var(--brand);border-radius:8px;padding:7px 9px;margin-top:4px}
-@supports (background:color-mix(in srgb,red 50%,#fff)){.qc-dbar{background:color-mix(in srgb,var(--brand) 9%,#fff)}}
+.qc-dbar{display:flex;align-items:center;gap:7px;background:#F1F4F2;border-left:4px solid var(--brand);border-radius:8px;padding:9px 11px;margin-top:4px}
+.qc-dbar{background:#E9F2F2} /* 2026-08-01: color-mix 제거 — html2canvas(이미지 저장) 미지원 색상함수 파싱 오류 수정 */
 .qc-dnum{flex:0 0 auto;width:19px;height:19px;border-radius:50%;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
 .qc-dt{font-weight:800;font-size:13.5px;color:var(--ink);letter-spacing:.2px;white-space:nowrap}
+/* 견적서 날짜: 두 줄 대형 + IN/OUT 라벨 (2026-08-02) */
+.qc-dgrp{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.qc-drow2{display:flex;align-items:baseline;gap:8px}
+.qc-dlab{flex:0 0 auto;width:26px;font-size:10.5px;font-weight:800;color:var(--brand);opacity:.75;letter-spacing:.5px}
+.qc-dval{font-size:16px;font-weight:800;color:var(--ink);letter-spacing:.2px;white-space:nowrap}
 .qc-arw{color:var(--brand)}
-.qc-dn{margin-left:auto;flex:0 0 auto;background:var(--brand);color:#fff;border-radius:999px;padding:2.5px 10px;font-size:11.5px;font-weight:800;white-space:nowrap}
-@media (max-width:400px){.qc-dt{font-size:12.5px}.qc-dn{padding:2px 8px;font-size:11px}}
-@media (max-width:340px){.qc-dt{font-size:11.5px;letter-spacing:0}}
+.qc-dn{margin-left:8px;flex:0 0 auto;background:var(--brand);color:#fff;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:800;white-space:nowrap;align-self:center}
+@media (max-width:400px){.qc-dt{font-size:12.5px}.qc-dval{font-size:15px}.qc-dn{padding:3.5px 10px;font-size:11.5px}}
+@media (max-width:340px){.qc-dt{font-size:11.5px;letter-spacing:0}.qc-dval{font-size:13.5px}.qc-dlab{width:22px;font-size:10px}}
 
 /* 견적서 추가 항목 카드 (호텔 카드와 구분되는 색) */
 .qc-leg.qc-addl{background:#EDF3FA;border:1px solid #C6D9EA;border-left:4px solid #4A7FB5}
@@ -348,7 +358,7 @@ input[type=number]::selection{background:var(--brand);color:#fff}
 .nthead{font-size:12px;font-weight:800;color:var(--muted);padding:9px 13px;border-bottom:1px solid var(--line);background:var(--paper)}
 .ntitem{padding:9px 13px;border-bottom:1px solid var(--line)}
 .ntitem:last-child{border-bottom:none}
-.ntitem.ntnew{background:color-mix(in srgb,var(--brand) 6%,#fff)}
+.ntitem.ntnew{background:#F0F6F6} /* 2026-08-01: color-mix 제거 */
 .ntline1{font-size:13px;font-weight:800}
 .ntline2{font-size:12px;color:var(--sub);margin-top:1px}
 .ntline3{font-size:10.5px;color:var(--muted);margin-top:2px;font-family:var(--mono)}
@@ -412,3 +422,115 @@ input[type=number]::selection{background:var(--brand);color:#fff}
 @media(max-width:340px){
   .datewrap .dateinput{font-size:11px}
 }
+
+/* ===== 휴일 근무자 카드 (2026-08-02, [011]) =====
+   요청자·확인자 메인 화면에서 다가오는 휴일의 근무자를 접기/펴기로 확인한다.
+   근무자 칩 색은 역할별 --brand와 겹치지 않도록 고정색(초록/본인 주황)을 쓴다. */
+.card.hwcard{padding:0;overflow:hidden}
+.hwhead{display:flex;align-items:center;gap:8px;padding:11px 13px;background:#F0F6F6;cursor:pointer;user-select:none}
+.hwhead b{font-size:13.5px;font-weight:800}
+.hwhead .hwsub{font-size:11.5px;font-weight:800;color:var(--muted)}
+.hwhead .hwcar{margin-left:auto;font-size:13px;font-weight:800;color:var(--muted)}
+.hwrow{display:flex;gap:10px;padding:9px 13px;border-top:1px solid var(--line);align-items:flex-start}
+.hwd{flex:0 0 88px;font-size:12px;font-weight:800;font-family:var(--mono);line-height:1.5}
+.hwd.sun{color:#C0392B}
+.hwd.sat{color:#2B5FA3}
+.hwn{flex:1 1 auto;display:flex;flex-wrap:wrap;gap:5px}
+.wkchip{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11.5px;font-weight:800;
+  background:#E9F2F2;color:#1F5C52;border:1px solid #CBE0DC}
+.wkchip.me{background:#C2410C;color:#fff;border-color:#C2410C}
+.hwempty{padding:13px;font-size:12px;font-weight:700;color:var(--muted);text-align:center;border-top:1px solid var(--line)}
+.hwfoot{padding:9px 13px;border-top:1px solid var(--line);text-align:right}
+.hwfoot a{font-size:11.5px;font-weight:800;color:var(--brand);text-decoration:none}
+@media(max-width:360px){
+  .hwd{flex:0 0 76px;font-size:11.5px}
+  .wkchip{font-size:11px;padding:3px 7px}
+}
+
+/* ===== Phase 1: 추가 룸체크 (2026-08-18) ===== */
+.btn-add-check{
+  display:inline-block;
+  background:#4CAF50;
+  color:#fff;
+  border:none;
+  padding:8px 12px;
+  border-radius:4px;
+  cursor:pointer;
+  font-size:13px;
+  font-weight:700;
+  margin-top:10px;
+  margin-bottom:10px;
+  font-family:var(--sans);
+  transition:background .2s;
+  letter-spacing:.2px;
+}
+.btn-add-check:hover{background:#388e3c}
+.btn-add-check:active{opacity:.85}
+
+.check-requests-list{
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px dashed var(--line);
+}
+
+.check-requests-title{
+  font-size:12px;
+  font-weight:800;
+  color:#2F7A55;
+  margin-bottom:8px;
+  letter-spacing:.3px;
+  text-transform:uppercase;
+}
+
+.check-request-item{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  background:#E4F0E9;
+  border-left:4px solid #2F7A55;
+  border-radius:6px;
+  margin-bottom:6px;
+  font-size:12px;
+}
+
+.check-request-item span{flex:1}
+
+.check-request-item strong{
+  font-weight:800;
+  color:var(--ink);
+}
+
+.status-badge{
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:4px;
+  font-size:11px;
+  font-weight:800;
+  white-space:nowrap;
+  font-family:var(--mono);
+  letter-spacing:.2px;
+}
+
+.status-pending{background:var(--rqBg);color:var(--rq)}
+.status-confirmed{background:var(--avBg);color:var(--av)}
+.status-rejected{background:var(--soBg);color:var(--so)}
+
+.check-request-item .del{
+  width:28px;
+  height:28px;
+  flex:0 0 auto;
+  border-radius:4px;
+  border:1px solid #CBE0DC;
+  background:#E9F2F2;
+  color:#2F7A55;
+  font-size:14px;
+  cursor:pointer;
+  font-weight:700;
+  padding:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.check-request-item .del:hover{background:#D0E5DE;border-color:#A8D4C7}

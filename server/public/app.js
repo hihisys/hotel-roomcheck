@@ -371,7 +371,8 @@ function renderApp(){
   const dl=document.getElementById('optdl');if(dl)dl.innerHTML=OPTLIST.map(o=>'<option>'+esc(dOpt(o))+'</option>').join('');
   if(ui.role==='agent'){app.innerHTML=langSwitchHTML()+formHTML()+agentListHTML();bindForm();bindAgentList();}
   else if(ui.role==='sreq'){app.innerHTML=langSwitchHTML()+formHTML()+staffListHTML();bindForm();bindStaff();}
-  else{app.innerHTML=langSwitchHTML()+checkerHTML()+staffListHTML();bindStaff();}
+  else if(ui.role==='schk'){app.innerHTML=langSwitchHTML()+formHTML()+checkerHTML()+staffListHTML();bindForm();bindStaff();}
+  else{app.innerHTML=langSwitchHTML()+staffListHTML();bindStaff();}
   bindLang();
 }
 function checkerHTML(){

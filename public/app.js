@@ -425,41 +425,29 @@ function formHTML(){
         +'<button class="addbtn sm addOpt">'+T('add_opt')+'</button></div>'
       +'<div style="margin-top:8px"><button class="linkbtn hnTog">'+((ui.hnOpen.has(row.id)||row.note)?'▾':'▸')+' '+T('hotel_note')+'</button>'
         +((ui.hnOpen.has(row.id)||row.note)?'<textarea class="hnText" placeholder="'+esc(T('ph_hotel_note'))+'">'+escT(row.note||'')+'</textarea>':'')+'</div>'
-      /* Phase 2: 토글 방식 추가 룸체크 섹션 */
+      /* Phase 2: 추가 룸체크 섹션 (간소화) */
       +'<div style="margin-top:12px"><button class="linkbtn checkTog" data-row="'+row.id+'" style="color:#22C55E;font-weight:600">'+((ui.open.has(row.id))?'▾':'▸')+' ➕ 추가 룸체크</button>'
-        +((ui.open.has(row.id))?'<div class="check-add-section" style="margin-top:8px;padding:12px;background:#F5F7FA;border-radius:6px">'
-          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
-            +'<div><div class="label" style="font-size:12px;font-weight:600;margin-bottom:4px">지역</div>'
-              +'<select class="checkRegion" data-row="'+row.id+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
-                +'<option value="">선택</option>'
-                +REGIONS.map(r=>'<option value="'+esc(r)+'">'+esc(r)+'</option>').join('')
-              +'</select></div>'
-            +'<div><div class="label" style="font-size:12px;font-weight:600;margin-bottom:4px">호텔명 *</div>'
-              +'<input type="text" class="checkHotel" data-row="'+row.id+'" placeholder="호텔명" list="checkHL'+row.id+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
-              +'<datalist id="checkHL'+row.id+'"></datalist></div>'
-            +'<div><div class="label" style="font-size:12px;font-weight:600;margin-bottom:4px">룸타입 *</div>'
-              +'<input type="text" class="checkRoom" data-row="'+row.id+'" placeholder="룸타입" list="checkRL'+row.id+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
-              +'<datalist id="checkRL'+row.id+'"></datalist></div>'
+        +((ui.open.has(row.id))?'<div class="check-list-section" style="margin-top:8px;padding:12px;background:#F5F7FA;border-radius:6px">'
+          +'<button class="linkbtn" id="addCheckBtn'+row.id+'" style="color:#22C55E;font-weight:600;margin-bottom:8px">+ 호텔 추가</button>'
+          +'<div class="check-input-row" id="checkInputRow'+row.id+'" style="display:none;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #e0e0e0">'
+            +'<select class="checkRegion" data-row="'+row.id+'" style="flex:0.8;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">'
+              +'<option value="">지역</option>'
+              +REGIONS.map(r=>'<option value="'+esc(r)+'">'+esc(r)+'</option>').join('')
+            +'</select>'
+            +'<input type="text" class="checkHotel" data-row="'+row.id+'" placeholder="호텔명" list="checkHL'+row.id+'" style="flex:1.2;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">'
+            +'<datalist id="checkHL'+row.id+'"></datalist>'
+            +'<input type="text" class="checkRoom" data-row="'+row.id+'" placeholder="룸타입" list="checkRL'+row.id+'" style="flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">'
+            +'<datalist id="checkRL'+row.id+'"></datalist>'
+            +'<button class="addbtn sm" onclick="addCheckRequest('+row.id+')" style="background:#22C55E;color:#fff;border:none;padding:6px 10px;font-size:13px;flex:0 0 auto">✓</button>'
+            +'<button class="addbtn sm" id="cancelCheckBtn'+row.id+'" style="background:#f5f5f5;color:#666;border:none;padding:6px 10px;font-size:13px;flex:0 0 auto">✕</button>'
           +'</div>'
-          +'<div style="margin-bottom:10px"><div class="label" style="font-size:12px;font-weight:600;margin-bottom:4px">메모</div>'
-            +'<textarea class="checkNotes" data-row="'+row.id+'" placeholder="추가 요청사항" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px;min-height:60px;resize:vertical;font-family:inherit"></textarea></div>'
-          +'<button class="addbtn sm" onclick="addCheckRequest('+row.id+')" style="background:#22C55E;color:#fff;border:none">+ 추가</button>'
+          +(row.checkRequests&&row.checkRequests.length
+            ? row.checkRequests.map((req,j)=>'<div style="display:flex;align-items:center;gap:8px;padding:8px;background:#fff;border:1px solid var(--line);border-radius:4px;margin-bottom:6px">'
+                +'<span style="flex:1;font-size:13px">'+escT(dRegion(req.region||'전체'))+' · <strong>'+escT(dHotel(req.hotel))+'</strong> · '+escT(dRoom(req.roomType))+'</span>'
+                +'<button class="del" onclick="removeCheckRequest('+row.id+','+req.id+')" style="padding:4px 8px">−</button>'
+              +'</div>').join('')
+            : '<div style="color:#999;font-size:12px;padding:8px;text-align:center">추가된 호텔이 없습니다</div>')
         +'</div>':'')+'</div>'
-      +'<div class="check-requests-list">'
-        +(row.checkRequests&&row.checkRequests.length
-          ? '<div class="check-requests-title" style="margin-top:10px">추가 호텔 확인:</div>'
-            +row.checkRequests.map((req,j)=>'<div class="check-request-item" data-id="'+req.id+'" style="margin-top:6px">'
-              +'<div style="display:flex;align-items:center;gap:8px;padding:8px;background:#fff;border:1px solid var(--line);border-radius:4px">'
-                +'<div style="flex:1;font-size:13px">'
-                  +'<strong>'+esc(req.hotel)+'</strong><br>'
-                  +'<span style="color:var(--muted);font-size:12px">'+esc(req.roomType)+(req.region?' · '+esc(req.region):'')+'</span>'
-                +'</div>'
-                +'<span class="status-badge status-'+req.status+'" style="font-size:11px;padding:4px 8px">'+(req.status==='pending'?'⏳ 대기':req.status==='confirmed'?'✅ 완료':'❌ 거절')+'</span>'
-                +'<button class="del" onclick="removeCheckRequest('+row.id+','+req.id+')" style="padding:4px 8px">✕</button>'
-              +'</div>'
-            +'</div>').join('')
-          : '')
-      +'</div>'
       +'</div>';
   }).join('');
   return '<section class="card">'
@@ -645,7 +633,7 @@ function bindForm(){
   document.getElementById('run').onclick=()=>doSubmit(false);
   const rd=document.getElementById('runDirect');if(rd)rd.onclick=()=>doSubmit(true);
 
-  /* Phase 2: 토글 방식 추가 룸테크 이벤트 핸들러 */
+  /* Phase 2: 추가 룸체크 토글 및 입력 행 이벤트 핸들러 */
   document.querySelectorAll('.checkTog').forEach(btn=>{
     btn.onclick=e=>{
       e.preventDefault();
@@ -666,6 +654,37 @@ function bindForm(){
       const rowId=Number(inp.dataset.row);
       updateCheckListsForRow(rowId);
     });
+  });
+
+  /* Phase 2: 추가 룸체크 토글 버튼 */
+  document.querySelectorAll('.checkTog').forEach(btn=>{
+    btn.onclick=e=>{
+      e.preventDefault();
+      const rowId=Number(btn.dataset.row);
+      ui.open.has(rowId)?ui.open.delete(rowId):ui.open.add(rowId);
+      renderApp();
+    };
+  });
+
+  /* Phase 2: 호텔 추가 버튼 */
+  d.rows.forEach(row=>{
+    const addBtn=document.getElementById('addCheckBtn'+row.id);
+    if(addBtn){
+      addBtn.onclick=()=>{
+        const inputRow=document.getElementById('checkInputRow'+row.id);
+        if(inputRow)inputRow.style.display='flex';
+      };
+    }
+    const cancelBtn=document.getElementById('cancelCheckBtn'+row.id);
+    if(cancelBtn){
+      cancelBtn.onclick=()=>{
+        const inputRow=document.getElementById('checkInputRow'+row.id);
+        if(inputRow)inputRow.style.display='none';
+        document.querySelector('.checkRegion[data-row="'+row.id+'"]').value='';
+        document.querySelector('.checkHotel[data-row="'+row.id+'"]').value='';
+        document.querySelector('.checkRoom[data-row="'+row.id+'"]').value='';
+      };
+    }
   });
 }
 

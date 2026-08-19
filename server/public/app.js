@@ -458,21 +458,36 @@ function formHTML(){
                     +'<button class="del" onclick="event.stopPropagation();removeCheckRequest('+row.id+','+req.id+')" style="padding:4px 8px">−</button>'
                   +'</div>'
                   +(isOpen?
-                    '<div style="display:flex;gap:8px;margin-bottom:8px;padding:8px;background:#fff;border-radius:4px;font-size:13px">'
-                      +'In '+fdate(req.checkInDate)+' / Out '+fdate(req.checkOutDate)+' · '+diffD(req.checkInDate,req.checkOutDate)+T("n_sfx")
+                    '<div style="display:flex;flex-direction:column;gap:8px;padding:8px;background:#fff;border-radius:4px">'
+                      +'<div style="font-size:13px;color:#666">In '+fdate(req.checkInDate)+' / Out '+fdate(req.checkOutDate)+' · '+diffD(req.checkInDate,req.checkOutDate)+T("n_sfx")+'</div>'
+                      +'<div style="display:flex;gap:8px;align-items:center">'
+                        +'<label style="font-size:12px;color:#666;flex:0 0 80px">편기 가능여부</label>'
+                        +'<select class="checkReqStatus" data-row="'+row.id+'" data-reqid="'+req.id+'" style="flex:0 0 120px;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">'
+                          +'<option value="pending"'+(req.status==='pending'?' selected':'')+'>⏳ 대기</option>'
+                          +'<option value="confirmed"'+(req.status==='confirmed'?' selected':'')+'>✅ 확인</option>'
+                          +'<option value="rejected"'+(req.status==='rejected'?' selected':'')+'>❌ 거절</option>'
+                        +'</select>'
+                      +'</div>'
+                      +'<div style="display:flex;gap:8px;align-items:center">'
+                        +'<label style="font-size:12px;color:#666;flex:0 0 80px">요금</label>'
+                        +'<input type="number" class="checkReqPrice" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+(req.price||'')+'" placeholder="가격 입력" style="flex:0 0 120px;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">'
+                      +'</div>'
+                      +(reqDateArr.length>0?'<div style="padding:8px;background:#fafafa;border-radius:4px;border:1px solid #f0f0f0">'
+                        +'<div style="font-size:12px;color:#666;margin-bottom:6px;font-weight:600">일일 현황</div>'
+                        +'<div>'+
+                          reqDateArr.map((iso,di)=>'<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px">'
+                            +'<span style="flex:0 0 80px">'+fdate(iso)+'</span>'
+                            +'<span class="status-badge" style="padding:3px 6px;border-radius:3px;font-size:11px;background:'+
+                              (req.status==='confirmed'?'#10b981':req.status==='rejected'?'#ef4444':'#f59e0b')+
+                              ';color:#fff">'
+                              +(req.status==='confirmed'?'✅':req.status==='rejected'?'❌':'⏳')+
+                            '</span>'
+                            +'<span style="flex:1"></span>'
+                            +'<span style="font-weight:600">'+won(req.price||0)+'</span>'
+                          +'</div>').join('')+
+                        '</div>'
+                      +'</div>':'')
                     +'</div>'
-                    +(reqDateArr.length>0?'<div style="padding:8px;background:#fff;border-radius:4px">'+
-                      reqDateArr.map((iso,di)=>'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f0">'
-                        +'<span style="flex:0 0 80px;font-size:12px">'+fdate(iso)+'</span>'
-                        +'<span class="status-badge" style="flex:0 0 auto;padding:4px 8px;border-radius:3px;font-size:11px;background:'+
-                          (req.status==='confirmed'?'#10b981':req.status==='rejected'?'#ef4444':'#f59e0b')+
-                          ';color:#fff">'+
-                          (req.status==='confirmed'?'✅ 확인':req.status==='rejected'?'❌ 거절':'⏳ 대기')+
-                        '</span>'
-                        +'<span style="flex:0 0 20px;text-align:center">💰</span>'
-                        +'<span style="flex:0 0 80px;font-weight:600">'+won(req.price||0)+'</span>'
-                      +'</div>').join('')+
-                    '</div>':'')
                     :'')
                 +'</div>';
               }).join('')
@@ -738,6 +753,33 @@ function bindForm(){
       if(tempId&&ui.checkInputs&&ui.checkInputs[rowId]){
         const inp_row=ui.checkInputs[rowId].find(r=>r.tempId===tempId);
         if(inp_row)inp_row.region=e.target.value;
+      }
+    });
+  });
+
+  /* Phase 2: 추가 호텔 상태 변경 */
+  document.querySelectorAll('.checkReqStatus').forEach(sel=>{
+    sel.addEventListener('change',e=>{
+      const rowId=Number(sel.dataset.row);
+      const reqId=Number(sel.dataset.reqid);
+      const row=draft.rows.find(r=>r.id===rowId);
+      if(row&&row.checkRequests){
+        const req=row.checkRequests.find(r=>r.id===reqId);
+        if(req)req.status=e.target.value;
+        saveDB();renderApp();
+      }
+    });
+  });
+
+  /* Phase 2: 추가 호텔 가격 변경 */
+  document.querySelectorAll('.checkReqPrice').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const rowId=Number(inp.dataset.row);
+      const reqId=Number(inp.dataset.reqid);
+      const row=draft.rows.find(r=>r.id===rowId);
+      if(row&&row.checkRequests){
+        const req=row.checkRequests.find(r=>r.id===reqId);
+        if(req)req.price=e.target.value?Number(e.target.value):0;
       }
     });
   });

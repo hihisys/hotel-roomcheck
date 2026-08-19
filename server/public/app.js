@@ -929,6 +929,36 @@ function resultCardHTML(req,asReq){
         const dc=c.status==='av'?'dc-av':c.status==='so'?'dc-so':c.status==='rq'?'dc-rq':'dc-un';
         return '<span class="daychip '+dc+'">'+fdshort(iso)+' '+statusLabel(c.status)+'</span>';}).join('')+'</div>';
     }
+    /* Phase 2: 추가 호텔들 표시 */
+    let checkReqsHTML='';
+    if(row.checkRequests&&row.checkRequests.length>0){
+      checkReqsHTML='<div style="margin-top:12px;padding:12px;background:#f5f7fa;border-radius:6px">'
+        +'<div style="font-weight:600;font-size:13px;color:#666;margin-bottom:8px">▸ 추가 룸체크</div>';
+      row.checkRequests.forEach(req_ch=>{
+        const crDateArr=Array.from({length:diffD(req_ch.checkInDate,req_ch.checkOutDate)},(_,k)=>addDays(req_ch.checkInDate,k));
+        checkReqsHTML+='<div style="margin-top:8px;padding:8px;background:#fff;border-radius:4px;border:1px solid var(--line)">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+            +'<span style="font-weight:600;font-size:13px">'+escT(dRegion(req_ch.region||'전체'))+' · '+escT(dHotel(req_ch.hotel))+' · '+escT(dRoom(req_ch.roomType))+'</span>'
+            +'<span class="status-badge" style="padding:3px 6px;border-radius:3px;font-size:11px;background:'
+              +(req_ch.status==='confirmed'?'#10b981':req_ch.status==='rejected'?'#ef4444':'#f59e0b')
+              +';color:#fff">'
+              +(req_ch.status==='confirmed'?'✅ 확인':req_ch.status==='rejected'?'❌ 거절':'⏳ 대기')
+            +'</span>'
+          +'</div>'
+          +'<div style="font-size:12px;color:#666;margin-bottom:6px">In '+fdate(req_ch.checkInDate)+' / Out '+fdate(req_ch.checkOutDate)+' · '+diffD(req_ch.checkInDate,req_ch.checkOutDate)+T("n_sfx")+'</div>'
+          +(crDateArr.length>0?'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px">'+
+            crDateArr.map((iso,di)=>'<div style="display:flex;align-items:center;gap:4px;padding:4px;background:#fafafa;border-radius:3px;font-size:11px">'
+              +'<span style="flex:1">'+fdshort(iso)+'</span>'
+              +'<span style="padding:2px 4px;background:'+(req_ch.status==='confirmed'?'#10b981':req_ch.status==='rejected'?'#ef4444':'#f59e0b')+';color:#fff;border-radius:2px">'
+                +(req_ch.status==='confirmed'?'✅':req_ch.status==='rejected'?'❌':'⏳')
+              +'</span>'
+              +(req_ch.price?'<span style="font-weight:600">'+won(req_ch.price)+'</span>':'')
+            +'</div>').join('')+
+          '</div>':'')
+        +'</div>';
+      });
+      checkReqsHTML+='</div>';
+    }
     return '<div class="rq-item">'
       +'<div class="rq-datebar">'+fdate(dd.checkIn)+' → '+fdate(dd.checkOut)+' <span class="nightsb">'+dd.nights+'박</span><span class="rq-idx">호텔 '+(i+1)+'</span></div>'
       +'<div class="rq-body">'
@@ -936,7 +966,7 @@ function resultCardHTML(req,asReq){
       +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(row.hotel)||'-')+'</span><span class="rq-type">'+escT(dRoom(row.roomType)||'-')+' <span class="sm">· '+row.rooms+'실</span></span></span>'
       +'<span class="avbig av-'+av.k+'" style="margin-top:0">'+av.t+'</span></div>'
       +(row.note?'<div class="rq-note">📝 '+escT(row.note)+'</div>':'')
-      +(opts?'<div>'+opts+'</div>':'')+dl+'</div></div>';}).join('');
+      +(opts?'<div>'+opts+'</div>':'')+dl+checkReqsHTML+'</div></div>';}).join('');
   return '<div class="quotecard '+(answered?'rescard':'reqcard')+'" id="rescard'+req.id+'"><div class="qc-title">The Nirvana · 룸체크 '+(answered?'결과':'요청')+'</div>'
     +'<div class="qc-sub" style="text-align:left;margin-top:3px">'+escT(reqNo(req))
       +(answered

@@ -446,7 +446,7 @@ function formHTML(){
                 const reqDateArr=Array.from({length:diffD(req.checkInDate,req.checkOutDate)},(_,k)=>addDays(req.checkInDate,k));
                 const isOpen=ui.checkReqOpen.has(req.id);
                 return '<div style="margin-top:12px;padding:12px;background:#f9f9f9;border:1px solid var(--line);border-radius:6px">'
-                  +'<div class="flex between aic" style="margin-bottom:'+(isOpen?'8':'0')+'px;cursor:pointer" onclick="toggleCheckRequest('+row.id+','+req.id+')">'
+                  +'<div class="flex between aic" style="margin-bottom:'+(isOpen?'8':'0')+'px;cursor:pointer" onclick="toggleCheckRequest('+row.id+',\''+req.id+'\')">'
                     +'<div style="display:flex;align-items:center;gap:8px;flex:1">'
                       +'<span style="font-weight:600;color:#666">'+(isOpen?'▼':'▶')+'</span>'
                       +'<span style="font-weight:600;font-size:14px">'+escT(dRegion(req.region||'전체'))+'</span>'

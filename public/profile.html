@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>너바나 · 회원정보</title>
-<link rel="stylesheet" href="style.css?v=20260807g" />
+<link rel="stylesheet" href="style.css?v=20260722000000" />
 <style>
 .wrap{max-width:470px}
 .field{margin-top:12px}
@@ -16,24 +16,13 @@
 .backbtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer}
 .sechead2{font-size:14.5px;font-weight:800;margin:2px 0 4px}
 </style>
-<!-- 홈 화면 앱 (2026-08-03, [017]) — 아이콘=회사 로고, 앱 이름=Room Check -->
-<link rel="manifest" href="manifest.webmanifest?v=20260807g" />
-<meta name="theme-color" content="#1F3A66" />
-<meta name="application-name" content="Room Check" />
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260807g" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260807g" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-title" content="Room Check" />
-<meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<script src="pwa.js?v=20260807g" defer></script>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="hdrtop">
-      <div class="hdrbrand" style="cursor:pointer" onclick="location.href='login.html'" title="기본 페이지로 이동">
-        <img src="logo.png?v=20260730" class="hdrlogo" alt="THE NIRVANA">
+      <div class="hdrbrand">
+        <img src="logo.png?v=20260718180000" class="hdrlogo" alt="THE NIRVANA">
       </div>
       <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
         <div id="langSelector" style="display:flex;gap:5px">
@@ -54,8 +43,7 @@
     <div class="field" id="fEmail"><div class="label" data-i="email">이메일</div><input id="email" type="email" autocomplete="email"></div>
     <div class="field"><div class="label" data-i="phone">연락처 (전화번호)</div><input id="phone" autocomplete="tel" placeholder="+66 ..."></div>
     <div class="field"><div class="label" data-i="bank">은행 계좌</div><input id="bank" placeholder="은행명 + 계좌번호 (선택사항)"></div>
-    <div class="field" id="fAgentCompany" style="display:none"><div class="label" data-i="agent_company">소속 에이전트 (회사)</div><input id="agentCompany" placeholder="에이전시 회사명 — 이직 시 변경하세요"></div>
-    <div class="field" id="regionField" style="display:none"><div class="label" data-i="region">관할지역</div><select id="region"><option value="">선택 안 함</option><option value="krabi">카오락 + 푸켓 + 크라비</option><option value="bangkok">방콕 + 파타야</option></select></div>
+    <div class="field" id="regionField" style="display:none"><div class="label" data-i="region">관할지역</div><select id="region"><option value="">선택 안 함</option><option value="krabi">카오락 + 푸켓</option><option value="bangkok">방콕 + 파타야</option></select></div>
     <button class="cta" id="save" data-i="save">저장</button>
     <div class="msg" id="msg1"></div>
   </section>
@@ -66,7 +54,7 @@
       <div class="field"><div class="label" data-i="new_pw">새 비밀번호 (6자 이상)</div><input id="newPw" type="password" autocomplete="new-password"></div>
       <button class="cta" id="pwBtn" data-i="pw_btn">비밀번호 변경</button>
     </div>
-    <div class="note" id="extNote" style="display:none" data-i="ext_note">부계정도 이 사이트의 비밀번호를 변경할 수 있습니다. 처음 변경할 때 '현재 비밀번호'는 너바나에서 발급받은 비밀번호를 입력하세요.</div>
+    <div class="note" id="extNote" style="display:none" data-i="ext_note">에이전시 부계정의 비밀번호·이메일은 에이전시 시스템에서 관리됩니다.</div>
     <div class="msg" id="msg2"></div>
   </section>
   <section class="card" id="tgCard" style="display:none">
@@ -86,28 +74,25 @@
 <script>
 const LD={
 ko:{back:"← 돌아가기",lede:"회원정보를 확인하고 수정합니다.",title:"회원정보",name:"이름",acct:"계정",nickname:"닉네임",email:"이메일",phone:"연락처 (전화번호)",bank:"은행 계좌",region:"관할지역",save:"저장",
- ph_name:"이름 (한글이름)",ph_nickname:"표시용 닉네임 (선택사항)",ph_bank:"은행명 + 계좌번호 (선택사항)",region_none:"선택 안 함",region_krabi:"카오락 + 푸켓 + 크라비",region_bangkok:"방콕 + 파타야",
- agent_company:"소속 에이전트 (회사)",
+ ph_name:"이름 (한글이름)",ph_nickname:"표시용 닉네임 (선택사항)",ph_bank:"은행명 + 계좌번호 (선택사항)",region_none:"선택 안 함",region_krabi:"카오락 + 푸켓",region_bangkok:"방콕 + 파타야",
  pw_title:"비밀번호 변경",cur_pw:"현재 비밀번호",new_pw:"새 비밀번호 (6자 이상)",pw_btn:"비밀번호 변경",
- ext_note:"부계정도 이 사이트의 비밀번호를 변경할 수 있습니다. 처음 변경할 때 '현재 비밀번호'는 너바나에서 발급받은 비밀번호를 입력하세요. (이메일은 에이전시 시스템에서 관리)",
+ ext_note:"에이전시 부계정의 비밀번호·이메일은 에이전시 시스템에서 관리됩니다.",
  saved:"저장되었습니다.",pw_saved:"비밀번호가 변경되었습니다.",bad_password:"현재 비밀번호가 올바르지 않습니다.",weak_password:"새 비밀번호는 6자 이상이어야 합니다.",
  invalid_email:"이메일 형식을 확인해주세요.",email_exists:"이미 사용 중인 이메일입니다.",invalid_phone:"연락처를 확인해주세요.",invalid_nickname:"닉네임을 확인해주세요.",invalid_bank_account:"계좌 정보를 확인해주세요.",noserver:"서버에 연결할 수 없습니다.",
  role_agent:"에이전트",role_sreq:"직원 · 요청자",role_schk:"직원 · 확인자",role_admin:"관리자",agency_acct:"에이전시 부계정",
  tg_title:"📲 텔레그램 연결",tg_desc:"Telegram을 통해 알림을 받을 수 있습니다.",tg_link:"텔레그램 연결 링크 생성",tg_connected:"✓ 텔레그램이 연결되었습니다.",tg_disconnect:"연결 해제",tg_not_connected:"아직 연결되지 않았습니다.",tg_link_copied:"텔레그램 링크를 복사했습니다.",tg_link_desc:"아래 링크를 Telegram에서 열어서 연결하세요:",tg_link_failed:"링크 생성에 실패했습니다",tg_confirm_disconnect:"텔레그램 연결을 해제할까요?",tg_disconnect_failed:"해제하지 못했습니다"},
 en:{back:"← Back",lede:"View and update your account info.",title:"My Info",name:"Name",acct:"Account",nickname:"Nickname",email:"Email",phone:"Phone",bank:"Bank Account",region:"Region",save:"Save",
- ph_name:"Name (Korean name)",ph_nickname:"Display nickname (optional)",ph_bank:"Bank name + Account number (optional)",region_none:"Not selected",region_krabi:"Khao Lak + Phuket + Krabi",region_bangkok:"Bangkok + Pattaya",
- agent_company:"Agency (company)",
+ ph_name:"Name (Korean name)",ph_nickname:"Display nickname (optional)",ph_bank:"Bank name + Account number (optional)",region_none:"Not selected",region_krabi:"Krabi + Phuket",region_bangkok:"Bangkok + Pattaya",
  pw_title:"Change Password",cur_pw:"Current password",new_pw:"New password (6+ chars)",pw_btn:"Change password",
- ext_note:"Sub-accounts can change this site's password too. For the first change, enter the password issued by Nirvana as the current password. (Email is managed in the agency system.)",
+ ext_note:"Password and email of agency sub-accounts are managed in the agency system.",
  saved:"Saved.",pw_saved:"Password changed.",bad_password:"Current password is incorrect.",weak_password:"New password must be 6+ characters.",
  invalid_email:"Please check the email format.",email_exists:"This email is already in use.",invalid_phone:"Please check the phone number.",invalid_nickname:"Please check the nickname.",invalid_bank_account:"Please check the bank account info.",noserver:"Cannot reach the server.",
  role_agent:"Agent",role_sreq:"Staff · Requester",role_schk:"Staff · Checker",role_admin:"Admin",agency_acct:"Agency sub-account",
  tg_title:"📲 Connect Telegram",tg_desc:"Get notifications via Telegram.",tg_link:"Create connection link",tg_connected:"✓ Telegram connected.",tg_disconnect:"Disconnect",tg_not_connected:"Not connected yet.",tg_link_copied:"Telegram link copied.",tg_link_desc:"Open the link in Telegram to connect:",tg_link_failed:"Failed to generate link",tg_confirm_disconnect:"Disconnect Telegram?",tg_disconnect_failed:"Failed to disconnect"},
 th:{back:"← กลับ",lede:"ดูและแก้ไขข้อมูลบัญชีของคุณ",title:"ข้อมูลของฉัน",name:"ชื่อ",acct:"บัญชี",nickname:"ชื่อเล่น",email:"อีเมล",phone:"เบอร์โทร",bank:"บัญชีธนาคาร",region:"ภูมิภาค",save:"บันทึก",
- ph_name:"ชื่อ (ชื่อเกาหลี)",ph_nickname:"ชื่อเล่น (ไม่บังคับ)",ph_bank:"ชื่อธนาคาร + หมายเลขบัญชี (ไม่บังคับ)",region_none:"ไม่เลือก",region_krabi:"เขาหลัก + ภูเก็ต + กระบี่",region_bangkok:"กรุงเทพ + พัทยา",
- agent_company:"เอเจนซีต้นสังกัด (บริษัท)",
+ ph_name:"ชื่อ (ชื่อเกาหลี)",ph_nickname:"ชื่อเล่น (ไม่บังคับ)",ph_bank:"ชื่อธนาคาร + หมายเลขบัญชี (ไม่บังคับ)",region_none:"ไม่เลือก",region_krabi:"กระบี่ + ภูเก็ต",region_bangkok:"กรุงเทพ + พัทยา",
  pw_title:"เปลี่ยนรหัสผ่าน",cur_pw:"รหัสผ่านปัจจุบัน",new_pw:"รหัสผ่านใหม่ (6 ตัวขึ้นไป)",pw_btn:"เปลี่ยนรหัสผ่าน",
- ext_note:"บัญชีย่อยสามารถเปลี่ยนรหัสผ่านของเว็บไซต์นี้ได้ ครั้งแรกให้ใส่รหัสผ่านที่ได้รับจาก Nirvana เป็นรหัสผ่านปัจจุบัน (อีเมลจัดการในระบบเอเจนซี)",
+ ext_note:"รหัสผ่านและอีเมลของบัญชีย่อยเอเจนซีจัดการในระบบเอเจนซี",
  saved:"บันทึกแล้ว",pw_saved:"เปลี่ยนรหัสผ่านแล้ว",bad_password:"รหัสผ่านปัจจุบันไม่ถูกต้อง",weak_password:"รหัสผ่านใหม่ต้อง 6 ตัวขึ้นไป",
  invalid_email:"กรุณาตรวจสอบรูปแบบอีเมล",email_exists:"อีเมลนี้ถูกใช้แล้ว",invalid_phone:"กรุณาตรวจสอบเบอร์โทร",invalid_nickname:"กรุณาตรวจสอบชื่อเล่น",invalid_bank_account:"กรุณาตรวจสอบบัญชีธนาคาร",noserver:"เชื่อมต่อเซิร์ฟเวอร์ไม่ได้",
  role_agent:"เอเจนต์",role_sreq:"พนักงาน · ผู้ขอ",role_schk:"พนักงาน · ผู้ตรวจสอบ",role_admin:"ผู้ดูแล",agency_acct:"บัญชีย่อยเอเจนซี",
@@ -179,11 +164,6 @@ document.querySelectorAll('.langbtn').forEach(btn=>{
     if(!j.user){location.href='login.html';return;}
     ME=j.user;
     if(ME.lang&&LD[ME.lang])L=ME.lang;
-    /* 2026-08-07 (사용자 확정): 역할별 선택 가능 언어만 표시 — 요청자·관리자=한글/영어, 확인자=태국어/영어, 에이전트=한글 */
-    const LANG_OK={agent:['ko'],sreq:['ko','en'],schk:['th','en'],admin:['ko','en']}[ME.role]||['ko'];
-    document.querySelectorAll('.langbtn').forEach(b=>{ if(!LANG_OK.includes(b.dataset.lang)) b.style.display='none'; });
-    if(!LANG_OK.includes(L)) L=LANG_OK[0];
-    document.querySelectorAll('.langbtn').forEach(b=>b.classList.toggle('on',b.dataset.lang===L));
     // 역할별 배색: 로그인한 사용자의 실제 역할에 맞춰 --brand를 동적으로 지정 (2026-07-22, 사이트 전체 배색 일관성 정리)
     const ROLE_BRAND={sreq:'#2B5FA3',schk:'#B07908',admin:'#54406E'};
     if(ROLE_BRAND[ME.role]) document.documentElement.style.setProperty('--brand',ROLE_BRAND[ME.role]);
@@ -195,36 +175,16 @@ document.querySelectorAll('.langbtn').forEach(btn=>{
     $('phone').value=ME.phone||'';
     $('nickname').value=ME.nickname||'';
     $('bank').value=ME.bank_account||'';
-    /* 소속 에이전트 (2026-07-30): 에이전트 역할에만 표시 — 기본값은 API 소속, 이직 시 직접 변경 */
-    if(ME.role==='agent'){
-      $('fAgentCompany').style.display='';
-      $('agentCompany').value=ME.agent_company||'';
-      if(!ME.agent_company&&ME.agency&&(ME.agency.parent_idx||ME.agency.idx)){
-        /* 2026-08-06 수정: 소속(parent) 에이전시 idx 우선 — 부계정 자기 idx로 조회하면 다른 회사명이 채워짐 */
-        fetch('api/agencies/'+(ME.agency.parent_idx||ME.agency.idx),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
-          const nm=j&&j.agency&&j.agency.agency&&j.agency.agency.name;
-          if(nm&&!$('agentCompany').value)$('agentCompany').value=nm;
-        }).catch(()=>{});
-      }
-    }
-    // 관할지역: 직원(sreq/schk)은 확인만 가능(관리자가 설정), 관리자만 직접 변경 (2026-08-01 변경)
+    // 직원(sreq/schk)과 관리자는 지역 선택 가능 (에이전트만 표시 안 함)
     if(ME.role==='sreq'||ME.role==='schk'||ME.role==='admin'){
       $('regionField').style.display='';
       if(ME.region) $('region').value=ME.region;
-      if(ME.role!=='admin'){
-        $('region').disabled=true;
-        $('region').style.opacity='.65';
-        const note=document.createElement('p');
-        note.className='small';note.style.cssText='margin:4px 0 0;color:var(--muted)';
-        note.textContent='관리지역은 관리자만 변경할 수 있습니다.';
-        $('regionField').appendChild(note);
-      }
     }else{
       $('regionField').style.display='none';
     }
     if(ME.ext){
       $('fEmail').style.display='none'; // 내부용 합성 이메일 숨김
-      /* 2026-07-30: 부계정도 이 사이트의 비밀번호 변경 가능 — pwForm 숨김 제거 */
+      $('pwForm').style.display='none';
       $('extNote').style.display='block';
     }
     // 텔레그램 연결 UI (요청자/확인자/승격된 관리자에게만 표시)
@@ -246,11 +206,10 @@ document.querySelectorAll('.langbtn').forEach(btn=>{
 })();
 $('save').onclick=async()=>{
   const body={phone:$('phone').value.trim(),nickname:$('nickname').value.trim(),bank_account:$('bank').value.trim()};
-  if(ME.role==='agent')body.agent_company=$('agentCompany').value.trim(); /* 소속 에이전트 저장 (2026-07-30) */
   if(ME.role==='admin'){const nm=$('nameInput').value.trim();if(nm)body.name=nm;} // 관리자 이름 수정
   if(!ME.ext){const em=$('email').value.trim();if(em&&em!==ME.email)body.email=em;}
-  // 관리자만 지역 정보 저장 (2026-08-01: 직원은 변경 불가 — 관리자 페이지에서 설정)
-  if(ME.role==='admin'){body.region=$('region').value;}
+  // 직원·관리자: 지역 정보도 함께 저장
+  if(ME.role==='sreq'||ME.role==='schk'||ME.role==='admin'){body.region=$('region').value;}
   try{
     const r=await fetch('api/me',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json();

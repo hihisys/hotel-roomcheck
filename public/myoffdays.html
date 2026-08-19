@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>너바나 · 휴무일 등록</title>
-<link rel="stylesheet" href="style.css?v=20260807g" />
+<link rel="stylesheet" href="style.css??v=20260722000000" />
 <style>
 .wrap{max-width:470px}
 .note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6}
@@ -32,54 +32,14 @@
 .offlegend .lg-work{background:var(--surface);border:1px solid var(--line)}
 .offlegend .lg-off{background:var(--brand)}
 .offlegend .lg-ovr{background:var(--surface);border:2px solid var(--brand)}
-/* ===== 휴일 근무자 공유 표시 (2026-08-02, [011]) =====
-   달력 셀 우상단에 그날 근무하는 직원 수를 배지로, 달력 아래에 이달 휴일 근무자 명단을 보여준다.
-   근무자 색(초록/본인 주황)은 역할별 --brand와 겹치지 않도록 고정색을 쓴다. */
-.offgrid .cd{position:relative}
-.offgrid .cd .wbadge{position:absolute;top:-5px;right:-4px;min-width:16px;height:16px;padding:0 4px;
-  border-radius:9px;background:#0F7A5A;color:#fff;font-size:10px;line-height:16px;font-weight:800;
-  font-family:inherit;border:1.5px solid var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.18)}
-.offgrid .cd .wbadge.me{background:#C2410C}
-.offlegend .lg-w{background:#0F7A5A;border-radius:9px}
-.wkbox{margin-top:16px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
-.wkbox-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;
-  background:#F0F6F6;border-bottom:1px solid var(--line)}
-.wkbox-h b{font-size:13.5px;font-weight:800}
-.wkbox-h .cnt{font-size:11.5px;font-weight:800;color:var(--muted)}
-.wkrow{display:flex;gap:10px;padding:9px 12px;border-top:1px solid var(--line);align-items:flex-start}
-.wkrow:first-child{border-top:none}
-.wkrow .wkd{flex:0 0 92px;font-size:12px;font-weight:800;font-family:var(--mono);line-height:1.5}
-.wkrow .wkd .hn{display:block;font-family:inherit;font-size:10.5px;font-weight:700;color:var(--muted)}
-.wkrow.sun .wkd{color:#C0392B}
-.wkrow.sat .wkd{color:#2B5FA3}
-.wkrow .wkn{flex:1 1 auto;display:flex;flex-wrap:wrap;gap:5px}
-.wkchip{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11.5px;font-weight:800;
-  background:#E9F2F2;color:#1F5C52;border:1px solid #CBE0DC}
-.wkchip.me{background:#C2410C;color:#fff;border-color:#C2410C}
-.wkchip.pend{background:var(--surface);color:#C2410C;border:1px dashed #C2410C}
-.wkempty{padding:14px 12px;font-size:12px;color:var(--muted);font-weight:700;text-align:center}
-.wkhint{font-size:11px;color:var(--muted);margin-top:7px;line-height:1.6}
-.pendnote{margin-top:8px;font-size:11.5px;font-weight:800;color:#C2410C;display:none;gap:5px;align-items:center;line-height:1.5}
-.pendnote.on{display:flex}
 </style>
-<!-- 홈 화면 앱 (2026-08-03, [017]) — 아이콘=회사 로고, 앱 이름=Room Check -->
-<link rel="manifest" href="manifest.webmanifest?v=20260807g" />
-<meta name="theme-color" content="#1F3A66" />
-<meta name="application-name" content="Room Check" />
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=20260807g" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=20260807g" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-title" content="Room Check" />
-<meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<script src="pwa.js?v=20260807g" defer></script>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="hdrtop">
       <div class="hdrbrand">
-        <img src="logo.png?v=20260730" class="hdrlogo" alt="THE NIRVANA">
+        <img src="logo.png??v=20260718180000" class="hdrlogo" alt="THE NIRVANA">
       </div>
       <div style="display:flex;gap:8px;align-items:center"><span class="pagechip pc-agent" id="nameChip"></span><button class="backbtn" id="back" data-i="back">← 돌아가기</button></div>
     </div>
@@ -95,14 +55,7 @@
     </div>
     <div class="offwk-head" id="offWkHead"></div>
     <div id="offGrid" class="offgrid"></div>
-    <div class="offlegend"><span><i class="lg-work"></i><span data-i="off_lg_work">근무 (알림 받음)</span></span><span><i class="lg-off"></i><span data-i="off_lg_off">휴무 (알림 없음)</span></span><span><i class="lg-ovr"></i><span data-i="off_lg_ovr">기본 휴무 → 근무로 변경</span></span><span><i class="lg-w"></i><span data-i="off_lg_w">휴일 근무자 수</span></span></div>
-    <!-- 휴일 근무자 명단 (2026-08-02, [011]) -->
-    <div class="wkbox">
-      <div class="wkbox-h"><b>🗓 <span data-i="wk_title">이달 휴일 근무자</span></b><span class="cnt" id="wkCnt"></span></div>
-      <div id="wkList"></div>
-    </div>
-    <div class="wkhint" data-i="wk_hint">토·일·공휴일 중 근무하는 사람만 표시됩니다. 달력에서 날짜를 눌러 본인을 근무로 바꾸면 아래 목록에 이름이 바로 추가됩니다.</div>
-    <div class="pendnote" id="pendNote"><span>●</span><span data-i="wk_pend">저장하기 전입니다 — [휴무일 저장]을 눌러야 다른 직원에게 표시됩니다.</span></div>
+    <div class="offlegend"><span><i class="lg-work"></i><span data-i="off_lg_work">근무 (알림 받음)</span></span><span><i class="lg-off"></i><span data-i="off_lg_off">휴무 (알림 없음)</span></span><span><i class="lg-ovr"></i><span data-i="off_lg_ovr">기본 휴무 → 근무로 변경</span></span></div>
     <button class="cta" id="offSave" style="margin-top:16px" data-i="off_save">휴무일 저장</button>
     <div class="msg" id="msg3"></div>
   </section>
@@ -110,14 +63,11 @@
 <script>
 const LD={
 ko:{back:"← 돌아가기",lede:"휴무일을 등록하고 수정합니다.",
- off_title:"휴무일 등록",off_desc:"토·일·공휴일은 기본으로 휴무 처리됩니다. 탭하면 근무로 변경할 수 있어요. 평일도 탭해서 휴무를 추가할 수 있습니다.",off_save:"휴무일 저장",off_saved:"휴무일이 저장되었습니다.",off_lg_work:"근무 (알림 받음)",off_lg_off:"휴무 (알림 없음)",off_lg_ovr:"기본 휴무 → 근무로 변경",off_lg_w:"휴일 근무자 수",noserver:"서버에 연결할 수 없습니다.",
- wk_title:"이달 휴일 근무자",wk_hint:"토·일·공휴일 중 근무하는 사람만 표시됩니다. 달력에서 날짜를 눌러 본인을 근무로 바꾸면 아래 목록에 이름이 바로 추가됩니다.",wk_pend:"저장하기 전입니다 — [휴무일 저장]을 눌러야 다른 직원에게 표시됩니다.",wk_empty:"이달 휴일 근무자가 아직 없습니다.",wk_me:"(나)",wk_days:"일",wk_ppl:"명",wk_saving:"저장 전"},
+ off_title:"휴무일 등록",off_desc:"토·일·공휴일은 기본으로 휴무 처리됩니다. 탭하면 근무로 변경할 수 있어요. 평일도 탭해서 휴무를 추가할 수 있습니다.",off_save:"휴무일 저장",off_saved:"휴무일이 저장되었습니다.",off_lg_work:"근무 (알림 받음)",off_lg_off:"휴무 (알림 없음)",off_lg_ovr:"기본 휴무 → 근무로 변경",noserver:"서버에 연결할 수 없습니다."},
 en:{back:"← Back",lede:"Register and update your days off.",
- off_title:"Days Off",off_desc:"Sat/Sun/holidays are marked as off by default — tap to switch to working. You can also tap weekdays to add extra days off.",off_save:"Save days off",off_saved:"Your days off have been saved.",off_lg_work:"Working (notified)",off_lg_off:"Off (no alert)",off_lg_ovr:"Default day off → switched to working",off_lg_w:"Staff on duty",noserver:"Cannot reach the server.",
- wk_title:"Holiday staff on duty",wk_hint:"Only people working on Sat/Sun/holidays are listed. Tap a date in the calendar to switch yourself to working and your name is added below.",wk_pend:"Not saved yet — press [Save days off] so other staff can see it.",wk_empty:"Nobody is on duty this month yet.",wk_me:"(me)",wk_days:" days",wk_ppl:" people",wk_saving:"unsaved"},
+ off_title:"Days Off",off_desc:"Sat/Sun/holidays are marked as off by default — tap to switch to working. You can also tap weekdays to add extra days off.",off_save:"Save days off",off_saved:"Your days off have been saved.",off_lg_work:"Working (notified)",off_lg_off:"Off (no alert)",off_lg_ovr:"Default day off → switched to working",noserver:"Cannot reach the server."},
 th:{back:"← กลับ",lede:"ลงทะเบียนและแก้ไขวันหยุดของคุณ",
- off_title:"วันหยุด",off_desc:"วันเสาร์/อาทิตย์/วันหยุดนักขัตฤกษ์จะถูกทำเครื่องหมายว่าหยุดโดยอัตโนมัติ แตะเพื่อเปลี่ยนเป็นวันทำงาน และสามารถแตะวันธรรมดาเพื่อเพิ่มวันหยุดได้เช่นกัน",off_save:"บันทึกวันหยุด",off_saved:"บันทึกวันหยุดแล้ว",off_lg_work:"ทำงาน (รับแจ้งเตือน)",off_lg_off:"หยุด (ไม่แจ้งเตือน)",off_lg_ovr:"วันหยุดเริ่มต้น → เปลี่ยนเป็นทำงาน",off_lg_w:"จำนวนผู้ทำงาน",noserver:"เชื่อมต่อเซิร์ฟเวอร์ไม่ได้",
- wk_title:"ผู้ทำงานวันหยุดเดือนนี้",wk_hint:"แสดงเฉพาะผู้ที่ทำงานในวันเสาร์/อาทิตย์/วันหยุด แตะวันที่ในปฏิทินเพื่อเปลี่ยนตัวเองเป็นทำงาน แล้วชื่อจะถูกเพิ่มด้านล่างทันที",wk_pend:"ยังไม่ได้บันทึก — กด [บันทึกวันหยุด] เพื่อให้พนักงานคนอื่นเห็น",wk_empty:"ยังไม่มีผู้ทำงานวันหยุดในเดือนนี้",wk_me:"(ฉัน)",wk_days:" วัน",wk_ppl:" คน",wk_saving:"ยังไม่บันทึก"}};
+ off_title:"วันหยุด",off_desc:"วันเสาร์/อาทิตย์/วันหยุดนักขัตฤกษ์จะถูกทำเครื่องหมายว่าหยุดโดยอัตโนมัติ แตะเพื่อเปลี่ยนเป็นวันทำงาน และสามารถแตะวันธรรมดาเพื่อเพิ่มวันหยุดได้เช่นกัน",off_save:"บันทึกวันหยุด",off_saved:"บันทึกวันหยุดแล้ว",off_lg_work:"ทำงาน (รับแจ้งเตือน)",off_lg_off:"หยุด (ไม่แจ้งเตือน)",off_lg_ovr:"วันหยุดเริ่มต้น → เปลี่ยนเป็นทำงาน",noserver:"เชื่อมต่อเซิร์ฟเวอร์ไม่ได้"}};
 let L='ko', ME=null;
 const $=id=>document.getElementById(id);
 const FIXED_HOL=['01-01','03-01','05-05','06-06','08-15','10-03','10-09','12-25'];
@@ -135,74 +85,6 @@ const isoOf=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+St
 const OFF_HORIZON_DAYS=400;
 let offY, offM, workOvr=new Set(), extraOff=new Set();
 function isDefaultOffDow(dow){ return dow===0 || dow===6; }
-
-/* ===== 휴일 근무자 공유 (2026-08-02, [011]) =====
-   api/workdays 로 다른 직원의 '휴무일 목록'만 받아와, 휴일(주말·공휴일)인데 휴무 목록에 없으면
-   그날 근무하는 것으로 계산한다. 본인 이름은 저장 여부와 관계없이 화면의 현재 선택(workOvr)을 따르고,
-   아직 저장하지 않았으면 점선 칩 + 안내 문구로 구분한다. */
-const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let STAFF=[];              // [{id,name,nick,me,off:Set}]
-let SAVED_OVR=new Set();   // 서버에 저장된 본인 휴일근무 (저장 전 비교용)
-const wkCache={};          // 'YYYY-MM' → true (이미 불러온 달)
-function wkMonthRange(y,m){
-  const p=n=>String(n).padStart(2,'0');
-  return [y+'-'+p(m)+'-01', y+'-'+p(m)+'-'+p(new Date(y,m,0).getDate())];
-}
-async function loadWorkers(y,m){
-  const key=y+'-'+m;
-  if(wkCache[key]) return;
-  const [from,to]=wkMonthRange(y,m);
-  try{
-    const r=await fetch('api/workdays?from='+from+'&to='+to,{cache:'no-store'});
-    const j=await r.json();
-    if(!j||!j.ok||!Array.isArray(j.staff)) return;
-    wkCache[key]=true;
-    const prev={}; STAFF.forEach(s=>prev[s.id]=s);
-    j.staff.forEach(s=>{
-      const cur=prev[s.id]||{id:s.id,name:s.name,nick:s.nick,me:!!s.me,off:new Set()};
-      cur.name=s.name; cur.nick=s.nick; cur.me=!!s.me;
-      (s.off||[]).forEach(d=>cur.off.add(d));
-      prev[s.id]=cur;
-    });
-    STAFF=Object.keys(prev).map(k=>prev[k]);
-  }catch(e){/* 조회 실패 시 근무자 표시만 비워 두고 휴무일 등록 기능은 그대로 동작 */}
-}
-function wkLabel(s){ return s.nick||s.name; }
-/* 해당 날짜(휴일)의 근무자 = 다른 직원 이름 배열 + 본인 근무 여부 */
-function workersOf(iso){
-  const others=[];
-  let meWork=false;
-  STAFF.forEach(s=>{
-    if(s.me){ return; }              // 본인은 화면의 현재 선택값으로 판단
-    if(!s.off.has(iso)) others.push(wkLabel(s));
-  });
-  meWork=workOvr.has(iso);
-  return {others:others, me:meWork, pend:meWork!==SAVED_OVR.has(iso)};
-}
-function renderWkList(){
-  const box=$('wkList'); if(!box) return;
-  const meS=STAFF.find(s=>s.me);
-  const meLbl=meS?wkLabel(meS):'';
-  const dim=new Date(offY,offM,0).getDate();
-  const labels=L==='ko'?DOW_KO:DOW_EN;
-  let rows=[],total=0,pend=false;
-  for(let d=1;d<=dim;d++){
-    const dObj=new Date(offY,offM-1,d), dow=dObj.getDay(), iso=isoOf(dObj), hol=isHol(iso);
-    if(!(dow===0||dow===6||hol)) continue;
-    const w=workersOf(iso);
-    if(w.pend) pend=true;
-    if(!w.others.length && !w.me) continue;
-    total+=w.others.length+(w.me?1:0);
-    const chips=w.others.map(n=>'<span class="wkchip">'+esc(n)+'</span>').join('')
-      +(w.me?'<span class="wkchip me'+(w.pend?' pend':'')+'">'+esc(meLbl)+' '+LD[L].wk_me+(w.pend?' · '+LD[L].wk_saving:'')+'</span>':'');
-    rows.push('<div class="wkrow '+((dow===0||hol)?'sun':(dow===6?'sat':''))+'">'
-      +'<div class="wkd">'+offM+'.'+d+' ('+labels[dow]+')</div>'
-      +'<div class="wkn">'+chips+'</div></div>');
-  }
-  box.innerHTML=rows.length?rows.join(''):'<div class="wkempty">'+LD[L].wk_empty+'</div>';
-  $('wkCnt').textContent=rows.length?(rows.length+LD[L].wk_days+' · '+total+LD[L].wk_ppl):'';
-  $('pendNote').className='pendnote'+(pend?' on':'');
-}
 /* 요일/월 표기 다국어 (2026-07-22): 한국어 선택 시에만 한글 표기, 그 외(en/th)는 영어 약자
    (태국어는 요일·월 표기에 한해 영어 약자로 대체한다는 기존 정책과 동일하게 통일) */
 const DOW_KO=['일','월','화','수','목','금','토'], DOW_EN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
@@ -251,13 +133,7 @@ function renderOff(){
     if(ovr) cls.push('workovr');
     if(iso<todayIso) cls.push('dis');
     if(iso===todayIso) cls.push('today');
-    /* 휴일 근무자 수 배지 (2026-08-02, [011]) */
-    let badge='';
-    if(defOff){
-      const w=workersOf(iso), n=w.others.length+(w.me?1:0);
-      if(n>0) badge='<span class="wbadge'+(w.me?' me':'')+'">'+n+'</span>';
-    }
-    return '<button type="button" class="'+cls.join(' ')+'" data-iso="'+iso+'" data-defoff="'+(defOff?1:0)+'">'+c.d+badge+'</button>';
+    return '<button type="button" class="'+cls.join(' ')+'" data-iso="'+iso+'" data-defoff="'+(defOff?1:0)+'">'+c.d+'</button>';
   }).join('');
   grid.querySelectorAll('.cd:not(.dis)').forEach(b=>{
     b.onclick=()=>{
@@ -267,18 +143,9 @@ function renderOff(){
       renderOff();
     };
   });
-  renderWkList(); /* 2026-08-02 [011]: 달력을 다시 그릴 때마다 근무자 명단도 함께 갱신 */
 }
-/* 달 이동 시 그 달의 근무 현황을 아직 안 받았으면 받아서 다시 그린다 (2026-08-02, [011]) */
-function gotoMonth(dy){
-  offM+=dy;
-  if(offM<1){offM=12;offY--;}
-  if(offM>12){offM=1;offY++;}
-  renderOff();
-  loadWorkers(offY,offM).then(renderOff);
-}
-$('offPrevM').onclick=()=>gotoMonth(-1);
-$('offNextM').onclick=()=>gotoMonth(1);
+$('offPrevM').onclick=()=>{ offM--; if(offM<1){offM=12;offY--;} renderOff(); };
+$('offNextM').onclick=()=>{ offM++; if(offM>12){offM=1;offY++;} renderOff(); };
 
 function tr(){const d=LD[L];document.querySelectorAll('[data-i]').forEach(el=>{if(d[el.dataset.i])el.textContent=d[el.dataset.i];});}
 function showMsg(id,kind,key){const m=$(id);m.className='msg '+kind;m.textContent=LD[L][key]||key;}
@@ -299,10 +166,8 @@ $('back').onclick=()=>{const page={agent:'agent.html',sreq:'request.html',schk:'
     $('nameChip').className='pagechip pc-'+ME.role;
     const t=new Date(); offY=t.getFullYear(); offM=t.getMonth()+1;
     offLoadState();
-    SAVED_OVR=new Set(workOvr); /* 2026-08-02 [011]: 저장된 상태 기준점 */
     renderOff();
     tr();
-    loadWorkers(offY,offM).then(renderOff); /* 근무자 현황은 뒤이어 불러와 다시 그린다 */
   }catch(e){location.href='login.html';}
 })();
 $('offSave').onclick=async()=>{
@@ -322,9 +187,7 @@ $('offSave').onclick=async()=>{
     const j=await r.json();
     if(j.ok){
       ME.off_days=j.off_days||{dates:dates,weekdays:[],work_overrides:work_overrides};
-      offLoadState();
-      SAVED_OVR=new Set(workOvr); /* 2026-08-02 [011]: 저장 완료 → '저장 전' 표시 해제 */
-      renderOff();
+      offLoadState(); renderOff();
       showMsg('msg3','ok','off_saved');return;
     }
     showMsg('msg3','err',j.error||'noserver');

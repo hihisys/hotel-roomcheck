@@ -1,0 +1,414 @@
+:root{
+    --paper:#E7EBEA;--surface:#FCFCFB;--ink:#16232B;--sub:#3E4E56;--muted:#5C6B72;
+    --line:#D3D9D7;--brand:#0B6E6B;--brandDark:#095855;
+    --av:#2F7A55;--avBg:#E4F0E9;--rq:#B07908;--rqBg:#F6EBD4;--so:#AE4238;--soBg:#F3E1DE;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);font-family:var(--sans);color:var(--ink);-webkit-text-size-adjust:100%}
+  .wrap{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+  .eyebrow{font-size:11px;letter-spacing:.5px;color:var(--brand);font-weight:700;text-transform:uppercase}
+  h1{font-size:29px;font-weight:800;letter-spacing:-.6px;line-height:1.05;margin:4px 0 0}
+  .lede{color:var(--muted);font-size:13px;margin:4px 0 0}
+  .label{font-size:10.5px;letter-spacing:.3px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:5px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:14px}
+  select,input,textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:9px;
+    padding:9px 10px;color:var(--ink);font-size:14.5px;font-family:var(--sans);outline:none;-webkit-appearance:none;appearance:none}
+  textarea{min-height:64px;resize:vertical;line-height:1.5}
+  input[type=number],input[type=date]{font-family:var(--mono)}
+  input:disabled{opacity:.6;background:var(--paper)}
+  .flex{display:flex}.aic{align-items:center}.between{justify-content:space-between}
+  .line{display:grid;gap:9px;margin-top:12px}
+  .l3{grid-template-columns:1fr 1fr 1fr}.l2{grid-template-columns:1fr 1fr}
+  .seg{display:flex;background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:3px;gap:3px}
+  .seg button{flex:1;border:none;background:none;padding:9px 6px;border-radius:8px;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;font-family:var(--sans)}
+  .seg button.on{background:var(--brand);color:#fff}
+  .rolebar{margin-top:14px}
+  .rolenote{font-size:11px;color:var(--muted);margin-top:5px;text-align:right}
+  .regchip{display:flex;align-items:center;justify-content:space-between;background:var(--avBg);border:1px solid #2F7A5533;color:var(--av);font-weight:700;font-size:14px;border-radius:9px;padding:9px 11px}
+  .tag{font-size:9.5px;font-weight:800;background:var(--av);color:#fff;border-radius:5px;padding:1px 5px;letter-spacing:.4px}
+  .autobox{display:flex;align-items:center;justify-content:space-between;background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-family:var(--mono);font-size:14px}
+  .hblock{border:1.5px solid #AEBBB8;border-radius:14px;padding:12px;margin-bottom:18px;background:var(--surface);box-shadow:0 2px 6px rgba(22,35,43,.07);border-top:4px solid var(--brand)}
+  .bnum{font-family:var(--mono);font-size:12px;color:#fff;background:var(--brand);font-weight:800;border-radius:7px;padding:3px 9px;letter-spacing:.4px}
+  .datebox{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--paper);font-family:var(--mono);
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .dv{color:var(--ink);font-weight:600;letter-spacing:.3px;font-size:14.5px}
+  .arrow{color:var(--muted);font-weight:700}
+  .del{width:34px;height:34px;flex:0 0 auto;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--muted);font-size:17px;cursor:pointer}
+  .linkbtn{margin-top:2px;font-size:13px;font-weight:700;color:var(--brand);background:none;border:none;cursor:pointer;padding:6px 0}
+  .addbtn{width:100%;margin-top:6px;border:none;color:#fff;background:var(--brandDark);border-radius:11px;padding:12px;font-size:13.5px;font-weight:800;cursor:pointer;letter-spacing:.2px}
+  .addbtn.sm{width:auto;display:inline-block;padding:7px 14px;font-size:12px;margin-top:4px;border:1.5px dashed var(--muted);color:var(--muted);background:var(--surface);border-radius:999px}
+  .memo{border:1px solid var(--line);border-radius:12px;margin-top:12px;overflow:hidden}
+  .memohead{display:flex;align-items:center;gap:8px;padding:11px 12px;cursor:pointer;background:var(--surface);font-weight:700;font-size:14px}
+  .memobody{padding:0 12px 12px;background:var(--surface)}
+  .cta{margin-top:14px;width:100%;background:var(--brand);color:#fff;border:none;border-radius:11px;padding:14px;font-size:15.5px;font-weight:800;cursor:pointer;letter-spacing:.3px}
+  .cta:active{background:var(--brandDark)}
+  .mono{font-family:var(--mono)} .small{font-size:12px;color:var(--muted)}
+  .lstitem{border:1px solid var(--line);border-left:5px solid var(--muted);border-radius:12px;padding:11px 12px;margin-top:10px;background:#fff;box-shadow:0 1px 4px rgba(22,35,43,.07)}
+  .lstitem.ls-wait{border-left-color:var(--rq)}
+  .lstitem.ls-done{border-left-color:var(--av)}
+  .lstitem.ls-qreq{border-left-color:var(--so)}
+  .lstitem.ls-quote{border-left-color:#2B5FA3}
+  .lsthead{cursor:pointer}
+  .lstitem .t1{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .lstitem .t2{font-weight:800;font-size:14.5px;margin-top:3px;line-height:1.35}
+  .lstitem .t3{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:2px}
+  .badge{font-size:10.5px;font-weight:800;border-radius:6px;padding:3px 8px;white-space:nowrap;flex:0 0 auto}
+  .b-wait{background:var(--rqBg);color:var(--rq)}
+  .b-done{background:var(--avBg);color:var(--av)}
+  .b-qreq{background:var(--soBg);color:var(--so)}
+  .b-quote{background:#E1E9F5;color:#2B5FA3}
+  .lstdetail{border-top:1px dashed var(--line);margin-top:10px;padding-top:10px}
+  .wscard{border:1px solid var(--line);border-radius:13px;margin-bottom:10px;overflow:hidden;background:var(--surface)}
+  .wshead{display:flex;align-items:center;gap:9px;padding:11px 12px;cursor:pointer}
+  .chev{width:16px;flex:0 0 auto;color:var(--muted);font-size:12px;transition:transform .15s}
+  .chev.open{transform:rotate(90deg)}
+  .hmeta{flex:1;min-width:0}
+  .datebig{font-family:var(--mono);font-weight:800;font-size:14px;letter-spacing:.2px}
+  .datesm{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:3px}
+  .dhdr{font-size:12px;color:var(--muted);margin:4px 0 8px;font-family:var(--mono)}
+  .nightsb{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:11px;color:var(--sub);margin-left:5px;font-weight:700}
+  .hn{font-weight:800;font-size:14.5px;line-height:1.25;margin-top:3px}
+  .rt{font-size:13px;color:var(--ink);font-weight:800;margin-top:2px}
+  .rq-room{font-weight:800;font-size:14px;margin-top:3px}
+  .rq-room .sm{font-weight:600;color:var(--muted);font-size:12px}
+  .stsel{width:70px;flex:0 0 auto;padding:8px 6px;font-weight:800;font-size:13px;text-align:center;font-family:var(--mono)}
+  .stsel.st-av{background:var(--avBg);border-color:var(--av);color:var(--av)}
+  .stsel.st-rq{background:var(--rqBg);border-color:var(--rq);color:var(--rq)}
+  .stsel.st-so{background:var(--soBg);border-color:var(--so);color:var(--so)}
+  .pbox{display:flex;align-items:center;gap:3px;width:92px;flex:0 0 auto}
+  .pbox span{font-family:var(--mono);font-size:13px;color:var(--muted)}
+  .pbox input{padding:8px 8px;font-size:13px;text-align:right}
+  .detail{border-top:1px solid var(--line);padding:10px 12px 12px;background:var(--paper)}
+  .drow{display:flex;align-items:center;gap:8px;padding:5px 0}
+  .ddate{font-family:var(--mono);font-size:12.5px;color:var(--sub);width:100px;flex:0 0 auto}
+  .legend{display:flex;gap:14px;margin-top:14px;justify-content:center;flex-wrap:wrap}
+  .legend b{font-family:var(--mono)}
+  .foot{font-size:11.5px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.5}
+  .brow{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:14px}
+  .brow.tot{border-top:2px solid var(--ink);margin-top:6px;padding-top:12px;font-weight:800;font-size:16px}
+  .curbtn{border:1px solid var(--line);background:var(--paper);color:var(--muted);border-radius:8px;padding:8px 6px;font-weight:800;font-size:12px;cursor:pointer;width:42px;flex:0 0 auto;font-family:var(--mono)}
+  .quotecard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 18px;margin-top:12px}
+  .qc-title{font-size:12px;letter-spacing:1px;color:var(--brand);font-weight:800;text-transform:uppercase}
+  .qc-leg{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:10px 11px 11px;background:#FCFCFB;box-shadow:0 1px 3px rgba(20,32,43,.05)}
+  .qc-leg .qc-dbar{margin-top:0}
+  .qc-leg .qc-d{font-family:var(--mono);font-size:13.5px;color:var(--muted);font-weight:700}
+  .qc-leg .qc-h{font-size:15.5px;font-weight:800;margin-top:2px}
+  .qc-rowline{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:2px}
+  .qc-leg .qc-r{font-size:13px;color:var(--sub)}
+  .qc-leg .qc-req{font-size:13px;color:var(--brand);font-weight:700;white-space:nowrap}
+  .qc-price{font-size:12.5px;color:var(--sub);margin-top:3px;font-family:var(--mono)}
+  .qc-inc{font-size:13px;color:var(--sub);margin-top:4px}
+  .qc-sep{border:0;border-top:1px dashed var(--line);margin:16px 0}
+  .qc-final{display:flex;justify-content:space-between;align-items:baseline}
+  .qc-final .lbl{font-size:14px;font-weight:700;color:var(--sub)}
+  .qc-final .amt{font-size:26px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .qc-sub{font-size:11.5px;color:var(--muted);text-align:right;margin-top:2px;font-family:var(--mono)}
+  .avbig{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:13.5px;border-radius:9px;padding:6px 12px;margin-top:6px}
+  .av-ok{background:var(--avBg);color:var(--av)}
+  .av-no{background:var(--soBg);color:var(--so)}
+  .av-rq{background:var(--rqBg);color:var(--rq)}
+  .av-part{background:#ECEAF2;color:#544D75}
+  .av-un{background:var(--paper);color:var(--muted);border:1px dashed var(--line)}
+  .qbtns{display:flex;gap:9px;margin-top:12px}
+  .qbtns button{flex:1;border:none;border-radius:11px;padding:13px;font-size:14px;font-weight:800;cursor:pointer}
+  .qcopy{background:var(--brand);color:#fff}
+  .qimg{background:var(--ink);color:#fff}
+  .qgray{background:var(--paper);color:var(--sub);border:1px solid var(--line) !important}
+  .qmgr{background:#2F7A55;color:#fff}
+  .optitem{border:1px solid var(--line);border-radius:10px;padding:9px;margin-top:7px;background:var(--surface)}
+  .optitem .toprow{display:flex;align-items:center;gap:6px}
+  .optline{display:flex;align-items:center;gap:6px;margin-top:8px}
+  .optline input[type=number]{width:80px;flex:0 0 auto;font-family:var(--mono);text-align:right;padding:8px}
+  .optline .qty{width:52px}
+  .optline select{width:56px;flex:0 0 auto;padding:8px 4px;font-family:var(--mono);text-align:center}
+  .optline .x{color:var(--muted);font-weight:700}
+  .linetot{margin-left:auto;font-family:var(--mono);font-weight:800;font-size:13.5px;color:var(--ink);white-space:nowrap}
+  .chip{border:1px solid var(--line);background:var(--paper);color:var(--muted);border-radius:8px;padding:8px 10px;font-size:12px;font-weight:700;cursor:pointer;flex:0 0 auto;white-space:nowrap}
+  .chip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .metaline{font-size:12.5px;color:var(--muted);line-height:1.6}
+  .rq-item{border:1px solid var(--line);border-radius:11px;margin-top:8px;background:#fff;overflow:hidden}
+  .rq-datebar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:var(--paper);padding:8px 12px;font-weight:700;font-size:12.5px;color:var(--sub);border-bottom:1px solid var(--line)}
+  .rq-idx{margin-left:auto;font-size:10px;color:var(--muted);font-weight:800;letter-spacing:.3px}
+  .rq-body{padding:9px 12px 11px}
+  .rq-date{font-size:12.5px;color:var(--sub);font-weight:700}
+  .rq-hotel{font-weight:800;font-size:15px;line-height:1.3}
+  .rq-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .optchip{display:inline-block;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:2px 8px;font-size:11.5px;color:var(--brand);font-weight:700;margin:6px 4px 0 0}
+  .daychips{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px;border-top:1px dashed var(--line);padding-top:9px}
+  .daychip{font-size:11px;font-weight:800;border-radius:6px;padding:3px 7px;font-family:var(--mono)}
+  .dc-av{background:var(--avBg);color:var(--av)}
+  .dc-rq{background:var(--rqBg);color:var(--rq)}
+  .dc-so{background:var(--soBg);color:var(--so)}
+  .dc-un{background:var(--paper);color:var(--muted);border:1px dashed var(--line)}
+  .sechead{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:800;margin-top:16px}
+  .sechead::before{content:'';width:4px;height:14px;border-radius:2px;background:var(--brand);flex:0 0 auto}
+  .reqbox{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:13px;color:var(--sub);line-height:1.7}
+  @media(max-width:430px){
+    .l3{gap:6px}
+    select,input,textarea{padding:9px 7px;font-size:13.5px}
+    .datebig{font-size:12.5px}
+  }
+
+/* 페이지 구분 칩 */
+.pagechip{display:inline-block;vertical-align:6px;font-size:12.5px;font-weight:800;border-radius:8px;padding:4px 10px;margin-left:8px;letter-spacing:0}
+.pc-agent{background:var(--avBg);color:var(--brand)}
+.pc-sreq{background:#E1E9F5;color:#2B5FA3}
+.pc-schk{background:var(--rqBg);color:var(--rq)}
+.pc-admin{background:#EEEAF3;color:#54406E}
+.homelink{display:block;text-decoration:none;color:inherit;border:1px solid var(--line);border-left:6px solid var(--brand);border-radius:14px;background:#fff;box-shadow:0 1px 4px rgba(22,35,43,.07);padding:16px;margin-top:12px}
+.homelink .hl-t{font-size:16.5px;font-weight:800}
+.homelink .hl-d{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.homelink.hl-sreq{border-left-color:#2B5FA3}
+.homelink.hl-schk{border-left-color:var(--rq)}
+/* 지역 좁게 + 호텔 넓게 */
+.lhotel{display:grid;gap:9px;grid-template-columns:88px 1.5fr 1fr}
+/* 요청 내용: 지역 위, 호텔·룸타입 한 줄 */
+.rq-region{display:inline-block;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:800;color:var(--sub);margin-bottom:5px}
+.rq-line{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0}
+.rq-type{font-weight:800;font-size:13.5px;color:var(--brand);white-space:nowrap}
+.rq-type .sm{font-weight:600;color:var(--muted);font-size:12px}
+.rq-note{font-size:12.5px;color:var(--sub);margin-top:6px;background:var(--paper);border-radius:8px;padding:6px 9px;line-height:1.5}
+/* 날짜 선택 버튼 */
+.datebtn{width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:13.5px;font-family:var(--mono);color:var(--ink);cursor:pointer;font-weight:700}
+.datebtn:active{border-color:var(--brand)}
+/* 범위 선택 달력 */
+#calov{position:fixed;inset:0;background:rgba(20,30,40,.45);z-index:100;display:flex;align-items:center;justify-content:center;padding:14px}
+.calbox{background:#fff;border-radius:16px;padding:14px;width:100%;max-width:340px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.calhead{display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:15px}
+.calnav{border:1px solid var(--line);background:var(--paper);border-radius:8px;width:34px;height:34px;font-size:15px;cursor:pointer;color:var(--sub)}
+.calinfo{text-align:center;font-size:12.5px;color:var(--sub);font-weight:700;margin:8px 0 2px;min-height:18px}
+.calinfo b{color:var(--brand)}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-top:6px}
+.cwd{text-align:center;font-size:11px;color:var(--muted);font-weight:800;padding:4px 0}
+.cd{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-family:var(--mono);border-radius:8px;cursor:pointer;border:none;background:none;color:var(--ink);padding:0}
+.cd:hover{background:var(--paper)}
+.cd.dis{color:#C9D0CD;pointer-events:none;background:none}
+.cd.anchor{background:var(--brand);color:#fff;font-weight:800}
+.cd.inr{background:var(--avBg);color:var(--brand);font-weight:800;border-radius:0}
+.cd.endr{background:var(--brand);color:#fff;font-weight:800}
+.calfoot{display:flex;justify-content:flex-end;margin-top:10px}
+/* 갤럭시 폴드(커버 화면 등 좁은 폭) 최적화 */
+@media(max-width:400px){
+  .wrap{padding:14px 9px 50px}
+  .card{padding:12px 10px;border-radius:14px}
+  h1{font-size:23px}
+  select,input,textarea,.datebtn{padding:8px 7px;font-size:12.5px}
+  .line{gap:5px}
+  .lhotel{grid-template-columns:72px 1.4fr 1fr;gap:5px}
+  .autobox{padding:8px 7px;font-size:12px}
+  .seg button{padding:8px 3px;font-size:11.5px}
+  .stsel{width:58px;font-size:12px;padding:8px 3px}
+  .pbox{width:80px}
+  .ddate{width:64px;font-size:11.5px}
+  .hblock{padding:9px}
+  .lstitem{padding:9px 9px}
+  .datebig{font-size:12px}
+  .qbtns button{padding:11px 6px;font-size:12.5px}
+  .rq-datebar{padding:7px 9px;font-size:11.5px}
+  .rq-body{padding:8px 9px 10px}
+  .rq-hotel{font-size:14px}
+  .quotecard{padding:14px 12px}
+}
+/* 체크인/체크아웃 좌측 상하 + 박수/객실수 우측 세로 통칸 */
+.dategrid{display:grid;grid-template-columns:1.6fr .75fr .75fr;grid-template-rows:auto auto;gap:7px 8px;margin-top:10px}
+.dg-tall{display:flex;flex-direction:column}
+.dg-tall input{flex:1;text-align:center;font-size:17px;font-weight:800;padding:6px}
+@media(max-width:400px){
+  .dategrid{grid-template-columns:1.5fr .7fr .7fr;gap:5px 5px}
+  .dg-tall input{font-size:15px}
+}
+/* 라벨 인라인 날짜 버튼 (칸 높이 축소) */
+.datebtn{display:flex;align-items:center;gap:8px}
+.dlab{font-family:var(--sans);font-size:10.5px;font-weight:800;color:var(--muted);flex:0 0 auto;letter-spacing:.3px}
+.dg-tall .label{text-align:center}
+.dg-tall input{font-size:15.5px}
+@media(max-width:400px){
+  .dlab{font-size:9.5px}
+  .datebtn{gap:5px}
+}
+/* 날짜 줄바꿈 방지 + 폭 배분 */
+.dategrid{grid-template-columns:2fr .65fr .65fr}
+.datebtn{white-space:nowrap;font-size:13px;overflow:hidden;padding:9px 8px}
+@media(max-width:400px){
+  .dategrid{grid-template-columns:2fr .6fr .6fr}
+  .datebtn{font-size:11.5px;padding:8px 6px}
+}
+@media(max-width:340px){
+  .datebtn{font-size:10.5px;padding:8px 5px;gap:4px}
+  .dlab{font-size:9px}
+}
+@media(max-width:340px){
+  .dategrid{grid-template-columns:2.3fr .55fr .55fr;gap:4px}
+}
+/* 날짜 줄맞춤 + 박수/객실수 폭 축소 */
+.dategrid{grid-template-columns:1fr 58px 58px;gap:7px 7px}
+.dlab{width:50px}
+@media(max-width:400px){.dategrid{grid-template-columns:1fr 46px 46px;gap:5px}.dlab{width:44px}}
+@media(max-width:340px){.dategrid{grid-template-columns:1fr 42px 42px}}
+/* 달력 년/월 선택 + 직접 입력 */
+.calym{display:flex;gap:5px}
+.calsel{width:auto;padding:7px 6px;font-size:13.5px;font-weight:800;font-family:var(--sans)}
+.caldirect{display:flex;align-items:center;gap:6px;margin-top:10px}
+.caldirect input{font-size:12px;padding:7px 5px;font-family:var(--mono)}
+.calfoot{display:flex;gap:8px}
+/* 달력 주말·공휴일 색 (토=파랑, 일·공휴일=빨강) */
+.cd.sat{color:#2B5FA3;font-weight:800}
+.cd.hol{color:var(--so);font-weight:800}
+.cwd.sat{color:#2B5FA3}
+.cwd.hol{color:var(--so)}
+.cd.inr{color:var(--brand)}
+.cd.anchor,.cd.endr{color:#fff}
+.cd.dis{color:#C9D0CD}
+/* 날짜 입력칸 + 달력 아이콘 */
+.datewrap{display:flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:0 1px 0 8px;min-width:0}
+.datewrap .dateinput{border:none;background:none;border-radius:0;padding:10px 0;flex:1;min-width:0;font-family:var(--mono);font-size:14.5px;font-weight:800;width:auto;letter-spacing:-.3px}
+.calico{border:none;background:none;font-size:14px;cursor:pointer;padding:6px 5px;flex:0 0 auto;line-height:1}
+@media(max-width:400px){
+  .datewrap{padding-left:6px}
+  .datewrap .dateinput{font-size:13px;padding:9px 0}
+  .calico{font-size:13px;padding:5px 4px}
+}
+/* 숫자 칸: 화살표 제거 + 탭하면 전체선택(색반전) */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]:focus{border-color:var(--brand)}
+input[type=number]::selection{background:var(--brand);color:#fff}
+/* 견적 동시 요청 체크 */
+.askquote{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13.5px;font-weight:800;color:var(--sub);cursor:pointer;flex-wrap:wrap}
+.askquote input[type=checkbox]{width:18px;height:18px;accent-color:var(--brand);margin:0;flex:0 0 auto}
+/* 요청 내용(회색 점선) vs 결과(초록 강조) 구분 */
+.sechead.gray{color:var(--sub)}
+.sechead.gray::before{background:var(--muted)}
+.rq-plain{background:var(--paper);border-style:dashed;box-shadow:none}
+.rq-plain .rq-datebar{background:transparent;border-bottom:1px dashed var(--line);font-size:12px}
+.rq-plain .rq-hotel{font-size:13.5px}
+.rq-plain .rq-type{font-size:12.5px;color:var(--sub)}
+.rescard{padding:14px 14px 16px;background:#fff;border:1.5px solid var(--brand);box-shadow:0 2px 10px rgba(11,110,107,.12)}
+.rescard .rq-item{border:1px solid var(--line)}
+.rescard .rq-datebar{background:var(--avBg);border-bottom:1px solid #2F7A5533;color:var(--brand)}
+.avbig{white-space:nowrap;flex:0 0 auto;font-size:12.5px;padding:5px 10px}
+/* 답변 전 요청 카드 (확인 중 상태) */
+.reqcard{padding:14px 14px 16px;background:var(--surface);border-style:dashed}
+.reqcard .rq-datebar{background:var(--paper)}
+.qblue{background:#2B5FA3;color:#fff}
+.qblue:active{background:#234E88}
+/* 직접 등록(리스트 바로 만들기) 카드 구분 */
+.b-direct{background:#ECEAF2;color:#544D75}
+.lstitem.ls-direct{border-left-color:#544D75;background:#F7F6FB;border-style:solid solid solid solid}
+.lstitem.ls-direct .lsthead{position:relative}
+/* 직접 등록 카드 강조 강화 */
+.lstitem.ls-direct{position:relative;border:2px solid #6C5CE7;border-left:6px solid #6C5CE7;background:#F1EEFF;box-shadow:0 2px 10px rgba(108,92,231,.28);padding-top:36px}
+.lstitem.ls-direct::before{content:'📋 직접 등록 · 확인자 전달 없이 만든 룸체크';position:absolute;top:0;left:0;right:0;background:#6C5CE7;color:#fff;font-size:11.5px;font-weight:800;padding:6px 12px;border-radius:8px 8px 0 0;letter-spacing:.2px}
+.b-direct{background:#6C5CE7;color:#fff}
+/* 직접 등록: 카드 크기 동일하게 (리본 제거, 색상으로만 강조) */
+.lstitem.ls-direct{position:static;border:1px solid #6C5CE7;border-left:5px solid #6C5CE7;background:#F1EEFF;box-shadow:0 1px 4px rgba(108,92,231,.3);padding-top:11px}
+.lstitem.ls-direct::before{content:none}
+@media(max-width:400px){.lstitem.ls-direct{padding-top:9px}}
+/* 견적서 카드 정렬 개편 */
+.qc-region{font-size:12px;color:var(--muted);font-weight:700;margin-top:7px}
+.qc-rt{font-size:14.5px;font-weight:800;color:var(--brand);margin-top:2px}
+.qc-rt .sm{font-weight:600;color:var(--muted);font-size:12px}
+.qc-opt{font-size:13px;color:var(--brand);font-weight:700;margin-top:3px;line-height:1.5}
+/* 룸타입(초록)과 호텔 옵션(골드) 구분 */
+.qc-opt{color:var(--rq);background:var(--rqBg);display:inline-block;border-radius:7px;padding:3px 9px;font-size:12.5px;margin-top:5px}
+/* 계약 완료 */
+.b-contract{background:var(--brand);color:#fff}
+.lstitem.ls-contract{border-left-color:var(--brand);background:#EDF6F3}
+/* 리스트 섹션 카운트 뱃지 */
+.cntb{display:inline-block;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:1px 9px;font-size:12.5px;color:var(--sub);font-family:var(--mono);font-weight:800;vertical-align:1px}
+/* 견적서 특이사항 메모 */
+.qc-remark{font-size:12.5px;color:var(--sub);margin-top:14px;background:var(--paper);border-radius:8px;padding:9px 11px;line-height:1.6}
+/* 특이사항 메모 강조 */
+.qc-remark{background:#FDF3DF;border:1px solid var(--rq);border-left:5px solid var(--rq);color:var(--ink);font-weight:700;font-size:13px;line-height:1.65}
+/* 지난 리스트 항목: 비활성화된 느낌 */
+.lstitem.ls-pastitem{opacity:.55;filter:grayscale(.65);background:var(--paper);box-shadow:none;border-left-color:var(--muted)}
+.lstitem.ls-pastitem .badge{background:var(--paper);color:var(--muted);border:1px solid var(--line)}
+
+/* 견적서 숙박기간 강조 바 */
+.qc-dbar{display:flex;align-items:center;gap:7px;background:#F1F4F2;border-left:4px solid var(--brand);border-radius:8px;padding:7px 9px;margin-top:4px}
+@supports (background:color-mix(in srgb,red 50%,#fff)){.qc-dbar{background:color-mix(in srgb,var(--brand) 9%,#fff)}}
+.qc-dnum{flex:0 0 auto;width:19px;height:19px;border-radius:50%;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+.qc-dt{font-weight:800;font-size:13.5px;color:var(--ink);letter-spacing:.2px;white-space:nowrap}
+.qc-arw{color:var(--brand)}
+.qc-dn{margin-left:auto;flex:0 0 auto;background:var(--brand);color:#fff;border-radius:999px;padding:2.5px 10px;font-size:11.5px;font-weight:800;white-space:nowrap}
+@media (max-width:400px){.qc-dt{font-size:12.5px}.qc-dn{padding:2px 8px;font-size:11px}}
+@media (max-width:340px){.qc-dt{font-size:11.5px;letter-spacing:0}}
+
+/* 견적서 추가 항목 카드 (호텔 카드와 구분되는 색) */
+.qc-leg.qc-addl{background:#EDF3FA;border:1px solid #C6D9EA;border-left:4px solid #4A7FB5}
+.qc-addl-txt{display:inline-block;background:#DCE9F6;color:#27567F;font-weight:800;font-size:12.5px;padding:4px 10px;border-radius:8px;border:1px solid #B9D2E8;line-height:1.5}
+
+/* 알림 벨 + 패널 */
+.bellbtn{position:relative;font-size:14px;padding:6px 10px}
+.bellbadge{position:absolute;top:-6px;right:-6px;background:#D64541;color:#fff;font-size:10px;font-weight:800;border-radius:999px;min-width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--paper)}
+.ntpanel{background:var(--surface);border:1px solid var(--line);border-radius:13px;margin:0 0 10px;box-shadow:0 4px 16px rgba(20,32,43,.13);overflow:hidden}
+.nthead{font-size:12px;font-weight:800;color:var(--muted);padding:9px 13px;border-bottom:1px solid var(--line);background:var(--paper)}
+.ntitem{padding:9px 13px;border-bottom:1px solid var(--line)}
+.ntitem:last-child{border-bottom:none}
+.ntitem.ntnew{background:color-mix(in srgb,var(--brand) 6%,#fff)}
+.ntline1{font-size:13px;font-weight:800}
+.ntline2{font-size:12px;color:var(--sub);margin-top:1px}
+.ntline3{font-size:10.5px;color:var(--muted);margin-top:2px;font-family:var(--mono)}
+
+/* ===== 로고 헤더 (2026-07-17) ===== */
+.hdrtop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.hdrbrand{display:flex;flex-direction:column;gap:6px}
+.hdrlogo{width:92px;height:92px;object-fit:contain;border-radius:12px}
+.hdrko{font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1.1}
+.hdrright{display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding-top:4px}
+.hdrchips{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.uchip{background:var(--surface);border-color:var(--brand);color:var(--brand);font-weight:800}
+@media (max-width:480px){.hdrlogo{width:72px;height:72px}.hdrko{font-size:20px}}
+/* 룸체크+견적 = 보라 */
+#qmode button[data-q="1"].on{background:#6C5CE7}
+.cta.cta-q{background:#6C5CE7}
+
+/* ===== 헤더 메뉴 + 한줄 날짜 (2026-07-17 v2) ===== */
+.hdrright{position:relative}
+.menupanel{position:absolute;top:calc(100% + 6px);right:0;z-index:60;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(22,35,43,.16);min-width:190px;padding:6px;display:flex;flex-direction:column;gap:2px}
+.mitem{display:block;width:100%;text-align:left;background:none;border:none;border-radius:8px;padding:10px 12px;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer;text-decoration:none;font-family:var(--sans)}
+.mitem:hover{background:var(--paper)}
+.mname{color:var(--brand);cursor:default;border-bottom:1px solid var(--line);border-radius:0;margin-bottom:2px}
+.mitem.on{color:var(--av)}
+.mout{color:var(--so);border-top:1px solid var(--line);border-radius:0;margin-top:2px}
+.mlang{display:flex;gap:6px;cursor:default}
+.mlang .chip{flex:1;text-align:center}
+.datel3{grid-template-columns:1.15fr 1.15fr .7fr}
+.datel3 .autobox{white-space:nowrap;font-size:12.5px;padding:9px 8px;justify-content:center;letter-spacing:-.2px}
+@media (max-width:480px){.datel3 .autobox{font-size:11.5px;padding:8px 5px}}
+
+.dateinput[readonly]{cursor:pointer;caret-color:transparent}
+/* ===== Calendar mobile fit (Galaxy Z Flip 7, narrow widths) 2026-07-19 ===== */
+#calov{padding:10px}
+.calbox{width:100%;max-width:340px}
+@media(max-width:390px){
+  #calov{padding:7px}
+  .calbox{max-width:calc(100vw - 14px);padding:11px}
+  .calhead{font-size:14px}
+  .calnav{width:30px;height:30px;font-size:14px}
+  .calym .calsel{font-size:12.5px;padding:6px 3px}
+  .cd{font-size:12.5px}
+  .cwd{font-size:10px}
+  .caldirect input{font-size:11px;padding:6px 4px}
+  .calinfo{font-size:11.5px}
+}
+@media(max-width:340px){
+  .calbox{padding:9px}
+  .cd{font-size:11.5px}
+  .calnav{width:27px;height:27px}
+}
+/* Agent check-in/out date: pull left so weekday is not cut off */
+.datewrap{padding:0 0 0 6px}
+.datewrap .dateinput{letter-spacing:-.5px;padding-right:0}
+.calico{padding:6px 3px}
+@media(max-width:400px){
+  .datewrap{padding-left:4px}
+  .datewrap .dateinput{font-size:12px;letter-spacing:-.7px;padding:9px 0}
+  .calico{font-size:12px;padding:5px 2px}
+}
+@media(max-width:340px){
+  .datewrap .dateinput{font-size:11px}
+}

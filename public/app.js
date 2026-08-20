@@ -371,7 +371,7 @@ function renderApp(){
   const dl=document.getElementById('optdl');if(dl)dl.innerHTML=OPTLIST.map(o=>'<option>'+esc(dOpt(o))+'</option>').join('');
   if(ui.role==='agent'){app.innerHTML=langSwitchHTML()+formHTML()+agentListHTML();bindForm();bindAgentList();}
   else if(ui.role==='sreq'){app.innerHTML=langSwitchHTML()+formHTML()+staffListHTML();bindForm();bindStaff();}
-  else if(ui.role==='schk'){app.innerHTML=langSwitchHTML()+checkerHTML()+staffListHTML();bindStaff();}
+  else if(ui.role==='schk'){app.innerHTML=langSwitchHTML()+formHTML()+checkerHTML()+staffListHTML();bindForm();bindStaff();}
   else{app.innerHTML=langSwitchHTML()+staffListHTML();bindStaff();}
   bindLang();
 }
@@ -438,7 +438,6 @@ function formHTML(){
               +'</select>'
               +'<input type="text" class="checkHotel" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" placeholder="호텔명" value="'+esc(inp.hotel)+'" style="flex:1.2;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">'
               +'<input type="text" class="checkRoom" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" placeholder="룸타입" value="'+esc(inp.roomType)+'" style="flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px">'
-              +'<input type="number" class="checkQty" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" min="1" placeholder="객실수" value="'+(inp.qty||1)+'" style="flex:0 0 60px;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px;text-align:center">'
               +'<button class="del" style="padding:4px 8px;flex:0 0 auto" onclick="removeCheckInputRow('+row.id+',\''+inp.tempId+'\')">−</button>'
             +'</div>').join(''):''
           )+'</div>'
@@ -530,7 +529,7 @@ window.addCheckInputRow=function(rowId){
   if(!ui.checkInputs)ui.checkInputs={};
   if(!ui.checkInputs[rowId])ui.checkInputs[rowId]=[];
   const tempId=Date.now()+'_'+(Math.random()*1e6|0);
-  ui.checkInputs[rowId].push({tempId:tempId,region:'',hotel:'',roomType:'',qty:1});
+  ui.checkInputs[rowId].push({tempId:tempId,region:'',hotel:'',roomType:''});
   renderApp();
 };
 
@@ -559,7 +558,6 @@ window.saveCheckRequestsFromInputs=function(rowId){
       region:inp.region||row.region,
       hotel:inp.hotel.trim(),
       roomType:inp.roomType.trim()||'(미지정)',
-      qty:Math.max(1,Number(inp.qty)||1),
       checkInDate:dd.checkIn,
       checkOutDate:dd.checkOut,
       status:'pending',
@@ -758,16 +756,6 @@ function bindForm(){
         if(inp_row)inp_row.roomType=e.target.value;
       }
       updateCheckListsForRow(rowId);
-    });
-  });
-  document.querySelectorAll('.checkQty').forEach(inp=>{
-    inp.addEventListener('change',e=>{
-      const rowId=Number(inp.dataset.row);
-      const tempId=inp.dataset.tempid;
-      if(tempId&&ui.checkInputs&&ui.checkInputs[rowId]){
-        const inp_row=ui.checkInputs[rowId].find(r=>r.tempId===tempId);
-        if(inp_row)inp_row.qty=Math.max(1,Number(e.target.value)||1);
-      }
     });
   });
   document.querySelectorAll('.checkRegion').forEach(sel=>{
@@ -995,36 +983,26 @@ function resultCardHTML(req,asReq){
         const dc=c.status==='av'?'dc-av':c.status==='so'?'dc-so':c.status==='rq'?'dc-rq':'dc-un';
         return '<span class="daychip '+dc+'">'+fdshort(iso)+' '+statusLabel(c.status)+'</span>';}).join('')+'</div>';
     }
-    /* Phase 2: 추가 호텔들 표시 - 사용자 지정 형식 */
+    /* Phase 2: 추가 호텔들 표시 */
     let checkReqsHTML='';
     if(row.checkRequests&&row.checkRequests.length>0){
-      checkReqsHTML='<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">';
+      checkReqsHTML='<div style="margin-top:12px">';
       row.checkRequests.forEach((req_ch,ci)=>{
         const crDateArr=Array.from({length:diffD(req_ch.checkInDate,req_ch.checkOutDate)},(_,k)=>addDays(req_ch.checkInDate,k));
-        const crAv={k:req_ch.status==='confirmed'?'ok':req_ch.status==='rejected'?'no':'un',
-                   t:req_ch.status==='confirmed'?'✅ 확인':req_ch.status==='rejected'?'❌ 거절':'⏳ 대기'};
+        const crAv={k:'un',t:'확인 중'};
         let crDl='';
-        if(crDateArr.length>0){
-          crDl='<div class="daychips">'+crDateArr.map((iso,di)=>{
-            const statusDisplay=req_ch.status==='confirmed'?'✅ AV':req_ch.status==='rejected'?'❌ SO':'⏳ RQ';
-            const priceDisplay=req_ch.price?'<span style="font-weight:600">'+won(req_ch.price)+'</span>':'';
-            return '<span class="daychip '+(req_ch.status==='confirmed'?'dc-av':req_ch.status==='rejected'?'dc-so':'dc-un')+'" style="display:inline-flex;align-items:center;gap:4px">'
-              +'<span>'+fdshort(iso)+'</span>'
-              +'<span style="padding:2px 4px;background:rgba(0,0,0,0.05);border-radius:2px;font-size:11px">'+statusDisplay+'</span>'
-              +(priceDisplay?'<span style="border-left:1px solid currentColor;padding-left:4px">'+priceDisplay+'</span>':'')
-              +'</span>';
-          }).join('')+'</div>';
+        if(answered&&(crAv.k==='part'||crAv.k==='rq'||crAv.k==='un')){
+          crDl='<div class="daychips">'+crDateArr.map(iso=>'<span class="daychip dc-un">'+fdshort(iso)+' ⏳ 대기</span>').join('')+'</div>';
         }
-        checkReqsHTML+='<div class="rq-item">'
-          +'<div style="font-weight:700;font-size:14px;margin-bottom:6px">추가 호텔 '+(ci+1)+': '+escT(dHotel(req_ch.hotel)||'-')+'</div>'
+        checkReqsHTML+='<div class="rq-item" style="opacity:0.85">'
+          +'<div class="rq-datebar">'+fdate(req_ch.checkInDate)+' → '+fdate(req_ch.checkOutDate)+' <span class="nightsb">'+diffD(req_ch.checkInDate,req_ch.checkOutDate)+'박</span><span class="rq-idx">추가 호텔 '+(ci+1)+'</span></div>'
           +'<div class="rq-body">'
-          +'<div class="qc-rowline" style="align-items:center;margin-top:0;margin-bottom:8px"><span class="rq-line">'
-          +(req_ch.region&&req_ch.region!=='전체'?'<span class="rq-region" style="font-weight:600;margin-right:6px">'+escT(dRegion(req_ch.region))+'</span>':'')
-          +'<span class="rq-type">'+escT(dRoom(req_ch.roomType)||'-')+' <span class="sm">· '+Math.max(1,Number(req_ch.qty)||1)+'실</span></span></span>'
-          +'<span class="avbig av-'+crAv.k+'" style="margin-top:0;margin-left:auto">'+crAv.t+'</span></div>'
-          +'<div style="font-size:12px;color:#666;margin-bottom:8px">'+fdate(req_ch.checkInDate)+' → '+fdate(req_ch.checkOutDate)+' <span style="font-weight:600;color:#333">'+diffD(req_ch.checkInDate,req_ch.checkOutDate)+'박</span></div>'
-          +crDl
-          +(req_ch.price?'<div style="margin-top:8px;padding:6px 8px;background:#f9fafb;border-radius:4px;font-size:12px"><span style="color:#666">요금: </span><span style="font-weight:600;color:#22C55E">'+won(req_ch.price)+'</span></div>':'')
+          +(req_ch.region&&req_ch.region!=='전체'?'<div class="rq-region">'+escT(dRegion(req_ch.region))+'</div>':'')
+          +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(req_ch.hotel)||'-')+'</span><span class="rq-type">'+escT(dRoom(req_ch.roomType)||'-')+'</span></span>'
+          +'<span class="avbig av-'+(req_ch.status==='confirmed'?'ok':req_ch.status==='rejected'?'no':'un')+'" style="margin-top:0">'
+            +(req_ch.status==='confirmed'?'✅ 확인':req_ch.status==='rejected'?'❌ 거절':'⏳ 대기')
+          +'</span></div>'
+          +(crDateArr.length>0?'<div class="daychips">'+crDateArr.map((iso,di)=>'<span class="daychip '+(req_ch.status==='confirmed'?'dc-av':req_ch.status==='rejected'?'dc-so':'dc-un')+'" style="display:inline-flex;align-items:center;gap:4px"><span>'+fdshort(iso)+'</span><span>'+(req_ch.status==='confirmed'?'✅':req_ch.status==='rejected'?'❌':'⏳')+'</span>'+(req_ch.price?'<span style="font-weight:600">'+won(req_ch.price)+'</span>':'')+'</span>').join('')+'</div>':'')
           +'</div></div>';
       });
       checkReqsHTML+='</div>';

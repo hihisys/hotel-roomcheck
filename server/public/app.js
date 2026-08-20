@@ -89,7 +89,6 @@ const LSKEY='nirvana_roomcheck_v2';
 let _mem=null;
 function loadDB(){try{const t=localStorage.getItem(LSKEY);if(t)return JSON.parse(t);}catch(e){}return _mem||{seq:0,requests:[],checker:''};}
 function saveDB(){try{localStorage.setItem(LSKEY,JSON.stringify(DB));}catch(e){_mem=DB;}if(typeof srvSchedule==='function')srvSchedule();}
-const saveDraft=saveDB;
 let DB=loadDB();if(DB&&Array.isArray(DB.requests))DB.requests=DB.requests.filter(r=>r&&Array.isArray(r.rows));
 const byId=id=>DB.requests.find(r=>r.id===id);
 const sorted=()=>[...DB.requests].filter(r=>r&&Array.isArray(r.rows)&&r.rows.length).sort((a,b)=>b.createdAt-a.createdAt);

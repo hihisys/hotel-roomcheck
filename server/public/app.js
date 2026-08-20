@@ -569,7 +569,7 @@ window.saveCheckRequestsFromInputs=function(rowId){
     });
   });
   delete ui.checkInputs[rowId];
-  saveDraft();
+  saveDB();
   renderApp();
   toast('✅ '+ui.checkInputs[rowId].length+'개 호텔이 추가되었습니다');
 };
@@ -578,7 +578,7 @@ window.removeCheckRequest=function(rowId,reqId){
   if(!row||!row.checkRequests)return;
   if(!confirm('이 요청을 삭제하시겠습니까?'))return;
   row.checkRequests=row.checkRequests.filter(r=>r.id!==reqId);
-  saveDraft();
+  saveDB();
   renderApp();
   toast('✅ 요청이 삭제되었습니다');
 };
@@ -625,7 +625,7 @@ window.updateCheckRequestStatus=function(rowId,reqId,newStatus,price,priceNotes)
   if(priceNotes!==undefined)req.priceNotes=(priceNotes||'').trim();
   req.confirmedAt=Date.now();
   req.confirmedBy=ui.nickname||ui.name||'미정';
-  saveDraft();
+  saveDB();
   renderApp();
   const msg=newStatus==='confirmed'?'✅ 확인 완료':'❌ 거절됨';
   toast(msg);

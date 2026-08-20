@@ -431,8 +431,8 @@ function formHTML(){
         +((ui.open.has(row.id))?'<div class="check-section" style="margin-top:8px">'
           +'<button class="addbtn sm" id="addCheckBtn'+row.id+'" style="margin-bottom:12px">+ 호텔 추가</button>'
           +'<div class="check-inputs-container" id="checkInputs'+row.id+'" style="display:flex;flex-direction:column;gap:12px">'
-            +((ui.checkInputs&&ui.checkInputs[row.id])?ui.checkInputs[row.id].map((inp)=>'<div class="hblock" style="background:#fafafa">'
-              +'<div class="flex between aic"><span class="bnum" style="color:#22C55E">추가 호텔</span><button class="del btnDel" style="padding:4px 8px" onclick="removeCheckInputRow('+row.id+',\''+inp.tempId+'\')">−</button></div>'
+            +((ui.checkInputs&&ui.checkInputs[row.id])?ui.checkInputs[row.id].map((inp)=>'<div class="hblock checkInputRow" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" style="background:#fafafa">'
+              +'<div class="flex between aic"><span class="bnum" style="color:#22C55E">추가 호텔</span><button class="del btnDel delCheckInput" style="padding:4px 8px">−</button></div>'
               +'<div class="line lhotel" style="margin-top:8px">'
                 +'<div><div class="label">지역</div><select class="checkRegion" data-row="'+row.id+'" data-tempid="'+inp.tempId+'">'
                   +'<option value="">지역</option>'
@@ -447,56 +447,47 @@ function formHTML(){
           +(row.checkRequests&&row.checkRequests.length
             ? row.checkRequests.map((req,j)=>{
                 const reqDateArr=Array.from({length:diffD(req.checkInDate,req.checkOutDate)},(_,k)=>addDays(req.checkInDate,k));
-                const isOpen=ui.checkReqOpen.has(req.id);
-                return '<div class="hblock checkReqTog" data-row="'+row.id+'" data-reqid="'+req.id+'" style="cursor:pointer;background:#f9fafb">'
-                  +'<div class="flex between aic" style="margin-bottom:'+(isOpen?'8':'0')+'px">'
-                    +'<div style="display:flex;align-items:center;gap:6px;flex:1">'
-                      +'<span style="font-weight:600;color:#666">'+(isOpen?'▼':'▶')+'</span>'
-                      +'<span style="font-weight:600;font-size:14px">'+escT(dRegion(req.region||'전체'))+' · '+escT(dHotel(req.hotel))+' · '+escT(dRoom(req.roomType))+' · '+Math.max(1,Number(req.qty)||1)+'실</span>'
+                return '<div class="hblock checkReqBlock" data-row="'+row.id+'" data-reqid="'+req.id+'" style="background:#f9fafb">'
+                  +'<div class="flex between aic"><span class="bnum" style="color:#22C55E">추가 호텔</span><button class="del btnDel" style="padding:4px 8px" onclick="removeCheckRequest('+row.id+','+req.id+')">−</button></div>'
+                  +'<div style="display:flex;flex-direction:column;gap:8px;padding:8px;background:#fff;border-radius:4px;margin-top:8px">'
+                    +'<div style="font-size:13px;color:#666">In '+fdate(req.checkInDate)+' / Out '+fdate(req.checkOutDate)+' · '+diffD(req.checkInDate,req.checkOutDate)+T("n_sfx")+'</div>'
+                    +'<div class="line lhotel" style="margin-top:8px">'
+                      +'<div><div class="label">지역</div><select class="checkReqRegion" data-row="'+row.id+'" data-reqid="'+req.id+'">'
+                        +'<option value="">지역</option>'
+                        +REGIONS.map(r=>'<option value="'+esc(r)+'"'+(req.region===r?' selected':'')+'>'+esc(r)+'</option>').join('')
+                      +'</select></div>'
+                      +'<div><div class="label">호텔명</div><input type="text" class="checkReqHotel" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+esc(dHotel(req.hotel))+'"></div>'
+                      +'<div><div class="label">룸타입</div><input type="text" class="checkReqRoom" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+esc(dRoom(req.roomType))+'"></div>'
+                      +'<div><div class="label">객실수</div><input type="number" class="checkReqQty" data-row="'+row.id+'" data-reqid="'+req.id+'" min="1" value="'+Math.max(1,Number(req.qty)||1)+'" style="text-align:center"></div>'
                     +'</div>'
-                    +'<button class="del btnDel" onclick="event.stopPropagation();removeCheckRequest('+row.id+','+req.id+')" style="padding:4px 8px">−</button>'
+                    +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px">'
+                      +'<label style="font-size:12px;color:#666;flex:0 0 60px">상태</label>'
+                      +'<select class="checkReqStatus" data-row="'+row.id+'" data-reqid="'+req.id+'">'
+                        +'<option value="pending"'+(req.status==='pending'?' selected':'')+'>⏳ 대기</option>'
+                        +'<option value="confirmed"'+(req.status==='confirmed'?' selected':'')+'>✅ 확인</option>'
+                        +'<option value="rejected"'+(req.status==='rejected'?' selected':'')+'>❌ 거절</option>'
+                      +'</select>'
+                    +'</div>'
+                    +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px">'
+                      +'<label style="font-size:12px;color:#666;flex:0 0 60px">가격</label>'
+                      +'<input type="number" class="checkReqPrice" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+(req.price||'')+'" placeholder="가격 입력" style="flex:0 0 120px">'
+                    +'</div>'
+                    +(reqDateArr.length>0?'<div style="padding:8px;background:#f9fafb;border-radius:4px;border:1px solid var(--line);margin-top:8px">'
+                      +'<div style="font-size:12px;color:#666;margin-bottom:6px;font-weight:600">일일 현황</div>'
+                      +'<div>'+
+                        reqDateArr.map((iso,di)=>'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px">'
+                          +'<span style="flex:0 0 80px">'+fdate(iso)+'</span>'
+                          +'<span class="status-badge" style="padding:3px 6px;border-radius:3px;font-size:11px;background:'+
+                            (req.status==='confirmed'?'#10b981':req.status==='rejected'?'#ef4444':'#f59e0b')+
+                            ';color:#fff">'
+                            +(req.status==='confirmed'?'✅':req.status==='rejected'?'❌':'⏳')+
+                          '</span>'
+                          +'<span style="flex:1"></span>'
+                          +'<span style="font-weight:600">'+won(req.price||0)+'</span>'
+                        +'</div>').join('')+
+                      '</div>'
+                    +'</div>':'')
                   +'</div>'
-                  +(isOpen?
-                    '<div style="display:flex;flex-direction:column;gap:8px;padding:8px;background:#fff;border-radius:4px">'
-                      +'<div style="font-size:13px;color:#666">In '+fdate(req.checkInDate)+' / Out '+fdate(req.checkOutDate)+' · '+diffD(req.checkInDate,req.checkOutDate)+T("n_sfx")+'</div>'
-                      +'<div class="line lhotel" style="margin-top:8px">'
-                        +'<div><div class="label">지역</div><select class="checkReqRegion" data-row="'+row.id+'" data-reqid="'+req.id+'">'
-                          +'<option value="">지역</option>'
-                          +REGIONS.map(r=>'<option value="'+esc(r)+'"'+(req.region===r?' selected':'')+'>'+esc(r)+'</option>').join('')
-                        +'</select></div>'
-                        +'<div><div class="label">호텔명</div><input type="text" class="checkReqHotel" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+esc(dHotel(req.hotel))+'"></div>'
-                        +'<div><div class="label">룸타입</div><input type="text" class="checkReqRoom" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+esc(dRoom(req.roomType))+'"></div>'
-                        +'<div><div class="label">객실수</div><input type="number" class="checkReqQty" data-row="'+row.id+'" data-reqid="'+req.id+'" min="1" value="'+Math.max(1,Number(req.qty)||1)+'" style="text-align:center"></div>'
-                      +'</div>'
-                      +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px">'
-                        +'<label style="font-size:12px;color:#666;flex:0 0 60px">상태</label>'
-                        +'<select class="checkReqStatus" data-row="'+row.id+'" data-reqid="'+req.id+'">'
-                          +'<option value="pending"'+(req.status==='pending'?' selected':'')+'>⏳ 대기</option>'
-                          +'<option value="confirmed"'+(req.status==='confirmed'?' selected':'')+'>✅ 확인</option>'
-                          +'<option value="rejected"'+(req.status==='rejected'?' selected':'')+'>❌ 거절</option>'
-                        +'</select>'
-                      +'</div>'
-                      +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px">'
-                        +'<label style="font-size:12px;color:#666;flex:0 0 60px">가격</label>'
-                        +'<input type="number" class="checkReqPrice" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+(req.price||'')+'" placeholder="가격 입력" style="flex:0 0 120px">'
-                      +'</div>'
-                      +(reqDateArr.length>0?'<div style="padding:8px;background:#f9fafb;border-radius:4px;border:1px solid var(--line);margin-top:8px">'
-                        +'<div style="font-size:12px;color:#666;margin-bottom:6px;font-weight:600">일일 현황</div>'
-                        +'<div>'+
-                          reqDateArr.map((iso,di)=>'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px">'
-                            +'<span style="flex:0 0 80px">'+fdate(iso)+'</span>'
-                            +'<span class="status-badge" style="padding:3px 6px;border-radius:3px;font-size:11px;background:'+
-                              (req.status==='confirmed'?'#10b981':req.status==='rejected'?'#ef4444':'#f59e0b')+
-                              ';color:#fff">'
-                              +(req.status==='confirmed'?'✅':req.status==='rejected'?'❌':'⏳')+
-                            '</span>'
-                            +'<span style="flex:1"></span>'
-                            +'<span style="font-weight:600">'+won(req.price||0)+'</span>'
-                          +'</div>').join('')+
-                        '</div>'
-                      +'</div>':'')
-                    +'</div>'
-                    :'')
                 +'</div>';
               }).join('')
             : '<div style="color:#999;font-size:12px;padding:8px;text-align:center">추가된 호텔이 없습니다</div>')
@@ -560,6 +551,7 @@ window.saveCheckRequestsFromInputs=function(rowId){
   if(invalidInputs.length>0){alert('모든 호텔명을 입력하세요');return;}
   const dd=rDates(draft,row,rowIndex);
   row.checkRequests=row.checkRequests||[];
+  const addedCount=ui.checkInputs[rowId].length;
   ui.checkInputs[rowId].forEach(inp=>{
     row.checkRequests.push({
       id:Date.now()+'_'+(Math.random()*1e6|0),
@@ -579,7 +571,7 @@ window.saveCheckRequestsFromInputs=function(rowId){
   delete ui.checkInputs[rowId];
   saveDraft();
   renderApp();
-  toast('✅ '+ui.checkInputs[rowId].length+'개 호텔이 추가되었습니다');
+  toast('✅ '+addedCount+'개 호텔이 추가되었습니다');
 };
 window.removeCheckRequest=function(rowId,reqId){
   const row=draft.rows.find(r=>r.id===rowId);
@@ -722,17 +714,7 @@ function bindForm(){
     };
   });
 
-  /* Phase 2: 추가 호텔 개별 토글 버튼 */
-  document.querySelectorAll('.checkReqTog').forEach(btn=>{
-    btn.onclick=e=>{
-      e.preventDefault();
-      const rowId=Number(btn.dataset.row);
-      const reqId=btn.dataset.reqid;
-      if(!ui.checkReqOpen)ui.checkReqOpen=new Set();
-      ui.checkReqOpen.has(reqId)?ui.checkReqOpen.delete(reqId):ui.checkReqOpen.add(reqId);
-      renderApp();
-    };
-  });
+  /* Phase 2: 추가 호텔은 항상 펼쳐진 상태로 표시 - toggle 이벤트 제거됨 */
 
   /* Phase 2: 호텔 추가 버튼 - 새로운 입력 행 생성 */
   d.rows.forEach(row=>{
@@ -742,6 +724,20 @@ function bindForm(){
         addCheckInputRow(row.id);
       };
     }
+  });
+
+  /* Phase 2: 임시 입력 행 삭제 버튼 */
+  document.querySelectorAll('.delCheckInput').forEach(btn=>{
+    btn.onclick=e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      const row=btn.closest('.checkInputRow');
+      if(row){
+        const rowId=Number(row.dataset.row);
+        const tempId=row.dataset.tempid;
+        removeCheckInputRow(rowId, tempId);
+      }
+    };
   });
 
   /* Phase 2: 임시 입력 행 데이터 바인딩 */

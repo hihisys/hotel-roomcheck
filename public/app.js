@@ -444,7 +444,6 @@ function formHTML(){
               +'</div>'
             +'</div>').join(''):''
           )+'</div>'
-          +'<button class="addbtn sm" id="saveCheckBtn'+row.id+'" style="margin-top:8px;background:#22C55E">✓ 추가 호텔 등록</button>'
         +'</div>':'')+'</div>'
       +'</div>';
   }).join('');
@@ -579,7 +578,7 @@ window.updateCheckRequestStatus=function(rowId,reqId,newStatus,price,priceNotes)
   if(priceNotes!==undefined)req.priceNotes=(priceNotes||'').trim();
   req.confirmedAt=Date.now();
   req.confirmedBy=ui.nickname||ui.name||'미정';
-  saveDraft();
+  saveDB();
   renderApp();
   const msg=newStatus==='confirmed'?'✅ 확인 완료':'❌ 거절됨';
   toast(msg);
@@ -676,12 +675,6 @@ function bindForm(){
     if(addBtn){
       addBtn.onclick=()=>{
         addCheckInputRow(row.id);
-      };
-    }
-    const saveBtn=document.getElementById('saveCheckBtn'+row.id);
-    if(saveBtn){
-      saveBtn.onclick=()=>{
-        saveCheckRequestsFromInputs(row.id);
       };
     }
   });

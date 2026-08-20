@@ -39,8 +39,8 @@ RUN mkdir -p /var/www/html/data && \
 RUN printf '%s\n' \
   '<VirtualHost *:8080>' \
   '    ServerName localhost' \
-  '  documentRoot /var/www/html/public' \
-  '    '    <Directory /var/www/server\html/public>' \
+  '  DocumentRoot /var/www/html/server/public' \
+  '    '    <Directory /var/www/html/server/public>' \
   '        Options Indexes FollowSymLinks' \
   '        AllowOverride All' \
   '        Require all granted' \

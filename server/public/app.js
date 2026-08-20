@@ -556,10 +556,12 @@ window.saveCheckRequestsFromInputs=function(rowId){
       priceNotes:''
     });
   });
+      });
+  const addedCount=ui.checkInputs[rowId]?.length||0;
   delete ui.checkInputs[rowId];
   saveDB();
   renderApp();
-  toast('✅ '+ui.checkInputs[rowId].length+'개 호텔이 추가되었습니다');
+  toast('✅ '+(addedCount||'호텔')+(addedCount>1?'개 호텔':'')+'이 추가되었습니다');
 };
 window.removeCheckRequest=function(rowId,reqId){
   const row=draft.rows.find(r=>r.id===rowId);
@@ -684,7 +686,7 @@ function bindForm(){
     if(d._wsn)req.rows.forEach((row,i)=>{const arr=d._wsn[i];if(!arr||!arr.length)return;
       rDates(req,row,i).dates.forEach((iso,k)=>{const v=arr[k]||arr[arr.length-1];
         if(v&&v.price){req.ws[row.id+'|'+iso]={price:v.price};}});});
-    upsert(req);draft=newDraft(d);
+    upsert(req);draft=newDraft(d);ui.open.clear();
     if(ui.role==='agent')ui.sel=req.id;else ui.ssel=req.id;
     renderApp();
     toast((direct?T('t_direct_reg'):T('t_registered'))+reqNo(req));

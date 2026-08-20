@@ -662,29 +662,29 @@ function bindForm(){
   document.querySelectorAll('.calOpen').forEach(b=>b.onclick=()=>openFromEl(b));
   /* 날짜는 수기 입력 불가 — 클릭하면 달력 (첵인=범위 선택, 첵아웃=첵아웃만) */
   document.querySelectorAll('.dateinput').forEach(inp=>{inp.onclick=()=>openFromEl(inp);});
-  document.querySelectorAll('#rows .hblock').forEach(el=>{
+  document.querySelectorAll('#rows .hblock:not(.checkReqTog)').forEach(el=>{
     const id=Number(el.dataset.id),row=d.rows.find(r=>r.id===id),i=d.rows.indexOf(row);
-    el.querySelector('.selRegion').onchange=e=>{row.region=e.target.value;renderApp();};
+    const sel=el.querySelector('.selRegion');if(sel)sel.onchange=e=>{row.region=e.target.value;renderApp();};
     const hi=el.querySelector('.inHotel');
-    hi.oninput=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;};
-    hi.onchange=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;renderApp();};
+    if(hi){hi.oninput=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;};
+    hi.onchange=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;renderApp();};}
     const ri=el.querySelector('.inRoom');
-    ri.oninput=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;};
-    ri.onchange=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;renderApp();};
+    if(ri){ri.oninput=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;};
+    ri.onchange=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;renderApp();};}
     const n=el.querySelector('.inNights');if(n)n.onchange=e=>{row.nights=Math.max(1,Number(e.target.value)||1);renderApp();};
     const rm=el.querySelector('.inRooms');if(rm)rm.onchange=e=>{row.rooms=Math.max(1,Number(e.target.value)||1);};
     el.querySelectorAll('[data-optid]').forEach(o=>{const oid=Number(o.dataset.optid),op=(row.options||[]).find(x=>x.id===oid);
-      o.querySelector('.optSel').onchange=e=>{const v=e.target.value;
+      const optSel=o.querySelector('.optSel');if(optSel)optSel.onchange=e=>{const v=e.target.value;
         if(v==='__c'){op._custom=true;if(OPTLIST.includes(op.name))op.name='';}
         else{op._custom=false;op.name=v;}
         renderApp();};
       const ci=o.querySelector('.inOptName');if(ci)ci.oninput=e=>{op.name=e.target.value;};
-      o.querySelector('.inOptQty').onchange=e=>{op.qty=Math.max(1,Number(e.target.value)||1);};
-      o.querySelector('.optDel').onclick=()=>{row.options=row.options.filter(x=>x.id!==oid);renderApp();};});
-    el.querySelector('.addOpt').onclick=()=>{row.options=row.options||[];row.options.push({id:Date.now(),name:'',qty:1,amt:0,show:true,memo:''});renderApp();};
+      const inOptQty=o.querySelector('.inOptQty');if(inOptQty)inOptQty.onchange=e=>{op.qty=Math.max(1,Number(e.target.value)||1);};
+      const optDel=o.querySelector('.optDel');if(optDel)optDel.onclick=()=>{row.options=row.options.filter(x=>x.id!==oid);renderApp();};});
+    const addOpt=el.querySelector('.addOpt');if(addOpt)addOpt.onclick=()=>{row.options=row.options||[];row.options.push({id:Date.now(),name:'',qty:1,amt:0,show:true,memo:''});renderApp();};
     const ht=el.querySelector('.hnTog');if(ht)ht.onclick=()=>{ui.hnOpen.has(id)?ui.hnOpen.delete(id):ui.hnOpen.add(id);renderApp();};
     const hx=el.querySelector('.hnText');if(hx)hx.oninput=e=>{row.note=e.target.value;};
-    el.querySelector('.btnDel').onclick=()=>{if(d.rows.length>1){d.rows=d.rows.filter(r=>r.id!==id);renderApp();}};
+    const btnDel=el.querySelector('.btnDel');if(btnDel)btnDel.onclick=()=>{if(d.rows.length>1){d.rows=d.rows.filter(r=>r.id!==id);renderApp();}};
   });
   document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[],checkRequests:[]});renderApp();};
   function doSubmit(direct){

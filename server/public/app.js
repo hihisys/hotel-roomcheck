@@ -556,7 +556,6 @@ window.saveCheckRequestsFromInputs=function(rowId){
       priceNotes:''
     });
   });
-      });
   const addedCount=ui.checkInputs[rowId]?.length||0;
   delete ui.checkInputs[rowId];
   saveDB();

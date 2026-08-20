@@ -444,53 +444,7 @@ function formHTML(){
               +'</div>'
             +'</div>').join(''):''
           )+'</div>'
-          +(row.checkRequests&&row.checkRequests.length
-            ? row.checkRequests.map((req,j)=>{
-                const reqDateArr=Array.from({length:diffD(req.checkInDate,req.checkOutDate)},(_,k)=>addDays(req.checkInDate,k));
-                return '<div class="hblock checkReqBlock" data-row="'+row.id+'" data-reqid="'+req.id+'" style="background:#f9fafb">'
-                  +'<div class="flex between aic"><span class="bnum" style="color:#22C55E">추가 호텔</span><button class="del btnDel" style="padding:4px 8px" onclick="removeCheckRequest('+row.id+','+req.id+')">−</button></div>'
-                  +'<div style="display:flex;flex-direction:column;gap:8px;padding:8px;background:#fff;border-radius:4px;margin-top:8px">'
-                    +'<div style="font-size:13px;color:#666">In '+fdate(req.checkInDate)+' / Out '+fdate(req.checkOutDate)+' · '+diffD(req.checkInDate,req.checkOutDate)+T("n_sfx")+'</div>'
-                    +'<div class="line lhotel" style="margin-top:8px">'
-                      +'<div><div class="label">지역</div><select class="checkReqRegion" data-row="'+row.id+'" data-reqid="'+req.id+'">'
-                        +'<option value="">지역</option>'
-                        +REGIONS.map(r=>'<option value="'+esc(r)+'"'+(req.region===r?' selected':'')+'>'+esc(r)+'</option>').join('')
-                      +'</select></div>'
-                      +'<div><div class="label">호텔명</div><input type="text" class="checkReqHotel" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+esc(dHotel(req.hotel))+'"></div>'
-                      +'<div><div class="label">룸타입</div><input type="text" class="checkReqRoom" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+esc(dRoom(req.roomType))+'"></div>'
-                      +'<div><div class="label">객실수</div><input type="number" class="checkReqQty" data-row="'+row.id+'" data-reqid="'+req.id+'" min="1" value="'+Math.max(1,Number(req.qty)||1)+'" style="text-align:center"></div>'
-                    +'</div>'
-                    +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px">'
-                      +'<label style="font-size:12px;color:#666;flex:0 0 60px">상태</label>'
-                      +'<select class="checkReqStatus" data-row="'+row.id+'" data-reqid="'+req.id+'">'
-                        +'<option value="pending"'+(req.status==='pending'?' selected':'')+'>⏳ 대기</option>'
-                        +'<option value="confirmed"'+(req.status==='confirmed'?' selected':'')+'>✅ 확인</option>'
-                        +'<option value="rejected"'+(req.status==='rejected'?' selected':'')+'>❌ 거절</option>'
-                      +'</select>'
-                    +'</div>'
-                    +'<div style="display:flex;gap:8px;align-items:center;margin-top:8px">'
-                      +'<label style="font-size:12px;color:#666;flex:0 0 60px">가격</label>'
-                      +'<input type="number" class="checkReqPrice" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+(req.price||'')+'" placeholder="가격 입력" style="flex:0 0 120px">'
-                    +'</div>'
-                    +(reqDateArr.length>0?'<div style="padding:8px;background:#f9fafb;border-radius:4px;border:1px solid var(--line);margin-top:8px">'
-                      +'<div style="font-size:12px;color:#666;margin-bottom:6px;font-weight:600">일일 현황</div>'
-                      +'<div>'+
-                        reqDateArr.map((iso,di)=>'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px">'
-                          +'<span style="flex:0 0 80px">'+fdate(iso)+'</span>'
-                          +'<span class="status-badge" style="padding:3px 6px;border-radius:3px;font-size:11px;background:'+
-                            (req.status==='confirmed'?'#10b981':req.status==='rejected'?'#ef4444':'#f59e0b')+
-                            ';color:#fff">'
-                            +(req.status==='confirmed'?'✅':req.status==='rejected'?'❌':'⏳')+
-                          '</span>'
-                          +'<span style="flex:1"></span>'
-                          +'<span style="font-weight:600">'+won(req.price||0)+'</span>'
-                        +'</div>').join('')+
-                      '</div>'
-                    +'</div>':'')
-                  +'</div>'
-                +'</div>';
-              }).join('')
-            : '<div style="color:#999;font-size:12px;padding:8px;text-align:center">추가된 호텔이 없습니다</div>')
+          +'<button class="addbtn sm" id="saveCheckBtn'+row.id+'" style="margin-top:8px;background:#22C55E">✓ 추가 호텔 등록</button>'
         +'</div>':'')+'</div>'
       +'</div>';
   }).join('');
@@ -722,6 +676,12 @@ function bindForm(){
     if(addBtn){
       addBtn.onclick=()=>{
         addCheckInputRow(row.id);
+      };
+    }
+    const saveBtn=document.getElementById('saveCheckBtn'+row.id);
+    if(saveBtn){
+      saveBtn.onclick=()=>{
+        saveCheckRequestsFromInputs(row.id);
       };
     }
   });

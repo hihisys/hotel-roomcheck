@@ -1496,3 +1496,4 @@ let _tt;function toast(m){const t=document.getElementById('toast');t.textContent
   }
   renderApp();
 })();
+// Updated: 2026-08-21 - Deploy to hotel-roomcheck-356950571433

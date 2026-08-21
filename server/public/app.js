@@ -630,8 +630,8 @@ function bindForm(){
   const ag=document.getElementById('agent');if(ag)ag.onchange=e=>{d.agent=e.target.value;};
   const am=document.getElementById('agentMgr');if(am)am.oninput=e=>{d.agentManager=e.target.value;};
   const rg=document.getElementById('regName');if(rg)rg.oninput=e=>{d.registrant=e.target.value;};
-  const nt=document.getElementById('notes');nt.oninput=e=>{d.notes=e.target.value;};
-  document.getElementById('notesHead').onclick=()=>{ui.notesOpen=!ui.notesOpen;renderApp();};
+  const nt=document.getElementById('notes');if(nt)nt.oninput=e=>{d.notes=e.target.value;};
+  const nh=document.getElementById('notesHead');if(nh)nh.onclick=()=>{ui.notesOpen=!ui.notesOpen;renderApp();};
   var _qk=document.getElementById('qkind');if(_qk)_qk.onchange=function(e){d.quoteKind=Number(e.target.value)||0;};
   const pN=document.getElementById('pN');if(pN)pN.onchange=e=>{d.sharedNights=Math.max(1,Number(e.target.value)||1);renderApp();};
   const pR=document.getElementById('pR');if(pR)pR.onchange=e=>{d.sharedRooms=Math.max(1,Number(e.target.value)||1);renderApp();};
@@ -645,29 +645,31 @@ function bindForm(){
   document.querySelectorAll('.dateinput').forEach(inp=>{inp.onclick=()=>openFromEl(inp);});
   document.querySelectorAll('#rows .hblock').forEach(el=>{
     const id=Number(el.dataset.id),row=d.rows.find(r=>r.id===id),i=d.rows.indexOf(row);
-    el.querySelector('.selRegion').onchange=e=>{row.region=e.target.value;renderApp();};
-    const hi=el.querySelector('.inHotel');
-    hi.oninput=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;};
-    hi.onchange=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;renderApp();};
-    const ri=el.querySelector('.inRoom');
-    ri.oninput=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;};
-    ri.onchange=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;renderApp();};
+    const sr=el.querySelector('.selRegion');if(sr)sr.onchange=e=>{row.region=e.target.value;renderApp();};
+    const hi=el.querySelector('.inHotel');if(hi){
+      hi.oninput=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;};
+      hi.onchange=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;renderApp();};
+    }
+    const ri=el.querySelector('.inRoom');if(ri){
+      ri.oninput=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;};
+      ri.onchange=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;renderApp();};
+    }
     const n=el.querySelector('.inNights');if(n)n.onchange=e=>{row.nights=Math.max(1,Number(e.target.value)||1);renderApp();};
     const rm=el.querySelector('.inRooms');if(rm)rm.onchange=e=>{row.rooms=Math.max(1,Number(e.target.value)||1);};
     el.querySelectorAll('[data-optid]').forEach(o=>{const oid=Number(o.dataset.optid),op=(row.options||[]).find(x=>x.id===oid);
-      o.querySelector('.optSel').onchange=e=>{const v=e.target.value;
+      const os=o.querySelector('.optSel');if(os)os.onchange=e=>{const v=e.target.value;
         if(v==='__c'){op._custom=true;if(OPTLIST.includes(op.name))op.name='';}
         else{op._custom=false;op.name=v;}
         renderApp();};
       const ci=o.querySelector('.inOptName');if(ci)ci.oninput=e=>{op.name=e.target.value;};
-      o.querySelector('.inOptQty').onchange=e=>{op.qty=Math.max(1,Number(e.target.value)||1);};
-      o.querySelector('.optDel').onclick=()=>{row.options=row.options.filter(x=>x.id!==oid);renderApp();};});
-    el.querySelector('.addOpt').onclick=()=>{row.options=row.options||[];row.options.push({id:Date.now(),name:'',qty:1,amt:0,show:true,memo:''});renderApp();};
+      const iq=o.querySelector('.inOptQty');if(iq)iq.onchange=e=>{op.qty=Math.max(1,Number(e.target.value)||1);};
+      const od=o.querySelector('.optDel');if(od)od.onclick=()=>{if(confirm(T('confirm_delete'))){row.options=row.options.filter(x=>x.id!==oid);saveDB();renderApp();}};});
+    const ao=el.querySelector('.addOpt');if(ao)ao.onclick=()=>{row.options=row.options||[];row.options.push({id:Date.now(),name:'',qty:1,amt:0,show:true,memo:''});renderApp();};
     const ht=el.querySelector('.hnTog');if(ht)ht.onclick=()=>{ui.hnOpen.has(id)?ui.hnOpen.delete(id):ui.hnOpen.add(id);renderApp();};
     const hx=el.querySelector('.hnText');if(hx)hx.oninput=e=>{row.note=e.target.value;};
-    el.querySelector('.btnDel').onclick=()=>{if(d.rows.length>1){d.rows=d.rows.filter(r=>r.id!==id);renderApp();}};
+    const bd=el.querySelector('.btnDel');if(bd)bd.onclick=()=>{if(d.rows.length>1&&confirm(T('confirm_delete_hotel'))){d.rows=d.rows.filter(r=>r.id!==id);saveDB();renderApp();}};
   });
-  document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[],checkRequests:[]});renderApp();};
+  const ar=document.getElementById('addRow');if(ar)ar.onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[],checkRequests:[]});renderApp();};
   function doSubmit(direct){
     if(!d.rows.some(r=>r.hotel.trim())){toast(T('t_need_hotel1'));return;}
     if(d.mode==='parallel')d.rows.forEach(r=>{r.rooms=Math.max(1,Number(d.sharedRooms)||1);});
@@ -690,7 +692,7 @@ function bindForm(){
     renderApp();
     toast((direct?T('t_direct_reg'):T('t_registered'))+reqNo(req));
   }
-  document.getElementById('run').onclick=()=>{saveAllCheckInputs();doSubmit(false);};
+  const run=document.getElementById('run');if(run)run.onclick=()=>{saveAllCheckInputs();doSubmit(false);};
   const rd=document.getElementById('runDirect');if(rd)rd.onclick=()=>{saveAllCheckInputs();doSubmit(true);};
 
   /* Phase 2: 추가 룸체크 섹션 토글 버튼 */

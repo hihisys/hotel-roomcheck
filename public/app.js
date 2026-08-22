@@ -146,7 +146,7 @@ function copyText(t,msg){(navigator.clipboard?navigator.clipboard.writeText(t):P
     try{document.execCommand('copy');toast(msg);}catch(e){toast('복사 실패 — 길게 눌러 복사하세요');}document.body.removeChild(ta);});}
 
 /* ================= UI 상태 ================= */
-let ui={role:(typeof PAGE!=='undefined'?PAGE:'agent'),sel:null,ssel:null,notesOpen:false,open:new Set(),optOpen:new Set(),hnOpen:new Set(),checkReqOpen:new Set(),qOpen:false,pastOpen:false,conOpen:false,qbOpen:null,phAdd:new Set()};
+let ui={role:(typeof PAGE!=='undefined'?PAGE:'agent'),sel:null,ssel:null,notesOpen:false,open:new Set(),optOpen:new Set(),hnOpen:new Set(),checkReqOpen:new Set(),checkExpand:new Set(),tabStaff:'all',qOpen:false,pastOpen:false,conOpen:false,qbOpen:null,phAdd:new Set()};
 /* ================= 언어 (i18n.js의 LPACK 사용) ================= */
 function lang(){if(FORCE_KO)return 'ko';DB.langs=DB.langs||{};const a=LANG_ALLOWED[ui.role]||['ko'];let l=DB.langs[ui.role]||a[0];if(!a.includes(l))l=a[0];return l;}
 function T(k){const p=LPACK[lang()]||LPACK.ko;const s=p[k]!==undefined?p[k]:LPACK.ko[k];return s===undefined?k:s;}
@@ -311,6 +311,23 @@ function phoneHTML(req,row){
     h+='<input class="phWho" data-prid="'+row.id+'" value="'+esc(row.confirmedBy||'')+'" placeholder="'+esc(T('ph_who'))+'" style="width:104px;flex:0 0 auto;padding:7px 8px;font-size:12px">';
   return h;
 }
+/* 추가 호텔용 전화/담당자 UI — 호텔1의 phoneHTML과 동일한 구성 */
+function chkPhoneHTML(req,chk,chkId){
+  if(!(ui.role==='schk'||ui.role==='sreq'))return '';
+  DB.phones=DB.phones||{};
+  const nums=(chk.hotel&&DB.phones[chk.hotel])||[];
+  const sel=chk.phone&&nums.includes(chk.phone)?chk.phone:(chk.phone||nums[0]||'');
+  let os=nums.map(n=>opt(n,'📞 '+n,n===sel)).join('');
+  if(sel&&!nums.includes(sel))os='<option value="'+esc(sel)+'" selected>📞 '+esc(sel)+'</option>'+os;
+  os+='<option value="__add">'+T('ph_add_opt')+'</option>';
+  let h='<select class="chkPhSel" data-chkid="'+chkId+'" style="width:auto;flex:0 1 auto;padding:7px 5px;font-size:12px;font-family:var(--mono)">'
+    +((nums.length||sel)?'':'<option value="" selected>'+T('ph_none')+'</option>')+os+'</select>';
+  if(sel)h+='<a class="chip on" style="text-decoration:none;line-height:1" href="tel:'+sel.replace(/[^+0-9]/g,'')+'">'+T('ph_call')+'</a>';
+  if(ui.phAdd.has(chkId))h+='<input class="chkPhNew" data-chkid="'+chkId+'" placeholder="'+esc(T('ph_new'))+'" style="width:150px;flex:0 0 auto;padding:7px 8px;font-size:12px;font-family:var(--mono)">';
+  if(ui.role==='schk'||(ui.role==='sreq'&&req.direct))
+    h+='<input class="chkPhWho" data-chkid="'+chkId+'" value="'+esc(chk.manager||'')+'" placeholder="'+esc(T('ph_who'))+'" style="width:104px;flex:0 0 auto;padding:7px 8px;font-size:12px">';
+  return h;
+}
 function draftFromReq(r){const base=Date.now();
   return {mode:r.mode,startDate:r.startDate,sharedNights:r.sharedNights||1,sharedRooms:(r.mode==='parallel'&&r.rows[0]?r.rows[0].rooms:1),
     agent:r.agent||'',agentManager:r.agentManager||'',registrant:r.registrant||'심은선',manager:'',notes:r.notes||'',quoteAsk:false,
@@ -371,7 +388,7 @@ function renderApp(){
   const dl=document.getElementById('optdl');if(dl)dl.innerHTML=OPTLIST.map(o=>'<option>'+esc(dOpt(o))+'</option>').join('');
   if(ui.role==='agent'){app.innerHTML=langSwitchHTML()+formHTML()+agentListHTML();bindForm();bindAgentList();}
   else if(ui.role==='sreq'){app.innerHTML=langSwitchHTML()+formHTML()+staffListHTML();bindForm();bindStaff();}
-  else if(ui.role==='schk'){app.innerHTML=langSwitchHTML()+checkerHTML()+staffListHTML();bindStaff();}
+  else if(ui.role==='schk'){app.innerHTML=langSwitchHTML()+formHTML()+checkerHTML()+staffListHTML();bindForm();bindStaff();}
   else{app.innerHTML=langSwitchHTML()+staffListHTML();bindStaff();}
   bindLang();
 }
@@ -426,25 +443,81 @@ function formHTML(){
         +'<button class="addbtn sm addOpt">'+T('add_opt')+'</button></div>'
       +'<div style="margin-top:8px"><button class="linkbtn hnTog">'+((ui.hnOpen.has(row.id)||row.note)?'▾':'▸')+' '+T('hotel_note')+'</button>'
         +((ui.hnOpen.has(row.id)||row.note)?'<textarea class="hnText" placeholder="'+esc(T('ph_hotel_note'))+'">'+escT(row.note||'')+'</textarea>':'')+'</div>'
-      /* Phase 2: 추가 룸체크 섹션 - 누적 입력 방식 */
-      +'<div style="margin-top:12px"><button class="linkbtn checkTog" data-row="'+row.id+'" style="color:#22C55E;font-weight:600">'+((ui.open.has(row.id))?'▾':'▸')+' ➕ 추가 룸체크</button>'
-        +((ui.open.has(row.id))?'<div class="check-section" style="margin-top:8px">'
-          +'<button class="addbtn sm" id="addCheckBtn'+row.id+'" style="margin-bottom:12px">+ 호텔 추가</button>'
-          +'<div class="check-inputs-container" id="checkInputs'+row.id+'" style="display:flex;flex-direction:column;gap:12px">'
-            +((ui.checkInputs&&ui.checkInputs[row.id])?ui.checkInputs[row.id].map((inp)=>'<div class="hblock checkInputRow" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" style="background:#fafafa">'
-              +'<div class="flex between aic"><span class="bnum" style="color:#22C55E">추가 호텔</span><button class="del btnDel delCheckInput" style="padding:4px 8px">−</button></div>'
-              +'<div class="line lhotel" style="margin-top:8px">'
-                +'<div><div class="label">지역</div><select class="checkRegion" data-row="'+row.id+'" data-tempid="'+inp.tempId+'">'
-                  +'<option value="">지역</option>'
+      /* Phase 4: 추가 요청 섹션 - 호텔별 그룹핑 */
+      +'<div style="margin-top:16px;padding-top:12px;border-top:2px solid #E5E7EB">'
+        +'<div style="padding:8px 0;font-weight:600;color:#333;margin-bottom:8px;font-size:14px">호텔 '+(i+1)+'번 추가 호텔</div>'
+        +'<button class="linkbtn addReqBtn" data-row="'+row.id+'" style="color:#22C55E;font-weight:600">+ 추가 요청</button>'
+        +'<div class="check-section" style="margin-top:8px;padding:12px;background:#F5F7FA;border-radius:6px">'
+          +'<div class="check-inputs-container" id="checkInputs'+row.id+'" style="display:flex;flex-direction:column;gap:12px;margin-bottom:10px">'
+            +((ui.checkInputs&&ui.checkInputs[row.id])?ui.checkInputs[row.id].map((inp,idx)=>'<div class="check-input-block" data-tempid="'+inp.tempId+'" style="padding:12px;background:#fff;border:1px solid var(--line);border-radius:6px">'
+              +'<div class="flex between aic" style="margin-bottom:8px">'
+                +'<span style="font-weight:600;color:#333">추가 호텔 '+(idx+1)+'</span>'
+                +'<button class="del" style="padding:4px 8px" onclick="removeCheckInputRow('+row.id+',\''+inp.tempId+'\')">−</button>'
+              +'</div>'
+              +'<div class="line lhotel">'
+                +'<div><div class="label">지역</div><select class="checkRegion" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
+                  +'<option value="">선택</option>'
                   +REGIONS.map(r=>'<option value="'+esc(r)+'"'+(inp.region===r?' selected':'')+'>'+esc(r)+'</option>').join('')
                 +'</select></div>'
-                +'<div><div class="label">호텔명</div><input type="text" class="checkHotel" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" placeholder="호텔명" value="'+esc(inp.hotel)+'"></div>'
-                +'<div><div class="label">룸타입</div><input type="text" class="checkRoom" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" placeholder="룸타입" value="'+esc(inp.roomType)+'"></div>'
-                +'<div><div class="label">객실수</div><input type="number" class="checkQty" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" min="1" value="'+(inp.qty||1)+'" style="text-align:center"></div>'
+                +'<div><div class="label">호텔명</div><input type="text" class="checkHotel" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" placeholder="호텔명 입력" value="'+esc(inp.hotel)+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
+                +'<div><div class="label">룸타입</div><input type="text" class="checkRoom" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" placeholder="룸타입 입력" value="'+esc(inp.roomType)+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
+              +'</div>'
+              +'<div class="line lhotel" style="margin-top:8px">'
+                +'<div><div class="label">금액 (1박)</div><input type="number" class="checkPrice" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" min="0" placeholder="금액 입력" value="'+(inp.price||0)+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
               +'</div>'
             +'</div>').join(''):''
           )+'</div>'
-        +'</div>':'')+'</div>'
+          +(row.checkRequests&&row.checkRequests.length
+            ? row.checkRequests.map((req,j)=>{
+                const reqDateArr=Array.from({length:diffD(req.checkInDate,req.checkOutDate)},(_,k)=>addDays(req.checkInDate,k));
+                const isOpen=ui.checkReqOpen.has(req.id);
+                return '<div class="hblock" data-id="'+req.id+'" style="margin-top:12px;background:#f9f9f9">'
+                  +'<div class="flex between aic checkReqTog" data-row="'+row.id+'" data-reqid="'+req.id+'" style="cursor:pointer">'
+                    +'<span class="bnum">추가 호텔 '+(j+1)+'</span>'
+                    +'<button class="del" onclick="event.stopPropagation();removeCheckRequest('+row.id+','+req.id+')" style="padding:4px 8px">−</button>'
+                  +'</div>'
+                  +'<div class="line lhotel" style="margin-top:8px">'
+                    +'<div><div class="label">'+T('region')+'</div><span style="font-weight:500">'+escT(dRegion(req.region||'전체'))+'</span></div>'
+                    +'<div><div class="label">'+T('hotel_sel')+'</div><span style="font-weight:500">'+escT(dHotel(req.hotel))+'</span></div>'
+                    +'<div><div class="label">'+T('room_sel')+'</div><span style="font-weight:500">'+escT(dRoom(req.roomType))+'</span></div>'
+                  +'</div>'
+                  +'<div class="line lhotel" style="margin-top:8px">'
+                    +'<div><div class="label">전화번호</div><input type="text" class="checkPhone" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+esc(req.phone||'')+'" placeholder="번호 입력" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
+                    +'<div><div class="label">호텔 담당자</div><input type="text" class="checkManager" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+esc(req.manager||'')+'" placeholder="담당자 입력" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
+                    +'<div><div class="label">상태</div><select class="checkBookingStatus" data-row="'+row.id+'" data-reqid="'+req.id+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
+                      +'<option value="available"'+(req.bookingStatus==='available'?' selected':'')+'>가능</option>'
+                      +'<option value="limited"'+(req.bookingStatus==='limited'?' selected':'')+'>제한</option>'
+                      +'<option value="unavailable"'+(req.bookingStatus==='unavailable'?' selected':'')+'>불가</option>'
+                    +'</select></div>'
+                  +'</div>'
+                  +'<div style="margin-top:8px">'
+                    +'<div class="label">금액 (1박)</div>'
+                    +'<span style="font-weight:600;font-size:15px">'+won(req.price||0)+'</span>'
+                  +'</div>'
+                  +'<div style="margin-top:8px"><div class="datebox"><span class="dv">'+fdate(req.checkInDate)+'</span><span class="arrow">→</span><span class="dv">'+fdate(req.checkOutDate)+'</span><span class="nightsb">'+diffD(req.checkInDate,req.checkOutDate)+T('n_sfx')+'</span></div></div>'
+                  +(isOpen?
+                    '<div style="margin-top:8px;padding:8px;background:#fff;border-radius:4px">'
+                      +'<div style="font-size:12px;color:#666;margin-bottom:8px;font-weight:600">일일 현황</div>'
+                      +'<div>'+
+                        reqDateArr.map((iso,di)=>'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12px">'
+                          +'<span style="flex:0 0 100px">'+fdate(iso)+'</span>'
+                          +'<span class="status-badge" style="padding:3px 8px;border-radius:3px;font-size:11px;background:'+
+                            (req.status==='confirmed'?'#10b981':req.status==='rejected'?'#ef4444':'#f59e0b')+
+                            ';color:#fff;flex:0 0 auto">'
+                            +(req.status==='confirmed'?'✅ 확정':req.status==='rejected'?'❌ 거절':'⏳ 대기')+
+                          '</span>'
+                          +'<span style="flex:1"></span>'
+                          +'<span style="font-weight:600">'+won(req.price||0)+'</span>'
+                        +'</div>').join('')+
+                      '</div>'
+                      +(req.priceNotes?'<div style="margin-top:8px;padding:8px;background:#fafafa;border-radius:4px;border:1px solid #f0f0f0;font-size:12px;color:#666;line-height:1.5">'+escT(req.priceNotes)+'</div>':'')
+                    +'</div>'
+                    :'')
+                  +'</div>';
+              }).join('')
+            : '<div style="color:#999;font-size:12px;padding:8px;text-align:center">추가된 호텔이 없습니다</div>')
+        +'</div>'
+      +'</div>'
       +'</div>';
   }).join('');
   return '<section class="card">'
@@ -481,7 +554,17 @@ window.addCheckInputRow=function(rowId){
   if(!ui.checkInputs)ui.checkInputs={};
   if(!ui.checkInputs[rowId])ui.checkInputs[rowId]=[];
   const tempId=Date.now()+'_'+(Math.random()*1e6|0);
-  ui.checkInputs[rowId].push({tempId:tempId,region:'',hotel:'',roomType:'',qty:1});
+  ui.checkInputs[rowId].push({
+    tempId:tempId,
+    region:'',
+    hotel:'',
+    roomType:'',
+    phone:'',
+    manager:'',
+    status:'',
+    price:0,
+    detailNote:''
+  });
   renderApp();
 };
 
@@ -504,34 +587,36 @@ window.saveCheckRequestsFromInputs=function(rowId){
   if(invalidInputs.length>0){alert('모든 호텔명을 입력하세요');return;}
   const dd=rDates(draft,row,rowIndex);
   row.checkRequests=row.checkRequests||[];
-  const addedCount=ui.checkInputs[rowId].length;
   ui.checkInputs[rowId].forEach(inp=>{
     row.checkRequests.push({
       id:Date.now()+'_'+(Math.random()*1e6|0),
       region:inp.region||row.region,
       hotel:inp.hotel.trim(),
       roomType:inp.roomType.trim()||'(미지정)',
-      qty:Math.max(1,Number(inp.qty)||1),
       checkInDate:dd.checkIn,
       checkOutDate:dd.checkOut,
+      phone:inp.phone?inp.phone.trim():'',
+      manager:inp.manager?inp.manager.trim():'',
+      bookingStatus:inp.status||'pending',
       status:'pending',
       requestedBy:ui.role,
       notes:'',
-      price:0,
-      priceNotes:''
+      price:Number(inp.price)||0,
+      priceNotes:inp.detailNote?inp.detailNote.trim():''
     });
   });
+  const addedCount=ui.checkInputs[rowId]?.length||0;
   delete ui.checkInputs[rowId];
-  saveDraft();
+  saveDB();
   renderApp();
-  toast('✅ '+addedCount+'개 호텔이 추가되었습니다');
+  toast('✅ '+(addedCount||'호텔')+(addedCount>1?'개 호텔':'')+'이 추가되었습니다');
 };
 window.removeCheckRequest=function(rowId,reqId){
   const row=draft.rows.find(r=>r.id===rowId);
   if(!row||!row.checkRequests)return;
   if(!confirm('이 요청을 삭제하시겠습니까?'))return;
   row.checkRequests=row.checkRequests.filter(r=>r.id!==reqId);
-  saveDraft();
+  saveDB();
   renderApp();
   toast('✅ 요청이 삭제되었습니다');
 };
@@ -588,14 +673,73 @@ window.toggleCheckEdit=function(reqId){
   ui.checkEditOpen.has(reqId)?ui.checkEditOpen.delete(reqId):ui.checkEditOpen.add(reqId);
   renderApp();
 };
+
+/* 확인자용 추가 호텔 함수들 */
+window.agentAddCheckInputRow=function(reqId){
+  if(!ui.agentCheckInputs)ui.agentCheckInputs={};
+  if(!ui.agentCheckInputs[reqId])ui.agentCheckInputs[reqId]=[];
+  const tempId=Date.now()+'_'+(Math.random()*1e6|0);
+  ui.agentCheckInputs[reqId].push({
+    tempId:tempId,
+    region:'',
+    hotel:'',
+    roomType:'',
+    phone:'',
+    manager:'',
+    status:'',
+    price:0,
+    detailNote:''
+  });
+  renderApp();
+};
+
+window.agentRemoveCheckInputRow=function(reqId,tempId){
+  if(!ui.agentCheckInputs||!ui.agentCheckInputs[reqId])return;
+  ui.agentCheckInputs[reqId]=ui.agentCheckInputs[reqId].filter(r=>r.tempId!==tempId);
+  renderApp();
+};
+
+window.saveAgentCheckInputs=function(reqId){
+  const req=byId(reqId);
+  if(!req)return;
+  if(!ui.agentCheckInputs||!ui.agentCheckInputs[reqId]||ui.agentCheckInputs[reqId].length===0){
+    toast('추가할 호텔을 입력하세요');return;
+  }
+  const invalidInputs=ui.agentCheckInputs[reqId].filter(inp=>!inp.hotel.trim());
+  if(invalidInputs.length>0){alert('모든 호텔명을 입력하세요');return;}
+
+  req.checkerAddedHotels=req.checkerAddedHotels||[];
+  ui.agentCheckInputs[reqId].forEach(inp=>{
+    req.checkerAddedHotels.push({
+      id:Date.now()+'_'+(Math.random()*1e6|0),
+      region:inp.region||'전체',
+      hotel:inp.hotel.trim(),
+      roomType:inp.roomType.trim()||'(미지정)',
+      phone:inp.phone?inp.phone.trim():'',
+      manager:inp.manager?inp.manager.trim():'',
+      bookingStatus:inp.status||'pending',
+      checkInDate:req.startDate,
+      checkOutDate:req.rows[0]?rDates(req,req.rows[0],0).checkOut:addDays(req.startDate,1),
+      price:Number(inp.price)||0,
+      priceNotes:inp.detailNote?inp.detailNote.trim():'',
+      addedBy:ui.nickname||ui.name||'미정',
+      addedAt:Date.now()
+    });
+  });
+  const addedCount=ui.agentCheckInputs[reqId]?.length||0;
+  delete ui.agentCheckInputs[reqId];
+  saveDB();
+  renderApp();
+  toast('✅ '+(addedCount||'호텔')+(addedCount>1?'개 호텔':'')+'이 추가되었습니다');
+};
 function bindForm(){
   const d=draft;
   document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{d.mode=b.dataset.v;renderApp();});
   const ag=document.getElementById('agent');if(ag)ag.onchange=e=>{d.agent=e.target.value;};
   const am=document.getElementById('agentMgr');if(am)am.oninput=e=>{d.agentManager=e.target.value;};
   const rg=document.getElementById('regName');if(rg)rg.oninput=e=>{d.registrant=e.target.value;};
-  const nt=document.getElementById('notes');nt.oninput=e=>{d.notes=e.target.value;};
-  document.getElementById('notesHead').onclick=()=>{ui.notesOpen=!ui.notesOpen;renderApp();};
+  const nt=document.getElementById('notes');if(nt)nt.oninput=e=>{d.notes=e.target.value;};
+  const nh=document.getElementById('notesHead');if(nh)nh.onclick=()=>{ui.notesOpen=!ui.notesOpen;renderApp();};
   var _qk=document.getElementById('qkind');if(_qk)_qk.onchange=function(e){d.quoteKind=Number(e.target.value)||0;};
   const pN=document.getElementById('pN');if(pN)pN.onchange=e=>{d.sharedNights=Math.max(1,Number(e.target.value)||1);renderApp();};
   const pR=document.getElementById('pR');if(pR)pR.onchange=e=>{d.sharedRooms=Math.max(1,Number(e.target.value)||1);renderApp();};
@@ -607,31 +751,120 @@ function bindForm(){
   document.querySelectorAll('.calOpen').forEach(b=>b.onclick=()=>openFromEl(b));
   /* 날짜는 수기 입력 불가 — 클릭하면 달력 (첵인=범위 선택, 첵아웃=첵아웃만) */
   document.querySelectorAll('.dateinput').forEach(inp=>{inp.onclick=()=>openFromEl(inp);});
-  document.querySelectorAll('#rows .hblock:not(.checkReqTog)').forEach(el=>{
+  document.querySelectorAll('#rows .hblock').forEach(el=>{
     const id=Number(el.dataset.id),row=d.rows.find(r=>r.id===id),i=d.rows.indexOf(row);
-    const sel=el.querySelector('.selRegion');if(sel)sel.onchange=e=>{row.region=e.target.value;renderApp();};
-    const hi=el.querySelector('.inHotel');
-    if(hi){hi.oninput=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;};
-    hi.onchange=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;renderApp();};}
-    const ri=el.querySelector('.inRoom');
-    if(ri){ri.oninput=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;};
-    ri.onchange=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;renderApp();};}
+    const sr=el.querySelector('.selRegion');if(sr)sr.onchange=e=>{row.region=e.target.value;renderApp();};
+    const hi=el.querySelector('.inHotel');if(hi){
+      hi.oninput=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;};
+      hi.onchange=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;renderApp();};
+    }
+    const ri=el.querySelector('.inRoom');if(ri){
+      ri.oninput=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;};
+      ri.onchange=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;renderApp();};
+    }
     const n=el.querySelector('.inNights');if(n)n.onchange=e=>{row.nights=Math.max(1,Number(e.target.value)||1);renderApp();};
     const rm=el.querySelector('.inRooms');if(rm)rm.onchange=e=>{row.rooms=Math.max(1,Number(e.target.value)||1);};
     el.querySelectorAll('[data-optid]').forEach(o=>{const oid=Number(o.dataset.optid),op=(row.options||[]).find(x=>x.id===oid);
-      const optSel=o.querySelector('.optSel');if(optSel)optSel.onchange=e=>{const v=e.target.value;
+      const os=o.querySelector('.optSel');if(os)os.onchange=e=>{const v=e.target.value;
         if(v==='__c'){op._custom=true;if(OPTLIST.includes(op.name))op.name='';}
         else{op._custom=false;op.name=v;}
         renderApp();};
       const ci=o.querySelector('.inOptName');if(ci)ci.oninput=e=>{op.name=e.target.value;};
-      const inOptQty=o.querySelector('.inOptQty');if(inOptQty)inOptQty.onchange=e=>{op.qty=Math.max(1,Number(e.target.value)||1);};
-      const optDel=o.querySelector('.optDel');if(optDel)optDel.onclick=()=>{row.options=row.options.filter(x=>x.id!==oid);renderApp();};});
-    const addOpt=el.querySelector('.addOpt');if(addOpt)addOpt.onclick=()=>{row.options=row.options||[];row.options.push({id:Date.now(),name:'',qty:1,amt:0,show:true,memo:''});renderApp();};
+      const iq=o.querySelector('.inOptQty');if(iq)iq.onchange=e=>{op.qty=Math.max(1,Number(e.target.value)||1);};
+      const od=o.querySelector('.optDel');if(od)od.onclick=()=>{if(confirm(T('confirm_delete'))){row.options=row.options.filter(x=>x.id!==oid);saveDB();renderApp();}};});
+    const ao=el.querySelector('.addOpt');if(ao)ao.onclick=()=>{row.options=row.options||[];row.options.push({id:Date.now(),name:'',qty:1,amt:0,show:true,memo:''});renderApp();};
     const ht=el.querySelector('.hnTog');if(ht)ht.onclick=()=>{ui.hnOpen.has(id)?ui.hnOpen.delete(id):ui.hnOpen.add(id);renderApp();};
     const hx=el.querySelector('.hnText');if(hx)hx.oninput=e=>{row.note=e.target.value;};
-    const btnDel=el.querySelector('.btnDel');if(btnDel)btnDel.onclick=()=>{if(d.rows.length>1){d.rows=d.rows.filter(r=>r.id!==id);renderApp();}};
+    const bd=el.querySelector('.btnDel');if(bd)bd.onclick=()=>{if(d.rows.length>1&&confirm(T('confirm_delete_hotel'))){d.rows=d.rows.filter(r=>r.id!==id);saveDB();renderApp();}};
   });
-  document.getElementById('addRow').onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[],checkRequests:[]});renderApp();};
+  const ar=document.getElementById('addRow');if(ar)ar.onclick=()=>{d.rows.push({id:Date.now(),region:'전체',hotel:'',roomType:'',rooms:1,nights:1,note:'',options:[],subOptions:[],checkRequests:[]});renderApp();};
+
+  /* 추가 호텔 입력 폼 이벤트 바인딩 */
+  document.querySelectorAll('.check-input-block').forEach(block=>{
+    const tempId=block.dataset.tempid;
+    const crEl=block.querySelector('.checkRegion');if(!crEl)return;
+    const rowId=Number(crEl.dataset.row);
+    const row=d.rows.find(r=>r.id===rowId);
+    if(!row||!ui.checkInputs||!ui.checkInputs[rowId])return;
+    const inp=ui.checkInputs[rowId].find(i=>i.tempId===tempId);
+    if(!inp)return;
+
+    crEl.onchange=e=>{inp.region=e.target.value;};
+    const chEl=block.querySelector('.checkHotel');if(chEl)chEl.oninput=e=>{inp.hotel=e.target.value;};
+    const croomEl=block.querySelector('.checkRoom');if(croomEl)croomEl.oninput=e=>{inp.roomType=e.target.value;};
+    const cpEl=block.querySelector('.checkPrice');if(cpEl)cpEl.oninput=e=>{inp.price=Number(e.target.value)||0;};
+  });
+
+  /* Phase 3-E: 추가 요청 버튼 - 원스텝으로 새로운 호텔 필드 추가 */
+  document.querySelectorAll('.addReqBtn').forEach(btn=>{
+    btn.onclick=e=>{
+      e.preventDefault();
+      const rowId=Number(btn.dataset.row);
+      if(!ui.open)ui.open=new Set();
+      ui.open.add(rowId); /* 섹션 항상 표시 (이미 표시되지만) */
+      addCheckInputRow(rowId); /* 새로운 호텔 필드 추가 */
+    };
+  });
+
+  /* 저장된 호텔 섹션 펼침/접힘 */
+  document.querySelectorAll('.checkReqTog').forEach(tog=>{
+    tog.onclick=e=>{
+      e.stopPropagation();
+      const reqId=tog.dataset.reqid;
+      if(!ui.checkReqOpen)ui.checkReqOpen=new Set();
+      ui.checkReqOpen.has(reqId)?ui.checkReqOpen.delete(reqId):ui.checkReqOpen.add(reqId);
+      renderApp();
+    };
+  });
+
+  /* Phase 4: 추가 호텔 상태 실시간 변경 */
+  document.querySelectorAll('.checkBookingStatus').forEach(sel=>{
+    sel.onchange=e=>{
+      const rowId=Number(sel.dataset.row);
+      const reqId=sel.dataset.reqid;
+      const row=draft.rows.find(r=>r.id===rowId);
+      if(!row||!row.checkRequests)return;
+      const req=row.checkRequests.find(r=>r.id===reqId);
+      if(req){
+        req.bookingStatus=sel.value;
+        saveDB();
+        renderApp();
+        toast('✅ 상태가 변경되었습니다');
+      }
+    };
+  });
+
+  /* Phase 4: 추가 호텔 전화번호 실시간 저장 */
+  document.querySelectorAll('.checkPhone').forEach(inp=>{
+    inp.onchange=e=>{
+      const rowId=Number(inp.dataset.row);
+      const reqId=inp.dataset.reqid;
+      const row=draft.rows.find(r=>r.id===rowId);
+      if(!row||!row.checkRequests)return;
+      const req=row.checkRequests.find(r=>r.id===reqId);
+      if(req){
+        req.phone=inp.value.trim();
+        saveDB();
+        toast('✅ 전화번호가 저장되었습니다');
+      }
+    };
+  });
+
+  /* Phase 4: 추가 호텔 담당자 실시간 저장 */
+  document.querySelectorAll('.checkManager').forEach(inp=>{
+    inp.onchange=e=>{
+      const rowId=Number(inp.dataset.row);
+      const reqId=inp.dataset.reqid;
+      const row=draft.rows.find(r=>r.id===rowId);
+      if(!row||!row.checkRequests)return;
+      const req=row.checkRequests.find(r=>r.id===reqId);
+      if(req){
+        req.manager=inp.value.trim();
+        saveDB();
+        toast('✅ 담당자가 저장되었습니다');
+      }
+    };
+  });
   function doSubmit(direct){
     if(!d.rows.some(r=>r.hotel.trim())){toast(T('t_need_hotel1'));return;}
     if(d.mode==='parallel')d.rows.forEach(r=>{r.rooms=Math.max(1,Number(d.sharedRooms)||1);});
@@ -649,47 +882,24 @@ function bindForm(){
     if(d._wsn)req.rows.forEach((row,i)=>{const arr=d._wsn[i];if(!arr||!arr.length)return;
       rDates(req,row,i).dates.forEach((iso,k)=>{const v=arr[k]||arr[arr.length-1];
         if(v&&v.price){req.ws[row.id+'|'+iso]={price:v.price};}});});
-    upsert(req);draft=newDraft(d);
+    upsert(req);draft=newDraft(d);ui.open.clear();
     if(ui.role==='agent')ui.sel=req.id;else ui.ssel=req.id;
     renderApp();
     toast((direct?T('t_direct_reg'):T('t_registered'))+reqNo(req));
   }
-  document.getElementById('run').onclick=()=>{saveAllCheckInputs();doSubmit(false);};
+  const run=document.getElementById('run');if(run)run.onclick=()=>{saveAllCheckInputs();doSubmit(false);};
   const rd=document.getElementById('runDirect');if(rd)rd.onclick=()=>{saveAllCheckInputs();doSubmit(true);};
 
-  /* Phase 2: 추가 룸체크 섹션 토글 버튼 */
-  document.querySelectorAll('.checkTog').forEach(btn=>{
+  /* Phase 3-E: 중복 코드 제거 (789-805줄의 addReqBtn 핸들러로 통합됨) */
+  /* 추가 호텔 개별 토글 버튼 */
+  document.querySelectorAll('.checkReqTog').forEach(btn=>{
     btn.onclick=e=>{
       e.preventDefault();
       const rowId=Number(btn.dataset.row);
-      ui.open.has(rowId)?ui.open.delete(rowId):ui.open.add(rowId);
+      const reqId=btn.dataset.reqid;
+      if(!ui.checkReqOpen)ui.checkReqOpen=new Set();
+      ui.checkReqOpen.has(reqId)?ui.checkReqOpen.delete(reqId):ui.checkReqOpen.add(reqId);
       renderApp();
-    };
-  });
-
-  /* Phase 2: 추가 호텔은 항상 펼쳐진 상태로 표시 - toggle 이벤트 제거됨 */
-
-  /* Phase 2: 호텔 추가 버튼 - 새로운 입력 행 생성 */
-  d.rows.forEach(row=>{
-    const addBtn=document.getElementById('addCheckBtn'+row.id);
-    if(addBtn){
-      addBtn.onclick=()=>{
-        addCheckInputRow(row.id);
-      };
-    }
-  });
-
-  /* Phase 2: 임시 입력 행 삭제 버튼 */
-  document.querySelectorAll('.delCheckInput').forEach(btn=>{
-    btn.onclick=e=>{
-      e.preventDefault();
-      e.stopPropagation();
-      const row=btn.closest('.checkInputRow');
-      if(row){
-        const rowId=Number(row.dataset.row);
-        const tempId=row.dataset.tempid;
-        removeCheckInputRow(rowId, tempId);
-      }
     };
   });
 
@@ -714,16 +924,6 @@ function bindForm(){
         if(inp_row)inp_row.roomType=e.target.value;
       }
       updateCheckListsForRow(rowId);
-    });
-  });
-  document.querySelectorAll('.checkQty').forEach(inp=>{
-    inp.addEventListener('change',e=>{
-      const rowId=Number(inp.dataset.row);
-      const tempId=inp.dataset.tempid;
-      if(tempId&&ui.checkInputs&&ui.checkInputs[rowId]){
-        const inp_row=ui.checkInputs[rowId].find(r=>r.tempId===tempId);
-        if(inp_row)inp_row.qty=Math.max(1,Number(e.target.value)||1);
-      }
     });
   });
   document.querySelectorAll('.checkRegion').forEach(sel=>{
@@ -760,60 +960,6 @@ function bindForm(){
       if(row&&row.checkRequests){
         const req=row.checkRequests.find(r=>r.id===reqId);
         if(req)req.price=e.target.value?Number(e.target.value):0;
-      }
-    });
-  });
-
-  /* Phase 2: 등록된 추가 호텔 지역 변경 */
-  document.querySelectorAll('.checkReqRegion').forEach(sel=>{
-    sel.addEventListener('change',e=>{
-      const rowId=Number(sel.dataset.row);
-      const reqId=sel.dataset.reqid;
-      const row=draft.rows.find(r=>r.id===rowId);
-      if(row&&row.checkRequests){
-        const req=row.checkRequests.find(r=>r.id===reqId);
-        if(req)req.region=e.target.value;
-        saveDB();renderApp();
-      }
-    });
-  });
-
-  /* Phase 2: 등록된 추가 호텔 호텔명 변경 */
-  document.querySelectorAll('.checkReqHotel').forEach(inp=>{
-    inp.addEventListener('input',e=>{
-      const rowId=Number(inp.dataset.row);
-      const reqId=inp.dataset.reqid;
-      const row=draft.rows.find(r=>r.id===rowId);
-      if(row&&row.checkRequests){
-        const req=row.checkRequests.find(r=>r.id===reqId);
-        if(req)req.hotel=e.target.value;
-      }
-    });
-  });
-
-  /* Phase 2: 등록된 추가 호텔 룸타입 변경 */
-  document.querySelectorAll('.checkReqRoom').forEach(inp=>{
-    inp.addEventListener('input',e=>{
-      const rowId=Number(inp.dataset.row);
-      const reqId=inp.dataset.reqid;
-      const row=draft.rows.find(r=>r.id===rowId);
-      if(row&&row.checkRequests){
-        const req=row.checkRequests.find(r=>r.id===reqId);
-        if(req)req.roomType=e.target.value;
-      }
-    });
-  });
-
-  /* Phase 2: 등록된 추가 호텔 객실수 변경 */
-  document.querySelectorAll('.checkReqQty').forEach(inp=>{
-    inp.addEventListener('change',e=>{
-      const rowId=Number(inp.dataset.row);
-      const reqId=inp.dataset.reqid;
-      const row=draft.rows.find(r=>r.id===rowId);
-      if(row&&row.checkRequests){
-        const req=row.checkRequests.find(r=>r.id===reqId);
-        if(req)req.qty=Math.max(1,Number(e.target.value)||1);
-        saveDB();renderApp();
       }
     });
   });
@@ -867,7 +1013,7 @@ function agentItemHTML(req){
 
       /* Phase 2-D: 추가 호텔 확인 섹션 (확인자/에이전트용) */
       if(req.rows&&req.rows.some(r=>r.checkRequests&&r.checkRequests.length)){
-        detail+='<div class="sechead" style="margin-top:12px">📋 추가 호텔 확인</div>';
+        detail+='<div class="sechead" style="margin-top:12px">📋 추가 호텔 확인 (요청자 입력)</div>';
         req.rows.forEach(row=>{
           if(row.checkRequests&&row.checkRequests.length){
             row.checkRequests.forEach(chk=>{
@@ -914,6 +1060,57 @@ function agentItemHTML(req){
             });
           }
         });
+      }
+
+      /* 확인자(schk)가 추가 호텔을 입력할 수 있는 섹션 */
+      if(ui.role==='schk'&&!answered){
+        detail+='<div class="sechead" style="margin-top:12px">📋 추가 호텔 입력 (확인자 입력)</div>';
+        if(!req.checkerAddedHotels)req.checkerAddedHotels=[];
+        /* 확인자가 입력 중인 추가 호텔 폼 */
+        if(!ui.agentCheckInputs)ui.agentCheckInputs={};
+        if(!ui.agentCheckInputs[req.id])ui.agentCheckInputs[req.id]=[];
+
+        detail+='<div style="margin-bottom:8px">'
+          +'<button class="addbtn sm" id="agentAddCheckBtn-'+req.id+'" onclick="window.agentAddCheckInputRow('+req.id+')">+ 호텔 추가</button>'
+        +'</div>';
+
+        /* 입력 폼들 표시 */
+        detail+='<div id="agentCheckInputs-'+req.id+'" style="display:flex;flex-direction:column;gap:12px;margin-bottom:10px">';
+        (ui.agentCheckInputs[req.id]||[]).forEach(inp=>{
+          detail+='<div class="hblock" data-tempid="'+inp.tempId+'" style="background:#fff;border:1px solid var(--line)">'
+            +'<div class="flex between aic" style="margin-bottom:8px">'
+              +'<span style="font-weight:600;color:#333">추가 호텔 (확인자)</span>'
+              +'<button class="del" onclick="window.agentRemoveCheckInputRow('+req.id+',\''+inp.tempId+'\')">−</button>'
+            +'</div>'
+            +'<div class="line lhotel" style="margin-bottom:10px">'
+              +'<div><div class="label">지역</div><select class="agentCheckRegion" data-req="'+req.id+'" data-tempid="'+inp.tempId+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
+                +'<option value="">선택</option>'
+                +REGIONS.map(r=>'<option value="'+esc(r)+'"'+(inp.region===r?' selected':'')+'>'+esc(r)+'</option>').join('')
+              +'</select></div>'
+              +'<div><div class="label">호텔명</div><input type="text" class="agentCheckHotel" data-req="'+req.id+'" data-tempid="'+inp.tempId+'" placeholder="호텔명 입력" value="'+esc(inp.hotel)+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
+              +'<div><div class="label">룸타입</div><input type="text" class="agentCheckRoom" data-req="'+req.id+'" data-tempid="'+inp.tempId+'" placeholder="룸타입 입력" value="'+esc(inp.roomType)+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
+            +'</div>'
+            +'<div class="line lhotel" style="margin-bottom:10px">'
+              +'<div><div class="label">전화번호</div><input type="tel" class="agentCheckPhone" data-req="'+req.id+'" data-tempid="'+inp.tempId+'" placeholder="전화번호 입력" value="'+esc(inp.phone||'')+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
+              +'<div><div class="label">호텔 담당자</div><input type="text" class="agentCheckManager" data-req="'+req.id+'" data-tempid="'+inp.tempId+'" placeholder="담당자명/연락처" value="'+esc(inp.manager||'')+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
+              +'<div><div class="label">가능여부</div><select class="agentCheckStatus" data-req="'+req.id+'" data-tempid="'+inp.tempId+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
+                +'<option value="">미정</option>'
+                +'<option value="available"'+(inp.status==='available'?' selected':'')+'>가능</option>'
+                +'<option value="limited"'+(inp.status==='limited'?' selected':'')+'>제한</option>'
+                +'<option value="unavailable"'+(inp.status==='unavailable'?' selected':'')+'>불가</option>'
+              +'</select></div>'
+            +'</div>'
+            +'<div style="margin-bottom:10px">'
+              +'<div class="label">금액 (1박)</div>'
+              +'<input type="number" class="agentCheckPrice" data-req="'+req.id+'" data-tempid="'+inp.tempId+'" placeholder="금액 입력" value="'+(inp.price||0)+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px" min="0">'
+            +'</div>'
+            +'<div style="margin-top:10px">'
+              +'<button class="linkbtn agentCheckDetailTog" data-tempid="'+inp.tempId+'" style="color:#2B5FA3;font-weight:600">'+((ui.agentCheckDetailOpen&&ui.agentCheckDetailOpen.has(inp.tempId))?'▾':'▸')+' 상세 정보</button>'
+              +((ui.agentCheckDetailOpen&&ui.agentCheckDetailOpen.has(inp.tempId))?'<textarea class="agentCheckDetailNote" data-req="'+req.id+'" data-tempid="'+inp.tempId+'" placeholder="날짜별 가격, 가능 여부 등 상세 정보 입력" style="width:100%;margin-top:6px;padding:8px;border:1px solid var(--line);border-radius:4px;font-size:12px;min-height:60px">'+escT(inp.detailNote||'')+'</textarea>':'')
+            +'</div>'
+          +'</div>';
+        });
+        detail+='</div>';
       }
 
       if(answered)detail+='<div class="legend" style="margin-top:8px">'
@@ -1005,37 +1202,19 @@ function resultCardHTML(req,asReq){
         const dc=c.status==='av'?'dc-av':c.status==='so'?'dc-so':c.status==='rq'?'dc-rq':'dc-un';
         return '<span class="daychip '+dc+'">'+fdshort(iso)+' '+statusLabel(c.status)+'</span>';}).join('')+'</div>';
     }
-    /* Phase 2: 추가 호텔들 표시 - 사용자 지정 형식 */
+    /* Phase 2: 추가 호텔들 표시 - 간단한 한 줄 형식 */
     let checkReqsHTML='';
     if(row.checkRequests&&row.checkRequests.length>0){
-      checkReqsHTML='<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px">';
+      checkReqsHTML='<div style="margin-top:12px">';
       row.checkRequests.forEach((req_ch,ci)=>{
-        const crDateArr=Array.from({length:diffD(req_ch.checkInDate,req_ch.checkOutDate)},(_,k)=>addDays(req_ch.checkInDate,k));
-        const crAv={k:req_ch.status==='confirmed'?'ok':req_ch.status==='rejected'?'no':'un',
-                   t:req_ch.status==='confirmed'?'✅ 확인':req_ch.status==='rejected'?'❌ 거절':'⏳ 대기'};
-        let crDl='';
-        if(crDateArr.length>0){
-          crDl='<div class="daychips">'+crDateArr.map((iso,di)=>{
-            const statusDisplay=req_ch.status==='confirmed'?'✅ AV':req_ch.status==='rejected'?'❌ SO':'⏳ RQ';
-            const priceDisplay=req_ch.price?'<span style="font-weight:600">'+won(req_ch.price)+'</span>':'';
-            return '<span class="daychip '+(req_ch.status==='confirmed'?'dc-av':req_ch.status==='rejected'?'dc-so':'dc-un')+'" style="display:inline-flex;align-items:center;gap:4px">'
-              +'<span>'+fdshort(iso)+'</span>'
-              +'<span style="padding:2px 4px;background:rgba(0,0,0,0.05);border-radius:2px;font-size:11px">'+statusDisplay+'</span>'
-              +(priceDisplay?'<span style="border-left:1px solid currentColor;padding-left:4px">'+priceDisplay+'</span>':'')
-              +'</span>';
-          }).join('')+'</div>';
-        }
-        checkReqsHTML+='<div class="rq-item">'
-          +'<div style="font-weight:700;font-size:14px;margin-bottom:6px">추가 호텔 '+(ci+1)+': '+escT(dHotel(req_ch.hotel)||'-')+'</div>'
-          +'<div class="rq-body">'
-          +'<div class="qc-rowline" style="align-items:center;margin-top:0;margin-bottom:8px"><span class="rq-line">'
-          +(req_ch.region&&req_ch.region!=='전체'?'<span class="rq-region" style="font-weight:600;margin-right:6px">'+escT(dRegion(req_ch.region))+'</span>':'')
-          +'<span class="rq-type">'+escT(dRoom(req_ch.roomType)||'-')+' <span class="sm">· '+Math.max(1,Number(req_ch.qty)||1)+'실</span></span></span>'
-          +'<span class="avbig av-'+crAv.k+'" style="margin-top:0;margin-left:auto">'+crAv.t+'</span></div>'
-          +'<div style="font-size:12px;color:#666;margin-bottom:8px">'+fdate(req_ch.checkInDate)+' → '+fdate(req_ch.checkOutDate)+' <span style="font-weight:600;color:#333">'+diffD(req_ch.checkInDate,req_ch.checkOutDate)+'박</span></div>'
-          +crDl
-          +(req_ch.price?'<div style="margin-top:8px;padding:6px 8px;background:#f9fafb;border-radius:4px;font-size:12px"><span style="color:#666">요금: </span><span style="font-weight:600;color:#22C55E">'+won(req_ch.price)+'</span></div>':'')
-          +'</div></div>';
+        checkReqsHTML+='<div style="margin-top:8px;padding:12px;background:#f9f9f9;border:1px solid #ddd;border-radius:6px;display:flex;justify-content:space-between;align-items:center">'
+          +'<div style="font-weight:600;color:#333;font-size:14px">'
+            +'<span>'+escT(dRegion(req_ch.region||'전체'))+'</span> · '
+            +'<span>'+escT(dHotel(req_ch.hotel||'-'))+'</span> · '
+            +'<span>'+escT(dRoom(req_ch.roomType||'-'))+'</span>'
+          +'</div>'
+          +'<button class="del" onclick="removeCheckRequest('+row.id+','+req_ch.id+')" style="padding:4px 8px;border:none;background:none;cursor:pointer;font-size:18px;color:#999">−</button>'
+          +'</div>';
       });
       checkReqsHTML+='</div>';
     }
@@ -1073,7 +1252,28 @@ function bindCommonList(){
   document.querySelectorAll('[data-topast]').forEach(b=>b.onclick=()=>{const r=byId(Number(b.dataset.topast));if(!r)return;
     r.archivedAt=Date.now();ui.sel=null;ui.ssel=null;saveDB();renderApp();toast(T('t_topast')+reqNo(r));});
   document.querySelectorAll('[data-recheck]').forEach(b=>b.onclick=()=>{const r=byId(Number(b.dataset.recheck));if(!r)return;
-    draft=draftFromReq(r);ui.sel=null;ui.ssel=null;ui.qbOpen=null;renderApp();
+    draft=draftFromReq(r);
+    /* Phase 3-E: checkRequests를 ui.checkInputs로 변환하여 입력 폼에서 편집 가능하게 */
+    ui.checkInputs={};
+    draft.rows.forEach((row,i)=>{
+      if(row.checkRequests&&row.checkRequests.length){
+        ui.checkInputs[row.id]=row.checkRequests.map(chk=>({
+          tempId:chk.id+'_loaded',
+          region:chk.region||'전체',
+          hotel:chk.hotel||'',
+          roomType:chk.roomType||'',
+          phone:chk.phone||'',
+          manager:chk.manager||'',
+          price:chk.price||'',
+          rooms:chk.rooms||1,
+          status:chk.status||'',
+          savedAt:chk.savedAt
+        }));
+        ui.open.add(row.id);
+        row.checkRequests=[]; /* 기존 데이터는 비우고 ui.checkInputs에서만 편집 */
+      }
+    });
+    ui.sel=null;ui.ssel=null;ui.qbOpen=null;renderApp();
     window.scrollTo({top:0,behavior:'smooth'});
     toast(T('t_recheck'));});
 }
@@ -1090,6 +1290,34 @@ function bindAgentList(){
   document.querySelectorAll('[data-askquote]').forEach(b=>b.onclick=()=>{const r=byId(Number(b.dataset.askquote));if(r){r.quoteRequested=true;saveDB();renderApp();toast(T('t_askq'));}});
   document.querySelectorAll('[data-qtext]').forEach(b=>b.onclick=()=>{const r=byId(Number(b.dataset.qtext));if(r)copyText(quoteText(r),T('t_qcopied'));});
   document.querySelectorAll('[data-qimg]').forEach(b=>b.onclick=()=>{saveImg('qcard'+b.dataset.qimg,'견적.png');});
+
+  /* 확인자용 추가 호텔 입력 폼 이벤트 바인딩 */
+  document.querySelectorAll('.agentCheckDetailTog').forEach(btn=>{
+    btn.onclick=e=>{
+      e.preventDefault();
+      const tempId=btn.dataset.tempid;
+      if(!ui.agentCheckDetailOpen)ui.agentCheckDetailOpen=new Set();
+      ui.agentCheckDetailOpen.has(tempId)?ui.agentCheckDetailOpen.delete(tempId):ui.agentCheckDetailOpen.add(tempId);
+      renderApp();
+    };
+  });
+
+  document.querySelectorAll('.agentCheckRegion,.agentCheckHotel,.agentCheckRoom,.agentCheckPhone,.agentCheckManager,.agentCheckStatus,.agentCheckPrice,.agentCheckDetailNote').forEach(inp=>{
+    const reqId=Number(inp.dataset.req);
+    const tempId=inp.dataset.tempid;
+    if(!ui.agentCheckInputs||!ui.agentCheckInputs[reqId])return;
+    const inpData=ui.agentCheckInputs[reqId].find(i=>i.tempId===tempId);
+    if(!inpData)return;
+
+    if(inp.classList.contains('agentCheckRegion'))inp.onchange=e=>{inpData.region=e.target.value;};
+    if(inp.classList.contains('agentCheckHotel'))inp.oninput=e=>{inpData.hotel=e.target.value;};
+    if(inp.classList.contains('agentCheckRoom'))inp.oninput=e=>{inpData.roomType=e.target.value;};
+    if(inp.classList.contains('agentCheckPhone'))inp.oninput=e=>{inpData.phone=e.target.value;};
+    if(inp.classList.contains('agentCheckManager'))inp.oninput=e=>{inpData.manager=e.target.value;};
+    if(inp.classList.contains('agentCheckStatus'))inp.onchange=e=>{inpData.status=e.target.value;};
+    if(inp.classList.contains('agentCheckPrice'))inp.oninput=e=>{inpData.price=Number(e.target.value)||0;};
+    if(inp.classList.contains('agentCheckDetailNote'))inp.oninput=e=>{inpData.detailNote=e.target.value;};
+  });
 }
 function saveImg(id,name){const node=document.getElementById(id);
   if(!node)return;
@@ -1157,24 +1385,49 @@ function staffWorkInner(req){
           : '<button class="linkbtn optTog" data-id="'+row.id+'">'+T('ws_opt_open')+'</button>')
         +'</div>';
     }
-    /* Phase 2: 추가 호텔 확인 섹션 (호텔1 카드 내 sub-card) */
+    /* Phase 3-D: 추가 호텔 — 호텔1과 동일한 컴팩트 레이아웃 */
     if(row.checkRequests&&row.checkRequests.length){
       row.checkRequests.forEach((chk,ci)=>{
-        detail+='<div class="wscard" style="margin-top:8px;border-color:rgba(30,99,200,0.3);background:rgba(30,99,200,0.02)">'
-          +'<div class="wshead" style="display:block;padding:0">'
-            +'<div class="rq-datebar"><span style="color:#1E63C8">➕</span> '+fdate(dd.checkIn)+' → '+fdate(dd.checkOut)+' <span class="nightsb">'+dd.nights+T('n_sfx')+'</span><span class="rq-idx" style="color:#666">추가 호텔</span></div>'
-            +'<div class="rq-body">'
-              +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(chk.hotel))+'</span><span class="rq-type">'+escT(dRoom(chk.roomType)||'-')+'</span></span>'
-              +(ui.role==='schk'?'<span style="display:flex;gap:4px;align-items:center;flex:0 0 auto">'
-                +(chk.price?'<span style="font-size:13px;color:var(--brand);font-weight:600">฿ '+chk.price.toLocaleString()+'</span>':'<span style="font-size:12px;color:#999">금액 미입력</span>')
-                +'<span style="font-size:12px;padding:2px 6px;border-radius:3px;font-weight:600;'
-                  +(chk.status==='pending'?'background:#fef3cd;color:#856404':chk.status==='confirmed'?'background:#d4edda;color:#155724':'background:#f8d7da;color:#721c24')+'">'
-                  +(chk.status==='pending'?'⏳':'✅')+'</span></span>':'')
-              +'</div>'
-            +'</div>'
-          +'</div>'
-        +'</div>';
+        const chkId=row.id+'_chk_'+ci;
+        const chkOpen=ui.checkExpand.has(chkId);
+        const chkChip='<span class="badge '+(chk.status==='confirmed'?'b-done':'b-wait')+'" style="margin-left:4px">'+(chk.status==='confirmed'?T('chip_done'):T('chip_wait'))+'</span>';
+        const csts=dd.dates.map(iso=>((req.ws||{})[chkId+'|'+iso]||{}).status||'');
+        const cprs=dd.dates.map(iso=>((req.ws||{})[chkId+'|'+iso]||{}).price||'');
+        const cuSt=[...new Set(csts)],cuPr=[...new Set(cprs)];
+        const cmSt=cuSt.length>1,cmPr=cuPr.length>1;
+
+        const chkHead='<div class="wshead" data-chk-toggle="'+chkId+'" style="display:block;padding:0">'
+          +'<div class="rq-datebar"><span class="chev'+(chkOpen?' open':'')+'" style="width:13px">▶</span>'+fdate(dd.checkIn)+' → '+fdate(dd.checkOut)+' <span class="nightsb">'+dd.nights+T('n_sfx')+'</span><span class="rq-idx">추가 '+T('hotel_n')+' '+(ci+1)+chkChip+'</span></div>'
+          +'<div class="rq-body">'
+          +'<div class="flex aic" style="gap:5px;flex-wrap:wrap;margin-bottom:5px">'
+          +(chk.region&&chk.region!=='전체'?'<span class="rq-region" style="margin-bottom:0">'+escT(dRegion(chk.region))+'</span>':'')
+          +chkPhoneHTML(req,chk,chkId)
+          +'<span class="small" style="color:var(--muted)">호텔 담당자</span>'
+          +'<input type="text" class="chkPhWho" data-chkid="'+chkId+'" placeholder="담당자" value="'+(chk.manager||'')+'" style="width:120px;padding:2px 4px;border:1px solid var(--line);border-radius:2px;font-size:12px">'
+          +(chk.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+T('save_w')+' '+dotDateTime(chk.savedAt)+'</span>':'')+'</div>'
+          +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(chk.hotel))+'</span><span class="rq-type">'+escT(dRoom(chk.roomType)||'-')+' <span class="sm">· '+(chk.rooms||row.rooms||1)+T('r_sfx')+'</span></span></span>'
+          +'<span style="display:flex;gap:5px;align-items:center;flex:0 0 auto">'+stSel('stsel',cmSt?'__none':cuSt[0],'data-chk="'+chkId+'"',cmSt)
+          +'<span class="pbox"><span>฿</span><input type="number" class="chkPrice" data-chk="'+chkId+'" placeholder="'+esc(cmPr?T('ws_mixed'):T('ws_price_ph'))+'" value="'+(cmPr?'':(cuPr[0]||''))+'"></span></span></div>'
+          +'</div></div>';
+        let chkDetail='';
+        if(chkOpen){
+          chkDetail='<div class="detail"><div class="dhdr">In '+fdate(dd.checkIn)+' / Out '+fdate(dd.checkOut)+' · '+dd.nights+T('n_sfx')+' · '+T('ws_day_edit')+'</div>'
+            +dd.dates.map(iso=>{const c=(req.ws||{})[chkId+'|'+iso]||{};
+              return '<div class="drow"><span class="ddate">'+fdshort(iso)+'</span>'
+                +stSel('stsel',c.status||'','data-chk-key="'+chkId+'|'+iso+'"',false)
+                +'<div class="pbox"><span>฿</span><input type="number" class="chkone" data-chk-key="'+chkId+'|'+iso+'" placeholder="'+esc(T('ws_price_ph'))+'" value="'+(c.price||'')+'"></div></div>';}).join('')
+            /* 호텔1과 동일: 옵션 섹션 */
+            +'<button class="linkbtn optTog" data-chkid="'+chkId+'" style="margin-top:8px">▸ 호텔 추가 옵션 입력</button>'
+            +'</div>';
+        }
+        detail+='<div class="wscard" style="margin-top:8px;border-color:rgba(30,99,200,0.3);background:rgba(30,99,200,0.02)">'+chkHead+chkDetail+'</div>';
       });
+      /* 추가 호텔 섹션 아래 "룸체크 답변보내기" 버튼 */
+      if(row.checkRequests.length>0){
+        detail+='<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,.1)"><div class="qbtns">'
+          +'<button class="qcopy" id="sendChkAnswer_'+row.id+'" style="width:100%">🔔 룸체크 답변보내기</button>'
+          +'</div></div>';
+      }
     }
     return '<div class="wscard">'+head+detail+'</div>';
   }).join('');
@@ -1299,6 +1552,66 @@ function bindStaff(){
         }
       }
     };
+  });
+  /* 추가 호텔 펼침/접힘 토글 */
+  document.querySelectorAll('[data-chk-toggle]').forEach(el=>el.onclick=e=>{
+    if(e.target.closest('select,input,textarea,button,a'))return;
+    const id=el.dataset.chkToggle;ui.checkExpand.has(id)?ui.checkExpand.delete(id):ui.checkExpand.add(id);renderApp();});
+  /* 추가 호텔 찾기 헬퍼 */
+  const findChk=cid=>{for(const row of req.rows){if(!row.checkRequests)continue;
+    for(let ci=0;ci<row.checkRequests.length;ci++){if(row.id+'_chk_'+ci===cid)return {row,chk:row.checkRequests[ci],ci};}}return null;};
+  /* 추가 호텔 상태 선택자 (전체 날짜 일괄) */
+  document.querySelectorAll('select.chkSel[data-chk]').forEach(sel=>sel.onchange=e=>{
+    const chkId=e.target.dataset.chk,v=e.target.value;if(v==='__mix')return;
+    const f=findChk(chkId);if(!f)return;
+    f.chk.bookingStatus=v;req.ws=req.ws||{};
+    const dd=rDates(req,f.row,req.rows.indexOf(f.row));
+    dd.dates.forEach(iso=>{const k=chkId+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].status=v;});
+    f.chk.savedAt=Date.now();saveDB();renderApp();});
+  /* 추가 호텔 금액 입력 (전체 날짜 일괄) */
+  document.querySelectorAll('input.chkPrice[data-chk]').forEach(inp=>inp.onchange=e=>{
+    const chkId=e.target.dataset.chk,v=e.target.value;
+    const f=findChk(chkId);if(!f)return;
+    f.chk.price=Number(v)||0;req.ws=req.ws||{};
+    const dd=rDates(req,f.row,req.rows.indexOf(f.row));
+    dd.dates.forEach(iso=>{const k=chkId+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].price=v;});
+    f.chk.savedAt=Date.now();saveDB();renderApp();});
+  /* 추가 호텔 요일별 상태 선택자 */
+  document.querySelectorAll('select.chksel[data-chk-key]').forEach(sel=>sel.onchange=e=>{
+    const k=e.target.dataset.chkKey,v=e.target.value;req.ws=req.ws||{};req.ws[k]=req.ws[k]||{};req.ws[k].status=v;
+    const f=findChk(k.split('|')[0]);if(f)f.chk.savedAt=Date.now();
+    saveDB();renderApp();});
+  /* 추가 호텔 요일별 금액 입력 */
+  document.querySelectorAll('input.chkone[data-chk-key]').forEach(inp=>{
+    inp.oninput=e=>{const k=e.target.dataset.chkKey;req.ws=req.ws||{};req.ws[k]=req.ws[k]||{};req.ws[k].price=e.target.value;};
+    inp.onchange=e=>{const f=findChk(e.target.dataset.chkKey.split('|')[0]);if(f)f.chk.savedAt=Date.now();saveDB();renderApp();};});
+  /* 추가 호텔 전화번호 선택 */
+  document.querySelectorAll('.chkPhSel').forEach(s=>s.onchange=e=>{
+    const cid=s.dataset.chkid,f=findChk(cid);if(!f)return;
+    const v=e.target.value;
+    if(v==='__add'){ui.phAdd.add(cid);renderApp();return;}
+    if(v){f.chk.phone=v;saveDB();}renderApp();});
+  /* 추가 호텔 새 전화번호 입력 */
+  document.querySelectorAll('.chkPhNew').forEach(inp=>inp.onchange=e=>{
+    const cid=inp.dataset.chkid,f=findChk(cid);if(!f)return;
+    const v=e.target.value.trim();if(!v){ui.phAdd.delete(cid);renderApp();return;}
+    if(!f.chk.hotel){toast(T('t_need_hotel'));return;}
+    DB.phones=DB.phones||{};DB.phones[f.chk.hotel]=DB.phones[f.chk.hotel]||[];
+    if(!DB.phones[f.chk.hotel].includes(v))DB.phones[f.chk.hotel].push(v);
+    f.chk.phone=v;ui.phAdd.delete(cid);saveDB();renderApp();toast(T('t_contact_saved'));});
+  /* 추가 호텔 담당자(확인자) 입력 */
+  document.querySelectorAll('.chkPhWho').forEach(inp=>{
+    inp.oninput=e=>{const f=findChk(inp.dataset.chkid);if(f)f.chk.manager=e.target.value;};
+    inp.onchange=e=>{const f=findChk(inp.dataset.chkid);if(f)f.chk.savedAt=Date.now();saveDB();renderApp();};});
+  /* Phase 3-C: 룸체크 답변보내기 버튼 */
+  document.querySelectorAll('[id^="sendChkAnswer_"]').forEach(btn=>btn.onclick=()=>{
+    const rid=Number(btn.id.replace('sendChkAnswer_',''));
+    const row=req.rows.find(r=>r.id===rid);
+    if(!row||!row.checkRequests)return;
+    buildWsFromDOM(req);
+    row.checkRequests.forEach(chk=>{chk.status='confirmed';chk.confirmedAt=Date.now();chk.confirmedBy=DB.checker||'심은선';});
+    saveDB();renderApp();
+    toast('추가 호텔 정보가 저장되었습니다 · '+reqNo(req));
   });
 }
 

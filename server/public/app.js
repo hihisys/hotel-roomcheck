@@ -470,7 +470,7 @@ function formHTML(){
                 const isOpen=ui.checkReqOpen.has(req.id);
                 return '<div class="hblock" data-id="'+req.id+'" style="margin-top:12px;background:#f9f9f9">'
                   +'<div class="flex between aic checkReqTog" data-row="'+row.id+'" data-reqid="'+req.id+'" style="cursor:pointer">'
-                    +'<span class="bnum">'+escT(dRegion(req.region||'전체'))+' | '+esc(req.phone||'번호 없음')+' | '+esc(req.manager||'')+' | '+(req.savedAt?'저장 '+new Date(req.savedAt).toLocaleString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'')+'</span>'
+                    +'<span class="bnum">'+escT(dRegion(req.region||'전체'))+' | '+esc(req.phone||'번호 없음')+' | '+esc(req.manager||'-')+' | '+(req.savedAt?kdotDateTime(req.savedAt):'')+'</span>'
                     +'<button class="del" onclick="event.stopPropagation();removeCheckRequest('+row.id+','+req.id+')" style="padding:4px 8px">−</button>'
                   +'</div>'
                   +'<div class="line lhotel" style="margin-top:8px">'

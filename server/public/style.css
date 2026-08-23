@@ -833,3 +833,13 @@ button.qdelq{width:100%;margin-top:10px;padding:9px;border-radius:10px;backgroun
   color:#111827;font-weight:600}
 .hfind .hfr{flex:none;font-size:11px;color:#64748b;background:#f1f5f9;
   border-radius:999px;padding:2px 7px;white-space:nowrap}
+
+/* ── 입력칸 목록 화살표 (호텔 · 룸타입 공통) ─────────────── */
+.pkwrap{position:relative;display:block}
+.pkwrap>input{width:100%;padding-right:26px}
+.pkarrow{position:absolute;right:5px;top:50%;transform:translateY(-50%);z-index:3;
+  width:22px;height:22px;padding:0;display:flex;align-items:center;justify-content:center;
+  border:0;background:transparent;color:#7A8794;font-size:11px;line-height:1;
+  border-radius:6px;cursor:pointer;transition:background .12s,color .12s}
+.pkarrow:hover{background:#EDF1F6;color:#334155}
+.pkwrap.pkopen .pkarrow{transform:translateY(-50%) rotate(180deg);color:#334155}

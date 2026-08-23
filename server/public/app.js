@@ -244,7 +244,7 @@ const _hnorm=s=>String(s||'').toLowerCase().replace(/[\s\-_.()]/g,'');
 function hotelSearch(q,region){
   const nq=_hnorm(q);
   const inRegion=(region&&region!==RG_ALL)?HOTELS.filter(h=>sameRegion(h.region,region)):HOTELS;
-  if(!nq)return inRegion.slice(0,HFIND_MAX);
+  if(!nq)return inRegion.slice();          /* ▾ 로 열면 그 지역 전체 (목록은 스크롤) */
   const scan=base=>{
     const hit=[];
     base.forEach(h=>{
@@ -260,55 +260,97 @@ function hotelSearch(q,region){
   /* 고른 지역 안에 없으면 전체에서 다시 찾아준다 (고르면 지역이 따라온다) */
   return r.length?r:(inRegion===HOTELS?r:scan(HOTELS));
 }
-/* input 에 빨리 찾기 목록을 붙인다. getRegion() 이 현재 고른 지역을 돌려주고,
-   onPick(호텔한글명) 이 실제 반영을 맡는다. */
-function attachHotelFinder(input,getRegion,onPick){
-  if(!input||input._hfBound)return;
-  input._hfBound=true;
+/* 룸타입 후보 — 비어 있으면 그 호텔에 등록된 전부, 글자를 치면 걸러서.
+   걸렀는데 하나도 없으면 전체를 돌려준다(빈 목록을 보여 주지 않는다). */
+function roomSearch(q,hotel){
+  const all=roomsFor(hotel||'')||[];
+  const nq=_hnorm(q);
+  if(!nq)return all.slice();
+  const hit=all.filter(r=>_hnorm(dRoom(r)).includes(nq)||_hnorm(r).includes(nq));
+  return hit.length?hit:all.slice();
+}
+/* ── 입력칸 아래 목록 (호텔 · 룸타입 공통) ──────────────────────────────
+   ▾ 를 누르거나 칸을 누르면 '이미 고른 값과 상관없이' 등록된 전체를 보여주고,
+   글자를 치기 시작하면 그때부터 걸러 준다.
+   브라우저 기본 datalist 는 이미 들어 있는 값으로 목록을 걸러 버려서
+   한 번 고르고 나면 나머지를 다시 볼 수 없다 — 그래서 직접 만든다.
+   opts = { list(query) -> [{label, value, sub}], onPick(value) }            */
+function attachFinder(input,opts){
+  if(!input||input._fnBound)return;
+  input._fnBound=true;
   input.setAttribute('autocomplete','off');
   input.removeAttribute('list');                 /* 기본 datalist 와 겹치지 않게 */
-  const wrap=input.parentNode;if(!wrap)return;
-  if(getComputedStyle(wrap).position==='static')wrap.style.position='relative';
+  const host=input.parentNode;if(!host)return;
+  /* 입력칸만 감싸는 상자를 만들어 화살표·목록의 기준으로 삼는다
+     (라벨까지 들어 있는 바깥 div 를 기준으로 하면 화살표가 위로 뜬다) */
+  const wrap=document.createElement('span');
+  wrap.className='pkwrap';
+  host.insertBefore(wrap,input);
+  wrap.appendChild(input);
   const box=document.createElement('div');
   box.className='hfind';box.style.display='none';
-  wrap.appendChild(box);
-  let items=[],cur=-1;
-  const close=()=>{if(box.isConnected)box.style.display='none';cur=-1;};
+  const arrow=document.createElement('button');
+  arrow.type='button';arrow.className='pkarrow';arrow.tabIndex=-1;
+  arrow.setAttribute('aria-label',T('pick_all'));
+  arrow.textContent='▾';
+  wrap.appendChild(box);wrap.appendChild(arrow);
+
+  let items=[],cur=-1,showAll=false;
+  const close=()=>{if(box.isConnected)box.style.display='none';
+    cur=-1;showAll=false;wrap.classList.remove('pkopen');};
   const draw=()=>{
-    if(!box.isConnected||!input.isConnected)return;   /* 다시 그려져 사라진 뒤엔 손대지 않는다 */
-    items=hotelSearch(input.value,getRegion?getRegion():'');
+    if(!box.isConnected||!input.isConnected)return;  /* 다시 그려져 사라진 뒤엔 손대지 않는다 */
+    items=opts.list(showAll?'':input.value)||[];
     if(!items.length){close();return;}
-    box.innerHTML=items.map((h,i)=>
+    box.innerHTML=items.map((it,i)=>
       '<div class="hfitem'+(i===cur?' on':'')+'" data-i="'+i+'">'
-      +'<span class="hfn">'+esc(dHotel(h.name))+'</span>'
-      +(rgShow(h.region)?'<span class="hfr">'+esc(rgShow(h.region))+'</span>':'')
+      +'<span class="hfn">'+esc(it.label)+'</span>'
+      +(it.sub?'<span class="hfr">'+esc(it.sub)+'</span>':'')
       +'</div>').join('');
-    box.style.display='block';
+    box.style.display='block';wrap.classList.add('pkopen');
     /* 좁은 화면에서 목록이 오른쪽으로 삐져나가면 왼쪽으로 당긴다 */
     box.style.left='0px';
     const r=box.getBoundingClientRect(),over=r.right-(window.innerWidth-10);
     if(over>0)box.style.left=(-over)+'px';
     const on=box.querySelector('.hfitem.on');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest'});
   };
+  const openAll=()=>{showAll=true;cur=-1;draw();};   /* 고른 값과 무관하게 전부 */
   /* 고르면 목록을 먼저 걷어내고 포커스를 뺀 다음 반영한다.
      (다시 그리는 도중에 blur 가 겹치면 브라우저가 innerHTML 오류를 낸다) */
-  const pick=i=>{const h=items[i];if(!h)return;
-    input.value=dHotel(h.name);close();
+  const pick=i=>{const it=items[i];if(!it)return;
+    input.value=it.label;close();
     try{input.blur();}catch(e){}
-    setTimeout(()=>onPick(h.name),0);};
-  box.addEventListener('mousedown',e=>{           /* blur 보다 먼저 잡아야 한다 */
-    const it=e.target.closest('.hfitem');if(!it)return;
-    e.preventDefault();pick(Number(it.dataset.i));});
-  input.addEventListener('input',draw);
-  input.addEventListener('focus',draw);
+    setTimeout(()=>opts.onPick(it.value),0);};
+  box.addEventListener('mousedown',e=>{            /* blur 보다 먼저 잡아야 한다 */
+    const el=e.target.closest('.hfitem');if(!el)return;
+    e.preventDefault();pick(Number(el.dataset.i));});
+  arrow.addEventListener('mousedown',e=>{
+    e.preventDefault();
+    if(box.style.display!=='none'){close();return;} /* 열려 있으면 닫기 */
+    input.focus();openAll();});
+  input.addEventListener('focus',openAll);          /* 칸을 눌러도 전체가 열린다 */
+  input.addEventListener('input',()=>{showAll=false;cur=-1;draw();});
   input.addEventListener('blur',()=>setTimeout(close,180));
   input.addEventListener('keydown',e=>{
-    if(box.style.display==='none'){if(e.key==='ArrowDown'){e.preventDefault();draw();}return;}
+    if(box.style.display==='none'){if(e.key==='ArrowDown'){e.preventDefault();openAll();}return;}
     if(e.key==='ArrowDown'){e.preventDefault();cur=Math.min(items.length-1,cur+1);draw();}
     else if(e.key==='ArrowUp'){e.preventDefault();cur=Math.max(0,cur-1);draw();}
     else if(e.key==='Enter'&&cur>=0){e.preventDefault();pick(cur);}
     else if(e.key==='Escape'){close();}
   });
+}
+/* 호텔 이름 칸에 붙이기 */
+function attachHotelFinder(input,getRegion,onPick){
+  attachFinder(input,{
+    list:q=>hotelSearch(q,getRegion?getRegion():'').map(h=>(
+      {label:dHotel(h.name),value:h.name,sub:rgShow(h.region)})),
+    onPick:onPick});
+}
+/* 룸타입 칸에 붙이기 — getHotel() 이 현재 고른 호텔을 돌려준다 */
+function attachRoomFinder(input,getHotel,onPick){
+  attachFinder(input,{
+    list:q=>roomSearch(q,getHotel?getHotel():'').map(r=>({label:dRoom(r),value:r})),
+    onPick:onPick});
 }
 /* 룸타입 자동완성 목록 (호텔이 정해져 있으면 그 호텔 것) */
 const roomDL=(id,hotel)=>'<datalist id="'+id+'">'
@@ -1087,6 +1129,7 @@ function bindForm(){
     const ri=el.querySelector('.inRoom');if(ri){
       ri.oninput=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;};
       ri.onchange=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;renderApp();};
+      attachRoomFinder(ri,()=>row.hotel,v=>{row.roomType=v;saveDB();renderApp();});
     }
     const n=el.querySelector('.inNights');if(n)n.onchange=e=>{row.nights=Math.max(1,Number(e.target.value)||1);renderApp();};
     const rm=el.querySelector('.inRooms');if(rm)rm.onchange=e=>{row.rooms=Math.max(1,Number(e.target.value)||1);};
@@ -1122,7 +1165,12 @@ function bindForm(){
       attachHotelFinder(chEl,()=>inp.region,name=>{
         applyHotelPick(inp,name);updateCheckListsForRow(rowId);renderApp();});
     }
-    const croomEl=block.querySelector('.checkRoom');if(croomEl)croomEl.oninput=e=>{inp.roomType=e.target.value;};
+    const croomEl=block.querySelector('.checkRoom');
+    if(croomEl){
+      croomEl.oninput=e=>{inp.roomType=e.target.value;};
+      attachRoomFinder(croomEl,()=>inp.hotel,v=>{
+        inp.roomType=v;updateCheckListsForRow(rowId);renderApp();});
+    }
     const cpEl=block.querySelector('.checkPrice');if(cpEl)cpEl.oninput=e=>{inp.price=Number(e.target.value)||0;};
   });
 
@@ -2071,9 +2119,12 @@ function bindStaff(){
     const _rec=findRec(inp.dataset.row,inp.dataset.rid);
     if(_rec)attachHotelFinder(inp,()=>_rec.region,name=>{
       applyHotelPick(_rec,name);saveDB();renderApp();});});
-  document.querySelectorAll('input.recRoom').forEach(inp=>inp.onchange=e=>{
-    const rec=findRec(inp.dataset.row,inp.dataset.rid);if(!rec)return;
-    rec.roomType=e.target.value.trim();saveDB();renderApp();});
+  document.querySelectorAll('input.recRoom').forEach(inp=>{
+    inp.onchange=e=>{
+      const rec=findRec(inp.dataset.row,inp.dataset.rid);if(!rec)return;
+      rec.roomType=e.target.value.trim();saveDB();renderApp();};
+    const _r=findRec(inp.dataset.row,inp.dataset.rid);
+    if(_r)attachRoomFinder(inp,()=>_r.hotel,v=>{_r.roomType=v;saveDB();renderApp();});});
   document.querySelectorAll('select.stsel[data-rec]').forEach(sel=>sel.onchange=e=>{
     const k=e.target.dataset.rec,v=e.target.value;if(v==='__mix')return;
     const ds=recDates(k);if(!ds)return;req.ws=req.ws||{};

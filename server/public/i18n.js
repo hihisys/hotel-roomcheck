@@ -11,7 +11,7 @@ const LANG_NAMES={ko:'한국어',en:'English',th:'ไทย'};
 const OPT_EN={"올인":"All Inclusive","올인 2회":"All Inclusive ×2","풀보드":"Full Board","하프보드":"Half Board","조식 포함":"Breakfast Included","허니문 세팅":"Honeymoon Setup","고층 요청":"High Floor Request","커넥팅룸":"Connecting Rooms","레이트 체크아웃":"Late Check-out","얼리 체크인":"Early Check-in","패스트 트랙":"Fast Track","VIP 라운지":"VIP Lounge","공항 픽업":"Airport Pickup"};
 
 const LPACK={
-ko:{sub_agent:"에이전트 콘솔",sub_sreq:"요청자 콘솔",sub_schk:"확인자 콘솔",m_offday:"휴무일 등록",
+ko:{pick_all:"전체 보기",sub_agent:"에이전트 콘솔",sub_sreq:"요청자 콘솔",sub_schk:"확인자 콘솔",m_offday:"휴무일 등록",
   /* 헤더 */
   hdr_title:"룸 체크",chip_agent:"에이전트",chip_sreq:"직원 · 요청자",chip_schk:"직원 · 확인자",
   lede_agent:"룸첵 문의를 등록하고, 결과와 견적을 확인합니다.",
@@ -156,7 +156,7 @@ ko:{sub_agent:"에이전트 콘솔",sub_sreq:"요청자 콘솔",sub_schk:"확인
   t_img_saved:"이미지를 저장했습니다",t_img_need_net:"이미지 저장은 인터넷 연결 시 가능합니다",
   t_imported:"공유된 룸체크 {no}을(를) 불러왔습니다"
 },
-en:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"Checker Console",m_offday:"Days Off",
+en:{pick_all:"Show all",sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"Checker Console",m_offday:"Days Off",
   hdr_title:"Room Check",chip_agent:"Agent",chip_sreq:"Staff · Requester",chip_schk:"Staff · Checker",
   lede_agent:"Register room-check inquiries and see results & quotes.",
   lede_sreq:"Register agent inquiries and track progress.",
@@ -287,7 +287,7 @@ en:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"Checker Con
   t_img_saved:"Image saved",t_img_need_net:"Saving images requires an internet connection",
   t_imported:"Shared room check {no} imported"
 },
-th:{sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"คอนโซลผู้ตรวจสอบ",m_offday:"วันหยุด",
+th:{pick_all:"ดูทั้งหมด",sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"คอนโซลผู้ตรวจสอบ",m_offday:"วันหยุด",
   hdr_title:"Room Check",chip_agent:"เอเจนต์",chip_sreq:"พนักงาน · ผู้ขอ",chip_schk:"พนักงาน · ผู้ตรวจสอบ",
   lede_agent:"ลงทะเบียนคำขอเช็คห้องและดูผลลัพธ์กับใบเสนอราคา",
   lede_sreq:"ลงทะเบียนคำขอจากเอเจนต์และติดตามความคืบหน้า",

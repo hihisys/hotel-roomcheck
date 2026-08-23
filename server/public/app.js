@@ -388,7 +388,7 @@ function renderApp(){
   const dl=document.getElementById('optdl');if(dl)dl.innerHTML=OPTLIST.map(o=>'<option>'+esc(dOpt(o))+'</option>').join('');
   if(ui.role==='agent'){app.innerHTML=langSwitchHTML()+formHTML()+agentListHTML();bindForm();bindAgentList();}
   else if(ui.role==='sreq'){app.innerHTML=langSwitchHTML()+formHTML()+staffListHTML();bindForm();bindStaff();}
-  else if(ui.role==='schk'){app.innerHTML=langSwitchHTML()+formHTML()+checkerHTML()+staffListHTML();bindForm();bindStaff();}
+  else if(ui.role==='schk'){app.innerHTML=langSwitchHTML()+staffListHTML();bindStaff();}
   else{app.innerHTML=langSwitchHTML()+staffListHTML();bindStaff();}
   bindLang();
 }
@@ -462,9 +462,6 @@ function formHTML(){
                 +'<div><div class="label">호텔명</div><input type="text" class="checkHotel" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" placeholder="호텔명 입력" value="'+esc(inp.hotel)+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
                 +'<div><div class="label">룸타입</div><input type="text" class="checkRoom" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" placeholder="룸타입 입력" value="'+esc(inp.roomType)+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
               +'</div>'
-              +'<div class="line lhotel" style="margin-top:8px">'
-                +'<div><div class="label">금액 (1박)</div><input type="number" class="checkPrice" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" min="0" placeholder="금액 입력" value="'+(inp.price||0)+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
-              +'</div>'
             +'</div>').join(''):''
           )+'</div>'
           +(row.checkRequests&&row.checkRequests.length
@@ -473,7 +470,7 @@ function formHTML(){
                 const isOpen=ui.checkReqOpen.has(req.id);
                 return '<div class="hblock" data-id="'+req.id+'" style="margin-top:12px;background:#f9f9f9">'
                   +'<div class="flex between aic checkReqTog" data-row="'+row.id+'" data-reqid="'+req.id+'" style="cursor:pointer">'
-                    +'<span class="bnum">추가 호텔 '+(j+1)+'</span>'
+                    +'<span class="bnum">'+escT(dRegion(req.region||'전체'))+' | '+esc(req.phone||'번호 없음')+' | '+esc(req.manager||'')+' | '+(req.savedAt?'저장 '+new Date(req.savedAt).toLocaleString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'')+'</span>'
                     +'<button class="del" onclick="event.stopPropagation();removeCheckRequest('+row.id+','+req.id+')" style="padding:4px 8px">−</button>'
                   +'</div>'
                   +'<div class="line lhotel" style="margin-top:8px">'
@@ -483,16 +480,16 @@ function formHTML(){
                   +'</div>'
                   +'<div class="line lhotel" style="margin-top:8px">'
                     +'<div><div class="label">전화번호</div><input type="text" class="checkPhone" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+esc(req.phone||'')+'" placeholder="번호 입력" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
-                    +'<div><div class="label">호텔 담당자</div><input type="text" class="checkManager" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+esc(req.manager||'')+'" placeholder="담당자 입력" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
-                    +'<div><div class="label">상태</div><select class="checkBookingStatus" data-row="'+row.id+'" data-reqid="'+req.id+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
-                      +'<option value="available"'+(req.bookingStatus==='available'?' selected':'')+'>가능</option>'
-                      +'<option value="limited"'+(req.bookingStatus==='limited'?' selected':'')+'>제한</option>'
-                      +'<option value="unavailable"'+(req.bookingStatus==='unavailable'?' selected':'')+'>불가</option>'
+                    +'<div><input type="text" class="checkManager" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+esc(req.manager||'')+'" placeholder="담당자 입력" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
+                    +'<div><div class="label">상태</div><select class="checkStatus" data-row="'+row.id+'" data-reqid="'+req.id+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
+                      +'<option value="av" style="background:#D1FAE5"'+(req.status==='av'?' selected':'')+'>AV ✅</option>'
+                      +'<option value="rq" style="background:#FEF3C7"'+(req.status==='rq'?' selected':'')+'>RQ 대기</option>'
+                      +'<option value="so" style="background:#FECACA"'+(req.status==='so'?' selected':'')+'>S/O 거절</option>'
                     +'</select></div>'
                   +'</div>'
                   +'<div style="margin-top:8px">'
                     +'<div class="label">금액 (1박)</div>'
-                    +'<span style="font-weight:600;font-size:15px">'+won(req.price||0)+'</span>'
+                    +'<input type="number" class="checkPrice" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+(req.price||'')+'" placeholder="금액 입력" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
                   +'</div>'
                   +'<div style="margin-top:8px"><div class="datebox"><span class="dv">'+fdate(req.checkInDate)+'</span><span class="arrow">→</span><span class="dv">'+fdate(req.checkOutDate)+'</span><span class="nightsb">'+diffD(req.checkInDate,req.checkOutDate)+T('n_sfx')+'</span></div></div>'
                   +(isOpen?
@@ -817,8 +814,8 @@ function bindForm(){
     };
   });
 
-  /* Phase 4: 추가 호텔 상태 실시간 변경 */
-  document.querySelectorAll('.checkBookingStatus').forEach(sel=>{
+  /* Phase 4-F: 추가 호텔 상태 실시간 변경 (호텔1과 동일) */
+  document.querySelectorAll('.checkStatus').forEach(sel=>{
     sel.onchange=e=>{
       const rowId=Number(sel.dataset.row);
       const reqId=sel.dataset.reqid;
@@ -826,7 +823,7 @@ function bindForm(){
       if(!row||!row.checkRequests)return;
       const req=row.checkRequests.find(r=>r.id===reqId);
       if(req){
-        req.bookingStatus=sel.value;
+        req.status=sel.value;
         saveDB();
         renderApp();
         toast('✅ 상태가 변경되었습니다');
@@ -862,6 +859,24 @@ function bindForm(){
         req.manager=inp.value.trim();
         saveDB();
         toast('✅ 담당자가 저장되었습니다');
+      }
+    };
+  });
+
+  /* Phase 4-F: 추가 호텔 금액 저장 (호텔1과 동일, 숫자 입력) */
+  document.querySelectorAll('input.checkPrice[data-reqid]').forEach(inp=>{
+    inp.onchange=e=>{
+      const rowId=Number(inp.dataset.row);
+      const reqId=inp.dataset.reqid;
+      const row=draft.rows.find(r=>r.id===rowId);
+      if(!row||!row.checkRequests)return;
+      const req=row.checkRequests.find(r=>r.id===reqId);
+      if(req){
+        const numVal=Math.round(Number(inp.value)||0);
+        req.price=numVal;
+        saveDB();
+        renderApp();
+        toast('✅ 금액이 저장되었습니다');
       }
     };
   });
@@ -1569,12 +1584,23 @@ function bindStaff(){
     dd.dates.forEach(iso=>{const k=chkId+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].status=v;});
     f.chk.savedAt=Date.now();saveDB();renderApp();});
   /* 추가 호텔 금액 입력 (전체 날짜 일괄) */
+  /* Phase 4-F: 확인자 추가 호텔 상태 선택 (호텔1과 동일) */
+  document.querySelectorAll('select.stsel[data-chk]').forEach(sel=>sel.onchange=e=>{
+    const chkId=e.target.dataset.chk,v=e.target.value;if(v==='__mix')return;
+    const f=findChk(chkId);if(!f)return;
+    f.chk.status=v;req.ws=req.ws||{};
+    const dd=rDates(req,f.row,req.rows.indexOf(f.row));
+    dd.dates.forEach(iso=>{const k=chkId+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].status=v;});
+    f.chk.savedAt=Date.now();saveDB();renderApp();});
+
+  /* Phase 4-F: 확인자 추가 호텔 금액 입력 (호텔1과 동일) */
   document.querySelectorAll('input.chkPrice[data-chk]').forEach(inp=>inp.onchange=e=>{
     const chkId=e.target.dataset.chk,v=e.target.value;
     const f=findChk(chkId);if(!f)return;
-    f.chk.price=Number(v)||0;req.ws=req.ws||{};
+    const numVal=Math.round(Number(v)||0);
+    f.chk.price=numVal;req.ws=req.ws||{};
     const dd=rDates(req,f.row,req.rows.indexOf(f.row));
-    dd.dates.forEach(iso=>{const k=chkId+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].price=v;});
+    dd.dates.forEach(iso=>{const k=chkId+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].price=numVal;});
     f.chk.savedAt=Date.now();saveDB();renderApp();});
   /* 추가 호텔 요일별 상태 선택자 */
   document.querySelectorAll('select.chksel[data-chk-key]').forEach(sel=>sel.onchange=e=>{

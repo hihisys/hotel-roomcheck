@@ -1,5 +1,9 @@
 /* ================= 기준 데이터 ================= */
-const HOTELS=[
+/* ===== 외부 호텔 API 연동 =====
+   서버가 POST {HOTEL_API_BASE}/api2/hotels 를 프록시한다 (GET api/hotels).
+   응답이 없거나 503(not_configured)이면 아래 기본 목록으로 자동 폴백해 화면이 멈추지 않는다.
+   그래서 const가 아니라 let 이다. */
+let HOTELS=[
  {name:"마이카오락 비치 리조트",region:"카오락",rooms:["디럭스","디럭스 풀액세스","주니어 스위트"]},
  {name:"로빈슨 클럽 카오락",region:"카오락",rooms:["디럭스","풀빌라","비치프론트"]},
  {name:"카오락 에메랄드 비치 리조트",region:"카오락",rooms:["디럭스","프리미어 디럭스","풀액세스"]},
@@ -11,7 +15,7 @@ const HOTELS=[
  {name:"아바니 파타야",region:"파타야",rooms:["디럭스","풀액세스"]},
 ];
 const GENERIC=["디럭스","슈페리어","풀액세스","풀빌라","주니어 스위트","스위트","씨뷰","비치프론트","오션뷰"];
-const REGIONS=["전체","카오락","푸켓","파타야","크라비"];
+let REGIONS=["전체","카오락","푸켓","파타야","크라비"];
 const OPTLIST=["올인","올인 2회","풀보드","하프보드","조식 포함","허니문 세팅","고층 요청","커넥팅룸","레이트 체크아웃","얼리 체크인","패스트 트랙","VIP 라운지","공항 픽업"];
 const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const WDK=["일","월","화","수","목","금","토"];
@@ -42,11 +46,221 @@ const dRoom=n=>isEN()?(RT_EN[n]||n):n;
 const dRegion=n=>isEN()?(RG_EN[n]||n):n;
 const fdate=iso=>isEN()?fmtD(iso):kdstr(iso);
 const fdshort=iso=>isEN()?fmtD(iso):kdshort(iso);
+/* 입력 폼 전용 최단 표기 — 한국어 "26.08.31"(연도 2자리·요일 없음).
+   폰 한 줄에 첵인·첵아웃·박수·객실수를 모두 넣기 위한 형식이다.
+   측정: 360px 화면에서 여유 31px (기존 "2026.08.23 일" 형식은 40px 부족). */
+const kdnum=iso=>{const d=_utc(iso);return String(d.getUTCFullYear()).slice(2)+'.'+String(d.getUTCMonth()+1).padStart(2,'0')+'.'+String(d.getUTCDate()).padStart(2,'0');};
+const fdform=iso=>isEN()?fmtD(iso):kdnum(iso);
 const esc=v=>String(v||'').replace(/"/g,'&quot;');
 const escT=v=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
 const opt=(v,t,sel)=>'<option value="'+esc(v)+'"'+(sel?' selected':'')+'>'+t+'</option>';
+/* ===== 호텔 API: 목록 · 지역 · 룸타입 =====
+   실제 응답(2026-08-23 확인) 한 건:
+     {idx:136, area:"PK", name:"Splash Beach Resort Maikhao",
+      name_kr:"스플래시 비치 리조트 푸켓", main_hotel_yn:"Y",
+      telnumber:"076 372 000", active:"Y", …}
+   주의 세 가지:
+     ① area 는 이름이 아니라 코드다 (PK, PT …) → AREA_NAME 으로 옮긴다
+     ② 한글명(name_kr)과 영문명(name)이 둘 다 온다 → 한글을 기준 이름, 영문은 HOTEL_EN 에 넣는다
+     ③ 목록에는 룸타입이 없다 → 상세 API에서 따로 받아온다                          */
+/* 지역 코드 → 풀네임.
+   API는 area 를 코드(PK, PT …)로만 준다. 확인된 것: PK=푸켓, PT=파타야 (실응답).
+   나머지는 추정이므로, 표에 없으면 호텔 한글명에서 지역어를 찾아내 보완한다. */
+const AREA_NAME={PK:'푸켓',PT:'파타야',KL:'카오락',KB:'크라비',BK:'방콕',BKK:'방콕',
+  SM:'사무이',KS:'사무이',CM:'치앙마이',HH:'후아힌',PP:'피피',CR:'치앙라이',HY:'핫야이'};
+const AREA_WORDS=['카오락','푸켓','파타야','크라비','방콕','사무이','치앙마이','후아힌','피피','치앙라이','핫야이'];
+/* 코드가 표에 없으면 호텔 한글명에 섞인 지역어로 유추한다
+   (예: "스플래시 비치 리조트 푸켓" → 푸켓). 그래도 없으면 코드를 그대로 둔다. */
+function areaLabel(code,nameKr){
+  if(AREA_NAME[code])return AREA_NAME[code];
+  const up=String(code||'').toUpperCase();
+  if(AREA_NAME[up])return AREA_NAME[up];
+  const hit=AREA_WORDS.find(w=>String(nameKr||'').includes(w));
+  return hit||code||'';
+}
+let HOTEL_SRC='local';                 /* 'api' 로 바뀌면 서버 목록을 쓰는 중 */
+const HOTEL_IDX={};                    /* 호텔명 → API idx */
+const ROOMS_CACHE={};                  /* 호텔명 → 룸타입 배열 (상세 API) */
+const _roomsPending={};
+function _pick(o,...keys){for(const k of keys){const v=o&&o[k];
+  if(v!=null&&String(v).trim()!=='')return String(v).trim();}return '';}
+function normHotel(h){
+  const kr=_pick(h,'name_kr'), en=_pick(h,'name','name_full');
+  const code=_pick(h,'area','area_code');
+  const rooms=Array.isArray(h.room_types)?h.room_types.map(r=>
+    typeof r==='string'?r:_pick(r,'name','room_type_name','room_nm','title')).filter(Boolean):[];
+  return {
+    idx:_pick(h,'idx','id','hotel_idx'),
+    name:kr||en,                                   /* 앱의 기준 이름은 한글 */
+    nameEn:en,
+    region:_pick(h,'area_name','region_name')||areaLabel(code,kr),
+    phone:_pick(h,'telnumber','tel','phone','reservation_number'),
+    rooms:rooms,
+    main:_pick(h,'main_hotel_yn','main_yn')==='Y'
+  };
+}
+async function loadHotelsFromAPI(){
+  if(!SRV.on)return;                                   /* 서버 없이 열면 기본 목록 */
+  try{
+    const r=await fetch('api/hotels?active=Y',{cache:'no-store'});
+    if(!r.ok)return;                                   /* 503 not_configured 등 → 폴백 유지 */
+    const j=await r.json();
+    const raw=j.hotels||j.data||[];
+    const list=raw.map(normHotel).filter(h=>h.name);
+    if(!list.length)return;
+    HOTELS=list;HOTEL_SRC='api';
+    DB.phones=DB.phones||{};
+    list.forEach(h=>{
+      if(h.idx)HOTEL_IDX[h.name]=h.idx;
+      if(h.rooms.length)ROOMS_CACHE[h.name]=h.rooms;
+      if(h.nameEn&&h.nameEn!==h.name){HOTEL_EN[h.name]=h.nameEn;
+        HOTEL_KO[h.nameEn]=h.name;}   /* 영문 표기 + 역매핑 등록 (영문으로 입력해도 인식) */
+      /* 호텔 전화번호를 주소록에 심는다 — 브라우저마다 따로 저장되던 문제가 사라진다 */
+      if(h.phone){DB.phones[h.name]=DB.phones[h.name]||[];
+        if(!DB.phones[h.name].includes(h.phone))DB.phones[h.name].unshift(h.phone);}
+    });
+    const regs=[...new Set(list.map(h=>h.region).filter(Boolean))];
+    if(regs.length)REGIONS=['전체',...regs];
+    renderApp();
+  }catch(e){}                                          /* 네트워크 오류 → 폴백 유지 */
+}
+/* 룸타입은 상세 API에만 있다 (목록 응답에는 없음 — 2026-08-23 실물 확인).
+   실제 항목 한 건:
+     {idx:10160, hotel_idx:136, name:"Deluxe Twin No Balcony", name_full:"…",
+      sort:0, active:"Y", view:"Y", del:"N", name_kr:null, log:"…", …}
+   주의: 사용 중지(active≠Y)·삭제(del=Y)·숨김(view=N) 항목이 섞여 오므로 걸러낸다.
+        호텔과 달리 name_kr 이 null 이라 name 을 쓴다. sort 순서를 지킨다.
+   처음 필요할 때 한 번만 가져와 캐시에 넣고 다시 그린다. */
+function pickRoomName(x){
+  if(typeof x==='string')return x.trim();
+  return _pick(x,'name_kr','name','name_full','room_type_name','room_nm','title');
+}
+function usableRoom(x){
+  if(typeof x==='string')return true;
+  const yn=(k,d)=>{const v=_pick(x,k);return v===''?d:v.toUpperCase();};
+  return yn('active','Y')==='Y' && yn('del','N')!=='Y' && yn('view','Y')!=='N';
+}
+function fetchRooms(name){
+  const idx=HOTEL_IDX[name];
+  if(!idx||ROOMS_CACHE[name]||_roomsPending[name]||!SRV.on)return;
+  _roomsPending[name]=true;
+  fetch('api/hotels/'+encodeURIComponent(idx),{cache:'no-store'})
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{
+      const d=(j&&(j.hotel||j.data))||{};
+      const rt=d.room_types||d.rooms||[];
+      const rooms=(Array.isArray(rt)?rt:[])
+        .filter(usableRoom)
+        .map((x,i)=>({n:pickRoomName(x),s:Number((x&&x.sort)||0),i:i}))
+        .filter(x=>x.n)
+        .sort((a,b)=>(a.s-b.s)||(a.i-b.i))          /* sort 값 우선, 같으면 원래 순서 */
+        .map(x=>x.n)
+        .filter((n,i,arr)=>arr.indexOf(n)===i);      /* 중복 제거 */
+      if(rooms.length){ROOMS_CACHE[name]=rooms;renderApp();}
+    }).catch(()=>{}).finally(()=>{delete _roomsPending[name];});
+}
+/* 호텔을 고르면 그 호텔의 지역이 자동으로 선택되고, 룸타입을 미리 받아둔다.
+   입력값이 영문 표기여도 HOTEL_KO 로 한글 기준명으로 되돌린다. */
+function applyHotelPick(target,val){
+  const ko=HOTEL_KO[val]||val;
+  target.hotel=ko;
+  const h=HOTELS.find(x=>x.name===ko);
+  if(h&&h.region)target.region=h.region;
+  if(ko)fetchRooms(ko);
+  return ko;
+}
+/* 지역을 바꾸면 그 전에 고른 호텔·룸타입은 더 이상 맞지 않으므로 비운다. */
+function clearHotelPick(target,region){
+  target.region=region;
+  target.hotel='';
+  target.roomType='';
+  return target;
+}
+/* ── 호텔 이름 빨리 찾기 ────────────────────────────────────────
+   직접 칠 때 한글·영문 어느 쪽으로 쳐도, 띄어쓰기·대소문자 상관없이 걸러서
+   입력칸 바로 아래 목록으로 보여준다. datalist 는 브라우저마다 동작이 달라
+   (특히 모바일) 직접 만든다. */
+const HFIND_MAX=8;
+const _hnorm=s=>String(s||'').toLowerCase().replace(/[\s\-_.()]/g,'');
+function hotelSearch(q,region){
+  const nq=_hnorm(q);
+  const inRegion=(region&&region!=='전체')?HOTELS.filter(h=>h.region===region):HOTELS;
+  if(!nq)return inRegion.slice(0,HFIND_MAX);
+  const scan=base=>{
+    const hit=[];
+    base.forEach(h=>{
+      const keys=[h.name,h.nameEn].filter(Boolean).map(_hnorm);
+      let best=-1;
+      keys.forEach(k=>{const p=k.indexOf(nq);if(p>=0&&(best<0||p<best))best=p;});
+      if(best>=0)hit.push({h:h,p:best});
+    });
+    hit.sort((a,b)=>(a.p-b.p)||String(a.h.name).localeCompare(String(b.h.name)));
+    return hit.slice(0,HFIND_MAX).map(x=>x.h);
+  };
+  const r=scan(inRegion);
+  /* 고른 지역 안에 없으면 전체에서 다시 찾아준다 (고르면 지역이 따라온다) */
+  return r.length?r:(inRegion===HOTELS?r:scan(HOTELS));
+}
+/* input 에 빨리 찾기 목록을 붙인다. getRegion() 이 현재 고른 지역을 돌려주고,
+   onPick(호텔한글명) 이 실제 반영을 맡는다. */
+function attachHotelFinder(input,getRegion,onPick){
+  if(!input||input._hfBound)return;
+  input._hfBound=true;
+  input.setAttribute('autocomplete','off');
+  input.removeAttribute('list');                 /* 기본 datalist 와 겹치지 않게 */
+  const wrap=input.parentNode;if(!wrap)return;
+  if(getComputedStyle(wrap).position==='static')wrap.style.position='relative';
+  const box=document.createElement('div');
+  box.className='hfind';box.style.display='none';
+  wrap.appendChild(box);
+  let items=[],cur=-1;
+  const close=()=>{if(box.isConnected)box.style.display='none';cur=-1;};
+  const draw=()=>{
+    if(!box.isConnected||!input.isConnected)return;   /* 다시 그려져 사라진 뒤엔 손대지 않는다 */
+    items=hotelSearch(input.value,getRegion?getRegion():'');
+    if(!items.length){close();return;}
+    box.innerHTML=items.map((h,i)=>
+      '<div class="hfitem'+(i===cur?' on':'')+'" data-i="'+i+'">'
+      +'<span class="hfn">'+esc(dHotel(h.name))+'</span>'
+      +(h.region?'<span class="hfr">'+esc(h.region)+'</span>':'')
+      +'</div>').join('');
+    box.style.display='block';
+    /* 좁은 화면에서 목록이 오른쪽으로 삐져나가면 왼쪽으로 당긴다 */
+    box.style.left='0px';
+    const r=box.getBoundingClientRect(),over=r.right-(window.innerWidth-10);
+    if(over>0)box.style.left=(-over)+'px';
+    const on=box.querySelector('.hfitem.on');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest'});
+  };
+  /* 고르면 목록을 먼저 걷어내고 포커스를 뺀 다음 반영한다.
+     (다시 그리는 도중에 blur 가 겹치면 브라우저가 innerHTML 오류를 낸다) */
+  const pick=i=>{const h=items[i];if(!h)return;
+    input.value=dHotel(h.name);close();
+    try{input.blur();}catch(e){}
+    setTimeout(()=>onPick(h.name),0);};
+  box.addEventListener('mousedown',e=>{           /* blur 보다 먼저 잡아야 한다 */
+    const it=e.target.closest('.hfitem');if(!it)return;
+    e.preventDefault();pick(Number(it.dataset.i));});
+  input.addEventListener('input',draw);
+  input.addEventListener('focus',draw);
+  input.addEventListener('blur',()=>setTimeout(close,180));
+  input.addEventListener('keydown',e=>{
+    if(box.style.display==='none'){if(e.key==='ArrowDown'){e.preventDefault();draw();}return;}
+    if(e.key==='ArrowDown'){e.preventDefault();cur=Math.min(items.length-1,cur+1);draw();}
+    else if(e.key==='ArrowUp'){e.preventDefault();cur=Math.max(0,cur-1);draw();}
+    else if(e.key==='Enter'&&cur>=0){e.preventDefault();pick(cur);}
+    else if(e.key==='Escape'){close();}
+  });
+}
+/* 룸타입 자동완성 목록 (호텔이 정해져 있으면 그 호텔 것) */
+const roomDL=(id,hotel)=>'<datalist id="'+id+'">'
+  +roomsFor(hotel||'').map(r=>'<option value="'+esc(dRoom(r))+'">').join('')+'</datalist>';
 const hotelsIn=r=>r==="전체"?HOTELS:HOTELS.filter(h=>h.region===r);
-const roomsFor=name=>{const h=HOTELS.find(x=>x.name===name);return h?h.rooms:GENERIC;};
+const roomsFor=name=>{
+  if(ROOMS_CACHE[name]&&ROOMS_CACHE[name].length)return ROOMS_CACHE[name];
+  const h=HOTELS.find(x=>x.name===name);
+  if(h&&h.rooms&&h.rooms.length)return h.rooms;
+  if(name)fetchRooms(name);          /* 상세 API에서 받아와 다음 렌더에 반영 */
+  return GENERIC;};
 const won=n=>Math.round(n||0).toLocaleString('ko-KR');
 const manwonF=m=>(Math.round((m||0)*10)/10).toLocaleString('ko-KR')+'만원';
 const lineTHB=x=>(Number(x.amt)||0)*(Number(x.qty)||1);
@@ -146,7 +360,7 @@ function copyText(t,msg){(navigator.clipboard?navigator.clipboard.writeText(t):P
     try{document.execCommand('copy');toast(msg);}catch(e){toast('복사 실패 — 길게 눌러 복사하세요');}document.body.removeChild(ta);});}
 
 /* ================= UI 상태 ================= */
-let ui={role:(typeof PAGE!=='undefined'?PAGE:'agent'),sel:null,ssel:null,notesOpen:false,open:new Set(),optOpen:new Set(),hnOpen:new Set(),checkReqOpen:new Set(),checkExpand:new Set(),tabStaff:'all',qOpen:false,pastOpen:false,conOpen:false,qbOpen:null,phAdd:new Set()};
+let ui={role:(typeof PAGE!=='undefined'?PAGE:'agent'),sel:null,ssel:null,notesOpen:false,open:new Set(),optOpen:new Set(),hnOpen:new Set(),checkReqOpen:new Set(),checkExpand:new Set(),chkListOpen:new Set(),formChkOpen:new Set(),recOpen:new Set(),moreOpen:false,qIdx:0,qStep:new Set([1]),tabStaff:'all',qOpen:false,pastOpen:false,conOpen:false,qbOpen:null,phAdd:new Set()};
 /* ================= 언어 (i18n.js의 LPACK 사용) ================= */
 function lang(){if(FORCE_KO)return 'ko';DB.langs=DB.langs||{};const a=LANG_ALLOWED[ui.role]||['ko'];let l=DB.langs[ui.role]||a[0];if(!a.includes(l))l=a[0];return l;}
 function T(k){const p=LPACK[lang()]||LPACK.ko;const s=p[k]!==undefined?p[k]:LPACK.ko[k];return s===undefined?k:s;}
@@ -222,6 +436,7 @@ async function srvInit(){
     if(j.user.role!==ui.role&&j.user.role!=='admin'){location.href=pageOf[j.user.role]||'index.html';return false;}
     SRV.on=true;SRV.me=j.user;
     try{const _ar=await fetch('api/agents',{cache:'no-store'});if(_ar.ok)AGENTS=(await _ar.json()).agents||[];}catch(e){}
+    loadHotelsFromAPI();   /* 호텔·지역·룸타입을 서버 목록으로 교체 (실패 시 기본 목록 유지) */
     DB.langs=DB.langs||{};
     if(j.user.lang&&(LANG_ALLOWED[ui.role]||[]).includes(j.user.lang))DB.langs[ui.role]=j.user.lang;
     await srvPull();
@@ -300,14 +515,16 @@ function phoneHTML(req,row){
   if(!(ui.role==='schk'||ui.role==='sreq'))return '';
   DB.phones=DB.phones||{};
   const nums=(row.hotel&&DB.phones[row.hotel])||[];
-  const sel=row.phone&&nums.includes(row.phone)?row.phone:(nums[0]||'');
-  let os=nums.map(n=>opt(n,'📞 '+n,n===sel)).join('');
+  const sel=row.phone&&nums.includes(row.phone)?row.phone:(row.phone||nums[0]||'');
+  /* 별도 "전화" 버튼 대신 번호 앞의 📞 아이콘 자체를 통화 링크로 쓴다 */
+  let os=nums.map(n=>opt(n,esc(n),n===sel)).join('');
+  if(sel&&!nums.includes(sel))os='<option value="'+esc(sel)+'" selected>'+esc(sel)+'</option>'+os;
   os+='<option value="__add">'+T('ph_add_opt')+'</option>';
-  let h='<select class="phSel" data-prid="'+row.id+'" style="width:auto;flex:0 1 auto;padding:7px 5px;font-size:12px;font-family:var(--mono)">'
-    +(nums.length?'':'<option value="" selected>'+T('ph_none')+'</option>')+os+'</select>';
-  if(sel)h+='<a class="chip on" style="text-decoration:none;line-height:1" href="tel:'+sel.replace(/[^+0-9]/g,'')+'">'+T('ph_call')+'</a>';
+  let h=sel?'<a class="phcall" href="tel:'+sel.replace(/[^+0-9]/g,'')+'" title="'+esc(T('ph_call'))+'">📞</a>':'';
+  h+='<select class="phSel" data-prid="'+row.id+'" style="width:auto;flex:0 1 auto;padding:7px 5px;font-size:12px;font-family:var(--mono)">'
+    +((nums.length||sel)?'':'<option value="" selected>'+T('ph_none')+'</option>')+os+'</select>';
   if(ui.phAdd.has(row.id))h+='<input class="phNew" data-prid="'+row.id+'" placeholder="'+esc(T('ph_new'))+'" style="width:150px;flex:0 0 auto;padding:7px 8px;font-size:12px;font-family:var(--mono)">';
-  if(ui.role==='schk'||(ui.role==='sreq'&&req.direct))
+  if(ui.role==='schk'||ui.role==='sreq')
     h+='<input class="phWho" data-prid="'+row.id+'" value="'+esc(row.confirmedBy||'')+'" placeholder="'+esc(T('ph_who'))+'" style="width:104px;flex:0 0 auto;padding:7px 8px;font-size:12px">';
   return h;
 }
@@ -317,21 +534,22 @@ function chkPhoneHTML(req,chk,chkId){
   DB.phones=DB.phones||{};
   const nums=(chk.hotel&&DB.phones[chk.hotel])||[];
   const sel=chk.phone&&nums.includes(chk.phone)?chk.phone:(chk.phone||nums[0]||'');
-  let os=nums.map(n=>opt(n,'📞 '+n,n===sel)).join('');
-  if(sel&&!nums.includes(sel))os='<option value="'+esc(sel)+'" selected>📞 '+esc(sel)+'</option>'+os;
+  /* 호텔1과 동일: 별도 "전화" 버튼 없이 📞 아이콘이 통화 링크 */
+  let os=nums.map(n=>opt(n,esc(n),n===sel)).join('');
+  if(sel&&!nums.includes(sel))os='<option value="'+esc(sel)+'" selected>'+esc(sel)+'</option>'+os;
   os+='<option value="__add">'+T('ph_add_opt')+'</option>';
-  let h='<select class="chkPhSel" data-chkid="'+chkId+'" style="width:auto;flex:0 1 auto;padding:7px 5px;font-size:12px;font-family:var(--mono)">'
+  let h=sel?'<a class="phcall" href="tel:'+sel.replace(/[^+0-9]/g,'')+'" title="'+esc(T('ph_call'))+'">📞</a>':'';
+  h+='<select class="chkPhSel" data-chkid="'+chkId+'" style="width:auto;flex:0 1 auto;padding:7px 5px;font-size:12px;font-family:var(--mono)">'
     +((nums.length||sel)?'':'<option value="" selected>'+T('ph_none')+'</option>')+os+'</select>';
-  if(sel)h+='<a class="chip on" style="text-decoration:none;line-height:1" href="tel:'+sel.replace(/[^+0-9]/g,'')+'">'+T('ph_call')+'</a>';
   if(ui.phAdd.has(chkId))h+='<input class="chkPhNew" data-chkid="'+chkId+'" placeholder="'+esc(T('ph_new'))+'" style="width:150px;flex:0 0 auto;padding:7px 8px;font-size:12px;font-family:var(--mono)">';
-  if(ui.role==='schk'||(ui.role==='sreq'&&req.direct))
+  if(ui.role==='schk'||ui.role==='sreq')
     h+='<input class="chkPhWho" data-chkid="'+chkId+'" value="'+esc(chk.manager||'')+'" placeholder="'+esc(T('ph_who'))+'" style="width:104px;flex:0 0 auto;padding:7px 8px;font-size:12px">';
   return h;
 }
 function draftFromReq(r){const base=Date.now();
   return {mode:r.mode,startDate:r.startDate,sharedNights:r.sharedNights||1,sharedRooms:(r.mode==='parallel'&&r.rows[0]?r.rows[0].rooms:1),
     agent:r.agent||'',agentManager:r.agentManager||'',registrant:r.registrant||'심은선',manager:'',notes:r.notes||'',quoteAsk:false,
-    _quote:r.quote?JSON.parse(JSON.stringify(r.quote)):null,
+    _quote:(Array.isArray(r.quotes)&&r.quotes[0])?JSON.parse(JSON.stringify(r.quotes[0])):(r.quote?JSON.parse(JSON.stringify(r.quote)):null),
     _wsn:r.rows.map((row,i)=>rDates(r,row,i).dates.map(iso=>{const c=(r.ws||{})[row.id+'|'+iso]||{};return {price:c.price||''};})),
     rows:r.rows.map((row,i)=>({id:base+i,region:row.region||'전체',hotel:row.hotel||'',roomType:row.roomType||'',rooms:row.rooms||1,nights:row.nights||1,note:row.note||'',
       options:(row.options||[]).map((o,j)=>({id:base+100+i*10+j,name:o.name,qty:o.qty||1,amt:o.amt||0,show:o.show!==false,memo:o.memo||''})),checkRequests:(row.checkRequests||[])}))};}
@@ -355,13 +573,13 @@ function reqBadge(req,forStaff){
   if(req.status==='answered'&&isFullbookReq(req))return '<span class="badge" style="background:var(--soBg);color:var(--so)">'+T('b_fullbook')+'</span>';
   if(req.status==='requested'&&req.quoteSent)return '<span class="badge b-quote">'+(forStaff?T('b_quote_staff'):T('b_quote'))+'</span>';
   if(req.status==='requested'&&req.direct)return '<span class="badge b-direct">'+T('b_direct')+'</span>';
-  if(req.status==='requested'){const prog=forStaff&&req.rows.length>1&&doneCount(req)>0?' '+doneCount(req)+'/'+req.rows.length:'';
+  if(req.status==='requested'){const prog=forStaff&&totalCount(req)>1&&doneCount(req)>0?' '+doneCount(req)+'/'+totalCount(req):'';
     return req.quoteRequested
     ? '<span class="badge b-wait">'+(forStaff?T('b_wait_staff'):T('b_wait'))+prog+'</span><span class="badge b-qreq">'+(forStaff?T('b_qreq_staff'):T('b_qreq'))+'</span>'
     : '<span class="badge b-wait">'+(forStaff?T('b_wait_staff'):T('b_wait'))+prog+'</span>';}
-  const part=req.status==='answered'&&req.rows.length>1&&!allDone(req);
+  const part=req.status==='answered'&&totalCount(req)>1&&!allDone(req);
   const resend=forStaff&&req.status==='answered'&&!req.answerComplete&&allDone(req);
-  const ansB=part?'<span class="badge b-wait">'+T('b_partial')+' '+doneCount(req)+'/'+req.rows.length+'</span>'
+  const ansB=part?'<span class="badge b-wait">'+T('b_partial')+' '+doneCount(req)+'/'+totalCount(req)+'</span>'
     :(resend?'<span class="badge b-qreq">'+T('b_resend')+'</span>':'<span class="badge b-done">'+T('b_done')+'</span>');
   if(req.quoteSent)return ansB+'<span class="badge b-quote">'+(forStaff?T('b_quote_staff'):T('b_quote'))+'</span>';
   if(req.quoteRequested)return ansB+'<span class="badge b-qreq">'+(forStaff?T('b_qreq_staff'):T('b_qreq'))+'</span>';
@@ -375,8 +593,25 @@ function availOf(req,row,i){
   if(sts.some(s=>s==='rq'))return{k:'rq',t:T('av_rq')};
   return{k:'un',t:T('av_un')};}
 function rowDone(req,row,i){const ds=rDates(req,row,i).dates;return ds.length>0&&ds.every(iso=>(((req.ws||{})[row.id+'|'+iso]||{}).status));}
-function doneCount(req){return req.rows.filter((r,i)=>rowDone(req,r,i)).length;}
-function allDone(req){return doneCount(req)===req.rows.length;}
+/* 추가 호텔도 호텔1과 동일한 기준(모든 날짜에 상태값 존재)으로 완료 판정 */
+function chkDone(req,row,i,ci){const ds=rDates(req,row,i).dates;const cid=row.id+'_chk_'+ci;
+  return ds.length>0&&ds.every(iso=>(((req.ws||{})[cid+'|'+iso]||{}).status));}
+/* ===== 확인자 추천 =====
+   추천은 요청자가 요청한 것이 아니므로 진행률에서 빠져야 한다. checkRequests와 한 배열에
+   섞으면 totalCount가 함께 세어 "2/2 완료"가 "2/3 답변대기"로 되돌아간다 — 확인자가
+   친절을 베풀수록 자기 일이 안 끝난 것처럼 보인다. 그래서 row.recommends라는 별도
+   배열에 둔다. totalCount가 이 배열을 아예 볼 수 없으니 구조적으로 오염되지 않는다.
+   targetId = 이 추천이 대신하려는 대상(호텔 행 id 또는 추가호텔 chkId). */
+/* ฿ 원가(호텔 실요금)는 내부 값이다 — 에이전트에게는 견적 금액(₩)만 보여야 한다.
+   요청자·확인자만 원가를 볼 수 있다. */
+const costVisible=()=>ui.role==='sreq'||ui.role==='schk';
+function recsFor(row,targetId){return (row.recommends||[]).filter(r=>String(r.targetId)===String(targetId));}
+const recKey=rec=>'rec_'+rec.id;
+/* 등록된 호텔 전체 개수 = 호텔1..N + 각 호텔의 추가 호텔 (추천은 제외) */
+function totalCount(req){return req.rows.reduce((a,r)=>a+1+((r.checkRequests||[]).length),0);}
+function doneCount(req){return req.rows.reduce((a,r,i)=>
+  a+(rowDone(req,r,i)?1:0)+((r.checkRequests||[]).filter((c,ci)=>chkDone(req,r,i,ci)).length),0);}
+function allDone(req){return doneCount(req)===totalCount(req);}
 function agentLine(req){const p=[];if(req.agent)p.push(T('agent_w')+' '+nickOf(req.agent));if(req.manager)p.push(T('mgr_w')+' '+nickOf(req.manager));return p.join(' · ')||T('no_mgr');}
 const AVKO={ok:'av_ok',no:'av_no',part:'av_part',un:'av_un',rq:'av_rq'};
 const avKo=av=>LPACK.ko[AVKO[av.k]]||av.t;
@@ -418,20 +653,33 @@ function formHTML(){
     const hdl=hotelsIn(row.region).map(h=>'<option value="'+esc(dHotel(h.name))+'">').join('');
     const rdl=roomsFor(row.hotel).map(r=>'<option value="'+esc(dRoom(r))+'">').join('');
     const dateRow = d.mode==='multi'
-      ? '<div class="dategrid">'
-        +'<div class="datewrap" style="grid-area:1/1"><span class="dlab">'+T('checkin')+'</span><input class="dateinput" readonly data-target="'+row.id+'" data-kind="in" value="'+fdate(dd.checkIn)+'"><button class="calico calOpen" data-target="'+row.id+'" data-kind="in" title="'+esc(T('cal_open'))+'">📅</button></div>'
-        +'<div class="datewrap" style="grid-area:2/1"><span class="dlab">'+T('checkout')+'</span><input class="dateinput" readonly data-target="'+row.id+'" data-kind="out" value="'+fdate(dd.checkOut)+'"><button class="calico calOpen" data-target="'+row.id+'" data-kind="out" title="'+esc(T('cal_open'))+'">📅</button></div>'
-        +'<div class="dg-tall" style="grid-area:1/2/3/3"><div class="label">'+T('nights_label')+'</div><input type="number" class="inNights" min="1" value="'+row.nights+'"></div>'
-        +'<div class="dg-tall" style="grid-area:1/3/3/4"><div class="label">'+T('rooms_label')+'</div><input type="number" class="inRooms" min="1" value="'+row.rooms+'"></div></div>'
+      /* B안: 날짜 범위를 칩 하나로 합치고, 박수·객실수는 독립 입력칸으로 오른쪽에 붙인다.
+         라벨 1개와 달력 버튼 1개가 줄어 약 70px을 벌어 한 줄에 들어간다. */
+      ? '<div class="brow">'
+        +'<div class="brange"><div class="label">'+T('date_range')+'</div>'
+          +'<div class="bchip calOpen" data-target="'+row.id+'" data-kind="in" title="'+esc(T('cal_open'))+'">'
+            +'<span class="bdv">'+fdform(dd.checkIn)+'</span><span class="barw">→</span>'
+            +'<span class="bdv">'+fdform(dd.checkOut)+'</span>'
+            +'<span class="bcal">📅</span></div></div>'
+        +'<div class="bqty"><div class="label">'+T('nights_label')+'</div>'
+          +'<input type="number" class="inNights" min="1" value="'+row.nights+'"></div>'
+        +'<div class="bqty"><div class="label">'+T('rooms_label')+'</div>'
+          +'<input type="number" class="inRooms" min="1" value="'+row.rooms+'"></div></div>'
       : '<div style="margin-top:10px"><div class="label">'+T('date_common')+'</div><div class="datebox"><span class="dv">'+fdate(dd.checkIn)+'</span><span class="arrow">→</span><span class="dv">'+fdate(dd.checkOut)+'</span><span class="nightsb">'+dd.nights+T('n_sfx')+'</span><span class="nightsb">'+(d.sharedRooms||1)+T('r_sfx')+'</span></div></div>';
-    return '<div class="hblock" data-id="'+row.id+'">'
-      +'<div class="flex between aic"><span class="bnum">'+escT(dRegion(row.region||'전체'))+' | '+esc(row.phone||'번호 없음')+' | '+esc(row.manager||'-')+'</span><button class="del btnDel" title="'+esc(T('del_hotel'))+'">−</button></div>'
+    /* 요청 리스트와 동일한 그룹 박스: 호텔 + 그 추가 호텔을 하나로 묶는다 */
+    const nAdd=(row.checkRequests||[]).length+((ui.checkInputs&&ui.checkInputs[row.id])?ui.checkInputs[row.id].length:0);
+    /* 추가 호텔이 있으면 기본으로 펼치고, 없으면 접는다.
+       formChkOpen에 담긴 행은 사용자가 그 기본값을 뒤집은 것이다. */
+    const addOpen=ui.formChkOpen.has(row.id)?!(nAdd>0):(nAdd>0);
+    return '<div class="hgroup hg'+(i%3)+'" data-id="'+row.id+'">'
+      +'<div class="hgrouphd"><span class="hgnum">'+(i+1)+'</span>'+T('hotel_n')+' '+(i+1)
+      +'<span class="hgcnt">'+T('chk_more')+' '+nAdd+'</span></div>'
+      +'<div class="gcard">'
+      +'<div class="flex between aic"><span class="gclab">'+T('base_hotel')+'</span><button class="del btnDel" title="'+esc(T('del_hotel'))+'">−</button></div>'
       +'<div class="line lhotel" style="margin-top:8px">'
         +'<div><div class="label">'+T('region')+'</div><select class="selRegion">'+rlist+'</select></div>'
         +'<div><div class="label">'+T('hotel_sel')+'</div><input class="inHotel" list="hdl'+row.id+'" value="'+esc(dHotel(row.hotel))+'" placeholder="'+esc(T('ph_hotel'))+'"><datalist id="hdl'+row.id+'">'+hdl+'</datalist></div>'
-        +'<div><div class="label">'+T('room_sel')+'</div><input class="inRoom" list="rdl'+row.id+'" value="'+esc(dRoom(row.roomType))+' "placeholder="'+esc(T('ph_room'))+'"><datalist id="rdl'+row.id+'">'+rdl+'</datalist></div>'
-        +'<div><div class="label">호텔 담당자</div><input type="text" class="inManager" value="'+esc(row.manager||'')+' "placeholder="담당자 입력" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
-        +'<div><div class="label">전화번호</div><input type="text" class="inPhone" value="'+esc(row.phone||'')+' "placeholder="전화번호 입력" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div></div>'
+        +'<div><div class="label">'+T('room_sel')+'</div><input class="inRoom" list="rdl'+row.id+'" value="'+esc(dRoom(row.roomType))+'" placeholder="'+esc(T('ph_room'))+'"><datalist id="rdl'+row.id+'">'+rdl+'</datalist></div></div>'
       +dateRow
       +'<div style="margin-top:10px"><div class="label">'+T('opt_label')+'</div>'
         +(row.options||[]).map(o=>{const custom=o._custom||(!!o.name&&!OPTLIST.includes(o.name));
@@ -445,24 +693,28 @@ function formHTML(){
         +'<button class="addbtn sm addOpt">'+T('add_opt')+'</button></div>'
       +'<div style="margin-top:8px"><button class="linkbtn hnTog">'+((ui.hnOpen.has(row.id)||row.note)?'▾':'▸')+' '+T('hotel_note')+'</button>'
         +((ui.hnOpen.has(row.id)||row.note)?'<textarea class="hnText" placeholder="'+esc(T('ph_hotel_note'))+'">'+escT(row.note||'')+'</textarea>':'')+'</div>'
-      /* Phase 4: 추가 요청 섹션 - 호텔별 그룹핑 */
-      +'<div style="margin-top:16px;padding-top:12px;border-top:2px solid #E5E7EB">'
-        +'<div style="padding:8px 0;font-weight:600;color:#333;margin-bottom:8px;font-size:14px">호텔 '+(i+1)+'번 추가 호텔</div>'
-        +'<button class="linkbtn addReqBtn" data-row="'+row.id+'" style="color:#22C55E;font-weight:600">+ 추가 요청</button>'
-        +'<div class="check-section" style="margin-top:8px;padding:12px;background:#F5F7FA;border-radius:6px">'
-          +'<div class="check-inputs-container" id="checkInputs'+row.id+'" style="display:flex;flex-direction:column;gap:12px;margin-bottom:10px">'
-            +((ui.checkInputs&&ui.checkInputs[row.id])?ui.checkInputs[row.id].map((inp,idx)=>'<div class="check-input-block" data-tempid="'+inp.tempId+'" style="padding:12px;background:#fff;border:1px solid var(--line);border-radius:6px">'
+      +'</div>' /* .gcard 닫기 */
+      /* 추가 호텔 — 요청 리스트와 동일한 펼침 버튼 안에 넣는다 */
+      +'<button class="chkListTog'+(addOpen?' open':'')+'" data-formchk="'+row.id+'">'
+        +'<span class="chev'+(addOpen?' open':'')+'">▶</span>'
+        +'<span>'+T('chk_more')+' ('+nAdd+')</span>'
+        +'<span class="chkAddBtn addReqBtn" data-row="'+row.id+'">'+T('chk_add')+'</span></button>'
+      +(addOpen?'<div class="chklist">'
+          +'<div class="check-inputs-container" id="checkInputs'+row.id+'">'
+            +((ui.checkInputs&&ui.checkInputs[row.id])?ui.checkInputs[row.id].map((inp,idx)=>'<div class="check-input-block subcard" data-tempid="'+inp.tempId+'">'
               +'<div class="flex between aic" style="margin-bottom:8px">'
-                +'<span style="font-weight:600;color:#333">추가 호텔 '+(idx+1)+'</span>'
-                +'<button class="del" style="padding:4px 8px" onclick="removeCheckInputRow('+row.id+',\''+inp.tempId+'\')">−</button>'
+                +'<span class="hgnum sub">'+(i+1)+'-'+((row.checkRequests||[]).length+idx+1)+'</span>'
+                +'<button class="del" onclick="removeCheckInputRow('+row.id+',\''+inp.tempId+'\')">−</button>'
               +'</div>'
               +'<div class="line lhotel">'
-                +'<div><div class="label">지역</div><select class="checkRegion" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
-                  +'<option value="">선택</option>'
-                  +REGIONS.map(r=>'<option value="'+esc(r)+'"'+(inp.region===r?' selected':'')+'>'+esc(r)+'</option>').join('')
+                +'<div><div class="label">'+T('region')+'</div><select class="checkRegion" data-row="'+row.id+'" data-tempid="'+inp.tempId+'">'
+                  +'<option value="">'+T('opt_select')+'</option>'
+                  +REGIONS.map(r=>'<option value="'+esc(r)+'"'+(inp.region===r?' selected':'')+'>'+escT(dRegion(r))+'</option>').join('')
                 +'</select></div>'
-                +'<div><div class="label">호텔명</div><input type="text" class="checkHotel" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" placeholder="호텔명 입력" value="'+esc(inp.hotel)+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
-                +'<div><div class="label">룸타입</div><input type="text" class="checkRoom" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" placeholder="룸타입 입력" value="'+esc(inp.roomType)+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
+                +'<div><div class="label">'+T('hotel_sel')+'</div><input type="text" class="checkHotel" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" list="chdl'+inp.tempId+'" placeholder="'+esc(T('ph_hotel'))+'" value="'+esc(inp.hotel)+'">'
+                  +'<datalist id="chdl'+inp.tempId+'">'+hotelsIn(inp.region||'전체').map(h=>'<option value="'+esc(dHotel(h.name))+'">').join('')+'</datalist></div>'
+                +'<div><div class="label">'+T('room_sel')+'</div><input type="text" class="checkRoom" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" list="crdl'+inp.tempId+'" placeholder="'+esc(T('ph_room'))+'" value="'+esc(inp.roomType)+'">'
+                  +roomDL('crdl'+inp.tempId,inp.hotel)+'</div>'
               +'</div>'
             +'</div>').join(''):''
           )+'</div>'
@@ -470,28 +722,25 @@ function formHTML(){
             ? row.checkRequests.map((req,j)=>{
                 const reqDateArr=Array.from({length:diffD(req.checkInDate,req.checkOutDate)},(_,k)=>addDays(req.checkInDate,k));
                 const isOpen=ui.checkReqOpen.has(req.id);
-                return '<div class="hblock" data-id="'+req.id+'" style="margin-top:12px;background:#f9f9f9">'
+                return '<div class="subcard" data-id="'+req.id+'">'
                   +'<div class="flex between aic checkReqTog" data-row="'+row.id+'" data-reqid="'+req.id+'" style="cursor:pointer">'
-                    +'<span class="bnum">'+escT(dRegion(req.region||'전체'))+' | '+esc(req.phone||'번호 없음')+' | '+esc(req.manager||'-')+' | '+(req.savedAt?kdotDateTime(req.savedAt):'')+'</span>'
-                    +'<button class="del" onclick="event.stopPropagation();removeCheckRequest('+row.id+','+req.id+')" style="padding:4px 8px">−</button>'
+                    +'<span class="hgnum sub">'+(i+1)+'-'+(j+1)+'</span>'
+                    +'<span class="small" style="margin-left:7px;flex:1;min-width:0">'+escT(dRegion(req.region||'전체'))+(req.savedAt?' · '+kdotDateTime(req.savedAt):'')+'</span>'
+                    +'<button class="del" onclick="event.stopPropagation();removeCheckRequest('+row.id+','+req.id+')">−</button>'
                   +'</div>'
                   +'<div class="line lhotel" style="margin-top:8px">'
                     +'<div><div class="label">'+T('region')+'</div><span style="font-weight:500">'+escT(dRegion(req.region||'전체'))+'</span></div>'
                     +'<div><div class="label">'+T('hotel_sel')+'</div><span style="font-weight:500">'+escT(dHotel(req.hotel))+'</span></div>'
                     +'<div><div class="label">'+T('room_sel')+'</div><span style="font-weight:500">'+escT(dRoom(req.roomType))+'</span></div>'
                   +'</div>'
-                  +'<div class="line lhotel" style="margin-top:8px">'
-                    +'<div><div class="label">전화번호</div><input type="text" class="checkPhone" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+esc(req.phone||'')+'" placeholder="번호 입력" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
-                    +'<div><input type="text" class="checkManager" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+esc(req.manager||'')+'" placeholder="담당자 입력" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
-                    +'<div><div class="label">상태</div><select class="checkStatus" data-row="'+row.id+'" data-reqid="'+req.id+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
-                      +'<option value="av" style="background:#D1FAE5"'+(req.status==='av'?' selected':'')+'>AV ✅</option>'
-                      +'<option value="rq" style="background:#FEF3C7"'+(req.status==='rq'?' selected':'')+'>RQ 대기</option>'
-                      +'<option value="so" style="background:#FECACA"'+(req.status==='so'?' selected':'')+'>S/O 거절</option>'
+                  +'<div class="line l2" style="margin-top:8px">'
+                    +'<div><div class="label">'+T('chk_status')+'</div><select class="checkStatus" data-row="'+row.id+'" data-reqid="'+req.id+'">'
+                      +'<option value="av"'+(req.status==='av'?' selected':'')+'>AV</option>'
+                      +'<option value="rq"'+(req.status==='rq'?' selected':'')+'>RQ</option>'
+                      +'<option value="so"'+(req.status==='so'?' selected':'')+'>S/O</option>'
                     +'</select></div>'
-                  +'</div>'
-                  +'<div style="margin-top:8px">'
-                    +'<div class="label">금액 (1박)</div>'
-                    +'<input type="number" class="checkPrice" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+(req.price||'')+'" placeholder="금액 입력" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
+                    +'<div><div class="label">'+T('chk_price')+'</div>'
+                      +'<input type="number" class="checkPrice" data-row="'+row.id+'" data-reqid="'+req.id+'" value="'+(req.price||'')+'" placeholder="'+esc(T('ws_price_ph'))+'"></div>'
                   +'</div>'
                   +'<div style="margin-top:8px"><div class="datebox"><span class="dv">'+fdate(req.checkInDate)+'</span><span class="arrow">→</span><span class="dv">'+fdate(req.checkOutDate)+'</span><span class="nightsb">'+diffD(req.checkInDate,req.checkOutDate)+T('n_sfx')+'</span></div></div>'
                   +(isOpen?
@@ -514,9 +763,8 @@ function formHTML(){
                     :'')
                   +'</div>';
               }).join('')
-            : '<div style="color:#999;font-size:12px;padding:8px;text-align:center">추가된 호텔이 없습니다</div>')
-        +'</div>'
-      +'</div>'
+            : '')
+        +'</div>':'')
       +'</div>';
   }).join('');
   return '<section class="card">'
@@ -609,6 +857,23 @@ window.saveCheckRequestsFromInputs=function(rowId){
   saveDB();
   renderApp();
   toast('✅ '+(addedCount||'호텔')+(addedCount>1?'개 호텔':'')+'이 추가되었습니다');
+};
+/* 확인자 추천 추가/삭제 — draft가 아니라 DB에 저장된 req를 직접 다룬다.
+   확인자에게는 draft가 없으므로 saveCheckRequestsFromInputs()의 경로를 쓸 수 없다. */
+window.addRecommend=function(reqId,rowId,targetId){
+  const req=byId(Number(reqId));if(!req)return;
+  const row=req.rows.find(r=>String(r.id)===String(rowId));if(!row)return;
+  row.recommends=row.recommends||[];
+  row.recommends.push({id:Date.now()+'_'+(Math.random()*1e6|0),targetId:String(targetId),
+    region:row.region||'전체',hotel:'',roomType:'',phone:'',manager:'',
+    by:ui.role,createdAt:Date.now()});
+  saveDB();renderApp();
+};
+window.removeRecommend=function(reqId,rowId,recId){
+  const req=byId(Number(reqId));if(!req)return;
+  const row=req.rows.find(r=>String(r.id)===String(rowId));if(!row||!row.recommends)return;
+  row.recommends=row.recommends.filter(r=>String(r.id)!==String(recId));
+  saveDB();renderApp();
 };
 window.removeCheckRequest=function(rowId,reqId){
   const row=draft.rows.find(r=>r.id===rowId);
@@ -750,12 +1015,15 @@ function bindForm(){
   document.querySelectorAll('.calOpen').forEach(b=>b.onclick=()=>openFromEl(b));
   /* 날짜는 수기 입력 불가 — 클릭하면 달력 (첵인=범위 선택, 첵아웃=첵아웃만) */
   document.querySelectorAll('.dateinput').forEach(inp=>{inp.onclick=()=>openFromEl(inp);});
-  document.querySelectorAll('#rows .hblock').forEach(el=>{
+  /* 그룹 박스화(.hblock → .hgroup) 이후에도 붙도록 둘 다 잡는다 */
+  document.querySelectorAll('#rows .hgroup[data-id], #rows .hblock[data-id]').forEach(el=>{
     const id=Number(el.dataset.id),row=d.rows.find(r=>r.id===id),i=d.rows.indexOf(row);
-    const sr=el.querySelector('.selRegion');if(sr)sr.onchange=e=>{row.region=e.target.value;renderApp();};
+    /* 지역을 바꾸면 앞서 고른 호텔·룸타입은 비운다 */
+    const sr=el.querySelector('.selRegion');if(sr)sr.onchange=e=>{clearHotelPick(row,e.target.value);renderApp();};
     const hi=el.querySelector('.inHotel');if(hi){
       hi.oninput=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;};
-      hi.onchange=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;renderApp();};
+      hi.onchange=e=>{applyHotelPick(row,e.target.value);renderApp();};
+      attachHotelFinder(hi,()=>row.region,name=>{applyHotelPick(row,name);saveDB();renderApp();});
     }
     const ri=el.querySelector('.inRoom');if(ri){
       ri.oninput=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;};
@@ -788,8 +1056,13 @@ function bindForm(){
     const inp=ui.checkInputs[rowId].find(i=>i.tempId===tempId);
     if(!inp)return;
 
-    crEl.onchange=e=>{inp.region=e.target.value;};
-    const chEl=block.querySelector('.checkHotel');if(chEl)chEl.oninput=e=>{inp.hotel=e.target.value;};
+    crEl.onchange=e=>{clearHotelPick(inp,e.target.value);};   /* 지역 바뀌면 호텔·룸타입 비움 */
+    const chEl=block.querySelector('.checkHotel');
+    if(chEl){
+      chEl.oninput=e=>{inp.hotel=e.target.value;};
+      attachHotelFinder(chEl,()=>inp.region,name=>{
+        applyHotelPick(inp,name);updateCheckListsForRow(rowId);renderApp();});
+    }
     const croomEl=block.querySelector('.checkRoom');if(croomEl)croomEl.oninput=e=>{inp.roomType=e.target.value;};
     const cpEl=block.querySelector('.checkPrice');if(cpEl)cpEl.oninput=e=>{inp.price=Number(e.target.value)||0;};
   });
@@ -797,12 +1070,19 @@ function bindForm(){
   /* Phase 3-E: 추가 요청 버튼 - 원스텝으로 새로운 호텔 필드 추가 */
   document.querySelectorAll('.addReqBtn').forEach(btn=>{
     btn.onclick=e=>{
-      e.preventDefault();
+      e.preventDefault();e.stopPropagation(); /* 펼침 버튼 토글까지 함께 실행되지 않게 */
       const rowId=Number(btn.dataset.row);
-      if(!ui.open)ui.open=new Set();
-      ui.open.add(rowId); /* 섹션 항상 표시 (이미 표시되지만) */
-      addCheckInputRow(rowId); /* 새로운 호텔 필드 추가 */
+      ui.formChkOpen.delete(rowId);           /* 기본값(추가분 있음 → 펼침)으로 되돌려 항상 보이게 */
+      addCheckInputRow(rowId);
     };
+  });
+  /* 입력 폼: 추가 호텔 섹션 펼침/접힘 */
+  document.querySelectorAll('button.chkListTog[data-formchk]').forEach(b=>{
+    b.onclick=e=>{
+      if(e.target.closest('.chkAddBtn'))return;   /* ＋추가는 위 핸들러가 처리 */
+      const rid=Number(b.dataset.formchk);
+      ui.formChkOpen.has(rid)?ui.formChkOpen.delete(rid):ui.formChkOpen.add(rid);
+      renderApp();};
   });
 
   /* 저장된 호텔 섹션 펼침/접힘 */
@@ -833,37 +1113,7 @@ function bindForm(){
     };
   });
 
-  /* Phase 4: 추가 호텔 전화번호 실시간 저장 */
-  document.querySelectorAll('.checkPhone').forEach(inp=>{
-    inp.onchange=e=>{
-      const rowId=Number(inp.dataset.row);
-      const reqId=inp.dataset.reqid;
-      const row=draft.rows.find(r=>r.id===rowId);
-      if(!row||!row.checkRequests)return;
-      const req=row.checkRequests.find(r=>r.id===reqId);
-      if(req){
-        req.phone=inp.value.trim();
-        saveDB();
-        toast('✅ 전화번호가 저장되었습니다');
-      }
-    };
-  });
-
-  /* Phase 4: 추가 호텔 담당자 실시간 저장 */
-  document.querySelectorAll('.checkManager').forEach(inp=>{
-    inp.onchange=e=>{
-      const rowId=Number(inp.dataset.row);
-      const reqId=inp.dataset.reqid;
-      const row=draft.rows.find(r=>r.id===rowId);
-      if(!row||!row.checkRequests)return;
-      const req=row.checkRequests.find(r=>r.id===reqId);
-      if(req){
-        req.manager=inp.value.trim();
-        saveDB();
-        toast('✅ 담당자가 저장되었습니다');
-      }
-    };
-  });
+  /* Phase 4: 추가 호텔 전화번호·담당자는 요청 입력 폼에서 제거됨(룸체크 워크시트에서 입력) */
 
   /* Phase 4-F: 추가 호텔 금액 저장 (호텔1과 동일, 숫자 입력) */
   document.querySelectorAll('input.checkPrice[data-reqid]').forEach(inp=>{
@@ -895,7 +1145,7 @@ function bindForm(){
       registrant:(d.registrant||'심은선').trim()||'심은선',agentManager:(d.agentManager||'').trim(),
       mode:d.mode,startDate:d.startDate,sharedNights:d.sharedNights,agent:d.agent,manager:d.manager,notes:d.notes,
       rows:JSON.parse(JSON.stringify(d.rows)),ws:{},
-      quote:d._quote?JSON.parse(JSON.stringify(d._quote)):{rate:40,pax:2,addl:[],override:null}};
+      quotes:[mkQuote(1,d._quote?JSON.parse(JSON.stringify(d._quote)):null)]};
     if(d._wsn)req.rows.forEach((row,i)=>{const arr=d._wsn[i];if(!arr||!arr.length)return;
       rDates(req,row,i).dates.forEach((iso,k)=>{const v=arr[k]||arr[arr.length-1];
         if(v&&v.price){req.ws[row.id+'|'+iso]={price:v.price};}});});
@@ -931,6 +1181,15 @@ function bindForm(){
       }
       updateCheckListsForRow(rowId);
     });
+    /* 입력을 마치면 지역이 따라오고 그 호텔의 룸타입을 받아온다 */
+    inp.addEventListener('change',e=>{
+      const rowId=Number(inp.dataset.row),tempId=inp.dataset.tempid;
+      if(!(tempId&&ui.checkInputs&&ui.checkInputs[rowId]))return;
+      const inp_row=ui.checkInputs[rowId].find(r=>r.tempId===tempId);
+      if(!inp_row)return;
+      applyHotelPick(inp_row,e.target.value);
+      renderApp();
+    });
   });
   document.querySelectorAll('.checkRoom').forEach(inp=>{
     inp.addEventListener('input',e=>{
@@ -949,7 +1208,8 @@ function bindForm(){
       const tempId=sel.dataset.tempid;
       if(tempId&&ui.checkInputs&&ui.checkInputs[rowId]){
         const inp_row=ui.checkInputs[rowId].find(r=>r.tempId===tempId);
-        if(inp_row)inp_row.region=e.target.value;
+        /* 지역이 바뀌면 그 전 호텔·룸타입은 맞지 않으므로 비우고 다시 그린다 */
+        if(inp_row){clearHotelPick(inp_row,e.target.value);updateCheckListsForRow(rowId);renderApp();}
       }
     });
   });
@@ -1030,7 +1290,7 @@ function agentItemHTML(req){
 
       /* Phase 2-D: 추가 호텔 확인 섹션 (확인자/에이전트용) */
       if(req.rows&&req.rows.some(r=>r.checkRequests&&r.checkRequests.length)){
-        detail+='<div class="sechead" style="margin-top:12px">📋 추가 호텔 확인 (요청자 입력)</div>';
+        detail+='<div class="sechead" style="margin-top:12px">📋 '+T('chk_sec_req')+'</div>';
         req.rows.forEach(row=>{
           if(row.checkRequests&&row.checkRequests.length){
             row.checkRequests.forEach(chk=>{
@@ -1219,19 +1479,39 @@ function resultCardHTML(req,asReq){
         const dc=c.status==='av'?'dc-av':c.status==='so'?'dc-so':c.status==='rq'?'dc-rq':'dc-un';
         return '<span class="daychip '+dc+'">'+fdshort(iso)+' '+statusLabel(c.status)+'</span>';}).join('')+'</div>';
     }
+    /* 확인자 추천 — 대상 호텔 카드 "안쪽"에 붙여 대안이라는 맥락을 살린다.
+       에이전트가 고객에게 그대로 읽어줄 문장이 되도록 마감 여부에 따라 문구가 바뀐다.
+       추천에는 삭제 버튼을 두지 않는다(확인자가 확인한 결과를 에이전트가 지우면 안 된다). */
+    const recHTML=(targetId,targetSO)=>{
+      const recs=recsFor(row,targetId);if(!recs.length)return '';
+      return recs.map(rec=>{
+        const k=recKey(rec);
+        const rs=dd.dates.map(iso=>((req.ws||{})[k+'|'+iso]||{}).status||'');
+        const rp=dd.dates.map(iso=>((req.ws||{})[k+'|'+iso]||{}).price||'').filter(Boolean);
+        const ok=rs.length>0&&rs.every(s=>s==='av');
+        const no=rs.length>0&&rs.every(s=>s==='so');
+        const lab=ok?T('av_ok'):(no?T('av_no'):(rs.some(s=>!s)?T('av_un'):T('av_rq')));
+        const cls=ok?'ok':(no?'no':'rq');
+        return '<div class="agtrec">'
+          +'<div class="agtreccap">'+(targetSO?T('rec_cap_so'):T('rec_cap'))+'</div>'
+          +'<div class="rq-line"><span class="rq-hotel">'+escT(dHotel(rec.hotel)||'-')+'</span>'
+          +'<span class="rq-type">'+escT(dRegion(rec.region||'전체'))+' · '+escT(dRoom(rec.roomType)||'-')+'</span></div>'
+          +'<div class="agtrecav av-'+cls+'">'+lab+((rp.length&&costVisible())?' · ฿'+won(rp[0])+' / '+T('n_sfx'):'')+'</div>'
+          +'</div>';}).join('');
+    };
+    const mainSO=answered&&av.k==='no';
     /* Phase 2: 추가 호텔들 표시 - 간단한 한 줄 형식 */
     let checkReqsHTML='';
     if(row.checkRequests&&row.checkRequests.length>0){
-      checkReqsHTML='<div style="margin-top:12px">';
+      checkReqsHTML='<div style="margin-top:12px"><div class="agtsec">'+T('chk_sec_req')+'</div>';
       row.checkRequests.forEach((req_ch,ci)=>{
-        checkReqsHTML+='<div style="margin-top:8px;padding:12px;background:#f9f9f9;border:1px solid #ddd;border-radius:6px;display:flex;justify-content:space-between;align-items:center">'
-          +'<div style="font-weight:600;color:#333;font-size:14px">'
-            +'<span>'+escT(dRegion(req_ch.region||'전체'))+'</span> · '
-            +'<span>'+escT(dHotel(req_ch.hotel||'-'))+'</span> · '
-            +'<span>'+escT(dRoom(req_ch.roomType||'-'))+'</span>'
+        const cid=row.id+'_chk_'+ci;
+        const cs=dd.dates.map(iso=>((req.ws||{})[cid+'|'+iso]||{}).status||'');
+        checkReqsHTML+='<div class="agtchk">'
+          +'<div class="rq-line"><span class="rq-hotel">'+escT(dHotel(req_ch.hotel||'-'))+'</span>'
+            +'<span class="rq-type">'+escT(dRegion(req_ch.region||'전체'))+' · '+escT(dRoom(req_ch.roomType||'-'))+'</span></div>'
           +'</div>'
-          +'<button class="del" onclick="removeCheckRequest('+row.id+','+req_ch.id+')" style="padding:4px 8px;border:none;background:none;cursor:pointer;font-size:18px;color:#999">−</button>'
-          +'</div>';
+          +recHTML(cid,cs.length>0&&cs.every(s=>s==='so'));
       });
       checkReqsHTML+='</div>';
     }
@@ -1242,7 +1522,9 @@ function resultCardHTML(req,asReq){
       +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(row.hotel)||'-')+'</span><span class="rq-type">'+escT(dRoom(row.roomType)||'-')+' <span class="sm">· '+row.rooms+'실</span></span></span>'
       +'<span class="avbig av-'+av.k+'" style="margin-top:0">'+av.t+'</span></div>'
       +(row.note?'<div class="rq-note">📝 '+escT(row.note)+'</div>':'')
-      +(opts?'<div>'+opts+'</div>':'')+dl+checkReqsHTML+'</div></div>';}).join('');
+      +(opts?'<div>'+opts+'</div>':'')+dl
+      +recHTML(row.id,mainSO)
+      +checkReqsHTML+'</div></div>';}).join('');
   return '<div class="quotecard '+(answered?'rescard':'reqcard')+'" id="rescard'+req.id+'"><div class="qc-title">The Nirvana · 룸체크 '+(answered?'결과':'요청')+'</div>'
     +'<div class="qc-sub" style="text-align:left;margin-top:3px">'+escT(reqNo(req))
       +(answered
@@ -1269,6 +1551,9 @@ function bindCommonList(){
   document.querySelectorAll('[data-topast]').forEach(b=>b.onclick=()=>{const r=byId(Number(b.dataset.topast));if(!r)return;
     r.archivedAt=Date.now();ui.sel=null;ui.ssel=null;saveDB();renderApp();toast(T('t_topast')+reqNo(r));});
   document.querySelectorAll('[data-recheck]').forEach(b=>b.onclick=()=>{const r=byId(Number(b.dataset.recheck));if(!r)return;
+    /* 이 동작은 row.checkRequests를 비워 입력 폼으로 되돌린다. 되돌릴 방법이 없고,
+       이제 "답변 보내기" 바로 옆에 있어 오누름이 쉬우므로 한 번 묻는다. */
+    if(!confirm(T('recheck_confirm')))return;
     draft=draftFromReq(r);
     /* Phase 3-E: checkRequests를 ui.checkInputs로 변환하여 입력 폼에서 편집 가능하게 */
     ui.checkInputs={};
@@ -1340,10 +1625,48 @@ function saveImg(id,name){const node=document.getElementById(id);
   if(!node)return;
   if(typeof html2canvas==='undefined'){toast(T('t_img_need_net'));return;}
   html2canvas(node,{scale:2,backgroundColor:'#ffffff'}).then(cv=>{const a=document.createElement('a');a.download=name;a.href=cv.toDataURL('image/png');a.click();toast(T('t_img_saved'));});}
+/* 견적 산출 내역 — "이 금액이 어떻게 나왔는지"를 한 표로 펼친다.
+   전체 이미지에 함께 실려, 받는 사람이 근거를 되짚을 수 있다. */
+function quoteBreakdownHTML(req,q){
+  q=q||curQuote(req);
+  const c=quoteCalc(req,q);
+  const K={base:'q_k_base',add:'q_k_add',rec:'q_k_rec'};
+  const legs=req.rows.map((r,i)=>{const dd=rDates(req,r,i),p=pickedFor(req,r,i,q);
+    const per=dd.nights>0?Math.round(c.perHotel[i].thb/dd.nights/(p.rooms||1)):0;
+    return '<tr><td class="qbd-l">'+T('q_leg').replace('{n}',i+1)
+      +'<div class="qbd-d">'+fdshort(dd.checkIn)+'→'+fdshort(dd.checkOut)+'</div></td>'
+      +'<td><span class="qbd-k qbd-'+p.kind+'">'+T(K[p.kind])+'</span> '+escT(dHotel(p.name)||'-')
+      +'<div class="qbd-d">'+escT(dRoom(p.roomType)||'-')+'</div></td>'
+      +'<td class="qbd-n">'+dd.nights+T('n_sfx')+'·'+(p.rooms||1)+T('r_sfx')
+      +(per?'<div class="qbd-d">฿'+won(per)+'/'+T('n_sfx')+'</div>':'')+'</td>'
+      +'<td class="qbd-a">฿'+won(c.perHotel[i].thb)+'</td></tr>';}).join('');
+  const opts=hotelOptsList(req).filter(({o})=>o.name).map(({hotel,o})=>
+    '<tr><td colspan="3">'+escT(optLabel(o))+'<div class="qbd-d">'+escT(dHotel(hotel)||'-')+'</div></td>'
+    +'<td class="qbd-a">฿'+won(lineTHB(o))+'</td></tr>').join('');
+  const adds=(q.addl||[]).filter(x=>x.desc||x.memo).map(x=>
+    '<tr><td colspan="3">'+escT(x.desc||x.memo)+'<div class="qbd-d">'+(x.amt||0)+' × '+(x.qty||1)+'</div></td>'
+    +'<td class="qbd-a">'+(x.cur==='krw'?'₩':'฿')+won(lineTHB(x))+'</td></tr>').join('');
+  return '<div class="qbd"><div class="qbd-t">'+T('qbd_title')+'</div>'
+    +'<table class="qbd-tb">'
+    +'<tr class="qbd-h"><td>'+T('qbd_leg')+'</td><td>'+T('qbd_hotel')+'</td><td>'+T('qbd_nights')+'</td><td class="qbd-a">'+T('qbd_amt')+'</td></tr>'
+    +legs
+    +'<tr class="qbd-s"><td colspan="3">'+T('qbd_hsum')+'</td><td class="qbd-a">฿'+won(c.hTHB)+'</td></tr>'
+    +(opts?'<tr class="qbd-h"><td colspan="4">'+T('qbd_opt')+'</td></tr>'+opts
+      +'<tr class="qbd-s"><td colspan="3">'+T('qbd_opt')+'</td><td class="qbd-a">฿'+won(c.optTHB)+'</td></tr>':'')
+    +'<tr class="qbd-s"><td colspan="3">'+T('qbd_sub')+'</td><td class="qbd-a">฿'+won(c.baseTHB)+'</td></tr>'
+    +'<tr><td colspan="3">'+T('qbd_krw')+' <span class="qbd-d">× '+won(c.rate)+'</span></td><td class="qbd-a">₩'+won(c.baseTHB*c.rate)+'</td></tr>'
+    +(adds?'<tr class="qbd-h"><td colspan="4">'+T('qbd_addl')+'</td></tr>'+adds
+      +'<tr class="qbd-s"><td colspan="3">'+T('qbd_addl')+'</td><td class="qbd-a">₩'+won(c.addlKRW)+'</td></tr>':'')
+    +'<tr class="qbd-tot"><td colspan="3">'+T('qb_krw_total')+' ('+c.pax+T('ppl')+')</td><td class="qbd-a">₩'+won(c.totalKRW)+'</td></tr>'
+    +'<tr><td colspan="3">'+T('qbd_per')+' <span class="qbd-d">₩'+won(c.totalKRW)+' ÷ '+c.pax+'</span></td><td class="qbd-a">'+manwonF(c.per/10000)+'</td></tr>'
+    +(q.override!=null?'<tr class="qbd-tot"><td colspan="3">'+T('qbd_adj')+'</td><td class="qbd-a">'+manwonF(c.perMan)+'</td></tr>':'')
+    +'</table></div>';
+}
 function saveFullImg(req){
   if(typeof html2canvas==='undefined'){toast(T('t_img_need_net'));return;}
   FORCE_KO=true;let html='';
-  try{html=resultCardHTML(req)+(req.quoteSent||ui.qOpen?quoteCardHTML(req):'');}finally{FORCE_KO=false;}
+  /* 전체 이미지: 룸체크 결과 + 견적서 + 산출 내역을 모두 펼쳐 담는다 */
+  try{html=resultCardHTML(req)+quoteCardHTML(req)+quoteBreakdownHTML(req);}finally{FORCE_KO=false;}
   const tmp=document.createElement('div');
   tmp.style.cssText='position:fixed;left:-10000px;top:0;width:370px;background:#fff;padding:8px';
   tmp.innerHTML=html;
@@ -1363,6 +1686,57 @@ function staffItemHTML(req){
 function staffListHTML(){
   return sectionsHTML(staffItemHTML,T('sub_staff'));
 }
+/* C안: 추천을 "대신하려는 호텔" 바로 아래에 연결선으로 매단다.
+   targetSO가 true면 마감 대안, false면 그냥 함께 권하는 것 — 마감이 아니어도 달 수 있다. */
+function recBlockHTML(req,row,i,dd,targetId,targetSO){
+  const canEdit=(ui.role==='schk'||ui.role==='sreq');
+  const recs=recsFor(row,targetId);
+  if(!recs.length&&!canEdit)return '';
+  if(!recs.length&&!canEdit)return '';
+  /* 추가 호텔과 같은 접기 바. recOpen에 담긴 대상은 사용자가 기본값을 뒤집은 것이다.
+     기본값은 추천이 있으면 펼침, 없으면 접힘 — chkListTog와 동일한 규칙. */
+  const dflt=recs.length>0;
+  const recOpen=ui.recOpen.has(String(targetId))?!dflt:dflt;
+  let h='<button class="chkListTog recTog'+(recOpen?' open':'')+'" data-rec-tog="'+targetId+'">'
+    +'<span class="chev'+(recOpen?' open':'')+'">▶</span>'
+    +'<span>'+T('rec_sec')+' ('+recs.length+')</span>'
+    +(canEdit?'<span class="chkAddBtn recAdd" data-req="'+req.id+'" data-row="'+row.id+'" data-target="'+targetId+'">'+T('chk_add')+'</span>':'')
+    +'</button>';
+  if(recOpen&&recs.length){
+    h+='<div class="chklist reclist">'
+      +'<div class="reccap">'+(targetSO?T('rec_cap_so'):T('rec_cap'))+'</div>'
+      +recs.map(rec=>{
+        const k=recKey(rec);
+        const sts=dd.dates.map(iso=>((req.ws||{})[k+'|'+iso]||{}).status||'');
+        const prs=dd.dates.map(iso=>((req.ws||{})[k+'|'+iso]||{}).price||'');
+        const uS=[...new Set(sts)],uP=[...new Set(prs)];
+        const mS=uS.length>1,mP=uP.length>1;
+        return '<div class="subcard recrow">'
+          /* 퍼플 칩과 왼쪽 외곽선이 이미 "다른 종류"를 말하므로 별도 설명 라벨은 두지 않는다 */
+          +'<div class="cardhd"><span class="hgnum rec">'+T('rec_word')+'</span>'
+          +(canEdit?'<button class="del" style="margin-left:auto" onclick="removeRecommend('+req.id+',\''+row.id+'\',\''+rec.id+'\')">−</button>':'')
+          +'</div>'
+          +(canEdit
+            ?'<div class="line lhotel" style="margin-top:0">'
+              +'<div><div class="label">'+T('region')+'</div><select class="recRegion" data-rid="'+rec.id+'" data-row="'+row.id+'">'
+                +REGIONS.map(rg=>opt(rg,escT(dRegion(rg)),rg===(rec.region||'전체'))).join('')
+              +'</select></div>'
+              /* 칸이 좁아 "(선택·입력)"까지 넣으면 라벨이 2~3줄로 감긴다 — 짧은 라벨을 쓴다 */
+              +'<div><div class="label">'+T('hotel_n')+'</div><input class="recHotel" data-rid="'+rec.id+'" data-row="'+row.id+'" list="rdl_rec'+rec.id+'" value="'+esc(dHotel(rec.hotel))+'" placeholder="'+esc(T('ph_hotel'))+'">'
+                +'<datalist id="rdl_rec'+rec.id+'">'+hotelsIn(rec.region||'전체').map(h=>'<option value="'+esc(dHotel(h.name))+'">').join('')+'</datalist></div>'
+              +'<div><div class="label">'+T('room_lbl')+'</div><input class="recRoom" data-rid="'+rec.id+'" data-row="'+row.id+'" list="rrdl'+rec.id+'" value="'+esc(dRoom(rec.roomType))+'" placeholder="'+esc(T('ph_room'))+'">'
+                +roomDL('rrdl'+rec.id,rec.hotel)+'</div></div>'
+            :'<div class="rq-region" style="margin-bottom:5px">'+escT(dRegion(rec.region||'전체'))+'</div>'
+              +'<div class="rq-hotel">'+escT(dHotel(rec.hotel)||T('no_input'))+'</div>'
+              +'<div class="rq-type">'+escT(dRoom(rec.roomType)||'-')+'</div>')
+          +'<div class="strow" style="margin-top:8px">'
+          +stSel('stsel',mS?'__none':uS[0],'data-rec="'+k+'"',mS)
+          +'<span class="pbox"><span>฿</span><input type="number" class="recPrice" data-rec="'+k+'" placeholder="'+esc(mP?T('ws_mixed'):T('ws_price_ph'))+'" value="'+(mP?'':(uP[0]||''))+'"></span></div>'
+          +'</div>';}).join('')
+      +'</div>';
+  }
+  return h;
+}
 function staffWorkInner(req){
   if(!req)return '';
   const cards=req.rows.map((row,i)=>{
@@ -1380,7 +1754,7 @@ function staffWorkInner(req){
       +'<div class="flex aic" style="gap:5px;flex-wrap:wrap;margin-bottom:5px">'
       +(row.region&&row.region!=='전체'?'<span class="rq-region" style="margin-bottom:0">'+escT(dRegion(row.region))+'</span>':'')
       +phoneHTML(req,row)
-      +(row.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+T('save_w')+' '+dotDateTime(row.savedAt)+'</span>':'')+'</div>'
+      +(row.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+dotDateTime(row.savedAt)+'</span>':'')+'</div>'
       +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(row.hotel)||T('no_hotel'))+'</span><span class="rq-type">'+escT(dRoom(row.roomType)||'-')+' <span class="sm">· '+row.rooms+T('r_sfx')+'</span></span></span>'
       +'<span style="display:flex;gap:5px;align-items:center;flex:0 0 auto">'+stSel('stsel',mSt?'__none':uSt[0],'data-all="'+row.id+'"',mSt)
       +'<span class="pbox"><span>฿</span><input type="number" class="pall" data-all="'+row.id+'" placeholder="'+esc(mPr?T('ws_mixed'):T('ws_price_ph'))+'" value="'+(mPr?'':(uPr[0]||''))+'"></span></span></div>'
@@ -1402,7 +1776,8 @@ function staffWorkInner(req){
           : '<button class="linkbtn optTog" data-id="'+row.id+'">'+T('ws_opt_open')+'</button>')
         +'</div>';
     }
-    /* Phase 3-D: 추가 호텔 — 호텔1과 동일한 컴팩트 레이아웃 */
+    /* Phase 3-D: 추가 호텔 — 호텔1과 동일한 컴팩트 레이아웃, 펼침 버튼 안에 표시 */
+    let chkCards='',chkSection='';
     if(row.checkRequests&&row.checkRequests.length){
       row.checkRequests.forEach((chk,ci)=>{
         const chkId=row.id+'_chk_'+ci;
@@ -1414,14 +1789,12 @@ function staffWorkInner(req){
         const cmSt=cuSt.length>1,cmPr=cuPr.length>1;
 
         const chkHead='<div class="wshead" data-chk-toggle="'+chkId+'" style="display:block;padding:0">'
-          +'<div class="rq-datebar"><span class="chev'+(chkOpen?' open':'')+'" style="width:13px">▶</span>'+fdate(dd.checkIn)+' → '+fdate(dd.checkOut)+' <span class="nightsb">'+dd.nights+T('n_sfx')+'</span><span class="rq-idx">추가 '+T('hotel_n')+' '+(ci+1)+chkChip+'</span></div>'
+          +'<div class="rq-datebar"><span class="chev'+(chkOpen?' open':'')+'" style="width:13px">▶</span><span class="hgnum sub">'+(i+1)+'-'+(ci+1)+'</span>'+fdate(dd.checkIn)+' → '+fdate(dd.checkOut)+' <span class="nightsb">'+dd.nights+T('n_sfx')+'</span><span class="rq-idx">'+T('chk_more')+' '+(ci+1)+chkChip+'</span></div>'
           +'<div class="rq-body">'
           +'<div class="flex aic" style="gap:5px;flex-wrap:wrap;margin-bottom:5px">'
           +(chk.region&&chk.region!=='전체'?'<span class="rq-region" style="margin-bottom:0">'+escT(dRegion(chk.region))+'</span>':'')
           +chkPhoneHTML(req,chk,chkId)
-          +'<span class="small" style="color:var(--muted)">호텔 담당자</span>'
-          +'<input type="text" class="chkPhWho" data-chkid="'+chkId+'" placeholder="담당자" value="'+(chk.manager||'')+'" style="width:120px;padding:2px 4px;border:1px solid var(--line);border-radius:2px;font-size:12px">'
-          +(chk.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+T('save_w')+' '+dotDateTime(chk.savedAt)+'</span>':'')+'</div>'
+          +(chk.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+dotDateTime(chk.savedAt)+'</span>':'')+'</div>'
           +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(chk.hotel))+'</span><span class="rq-type">'+escT(dRoom(chk.roomType)||'-')+' <span class="sm">· '+(chk.rooms||row.rooms||1)+T('r_sfx')+'</span></span></span>'
           +'<span style="display:flex;gap:5px;align-items:center;flex:0 0 auto">'+stSel('stsel',cmSt?'__none':cuSt[0],'data-chk="'+chkId+'"',cmSt)
           +'<span class="pbox"><span>฿</span><input type="number" class="chkPrice" data-chk="'+chkId+'" placeholder="'+esc(cmPr?T('ws_mixed'):T('ws_price_ph'))+'" value="'+(cmPr?'':(cuPr[0]||''))+'"></span></span></div>'
@@ -1437,16 +1810,30 @@ function staffWorkInner(req){
             +'<button class="linkbtn optTog" data-chkid="'+chkId+'" style="margin-top:8px">▸ 호텔 추가 옵션 입력</button>'
             +'</div>';
         }
-        detail+='<div class="wscard" style="margin-top:8px;border-color:rgba(30,99,200,0.3);background:rgba(30,99,200,0.02)">'+chkHead+chkDetail+'</div>';
+        chkCards+='<div class="wscard subcard">'+chkHead+chkDetail+'</div>'
+          +recBlockHTML(req,row,i,dd,chkId,csts.length>0&&csts.every(s=>s==='so'));
       });
-      /* 추가 호텔 섹션 아래 "룸체크 답변보내기" 버튼 */
-      if(row.checkRequests.length>0){
-        detail+='<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,.1)"><div class="qbtns">'
-          +'<button class="qcopy" id="sendChkAnswer_'+row.id+'" style="width:100%">🔔 룸체크 답변보내기</button>'
-          +'</div></div>';
-      }
+      /* 추가 호텔은 펼침 버튼 안에 접어 둔다 */
+      const nChk=row.checkRequests.length;
+      const dChk=row.checkRequests.filter((c,ci)=>chkDone(req,row,i,ci)).length;
+      const listOpen=ui.chkListOpen.has(row.id);
+      chkSection='<button class="chkListTog'+(listOpen?' open':'')+'" data-row="'+row.id+'">'
+        +'<span class="chev'+(listOpen?' open':'')+'">▶</span>'
+        +'<span>'+T('chk_more')+' ('+nChk+')</span>'
+        +'<span class="badge '+(dChk===nChk?'b-done':'b-wait')+'" style="margin-left:auto">'+dChk+'/'+nChk+'</span></button>'
+        +(listOpen?'<div class="chklist">'+chkCards+'</div>':'');
+      /* 답변 전송은 하단의 "룸체크 답변보내기" 버튼 하나로 통일 */
     }
-    return '<div class="wscard">'+head+detail+'</div>';
+    /* C안: 호텔 + 그 추가 호텔을 하나의 그룹 박스로 묶는다 */
+    const gTot=1+(row.checkRequests||[]).length;
+    const gDone=(rdone?1:0)+(row.checkRequests||[]).filter((c,ci)=>chkDone(req,row,i,ci)).length;
+    return '<div class="hgroup hg'+(i%3)+'">'
+      +'<div class="hgrouphd"><span class="hgnum">'+(i+1)+'</span>'+T('hotel_n')+' '+(i+1)
+      +'<span class="hgcnt">'+gDone+'/'+gTot+'</span></div>'
+      +'<div class="wscard">'+head+detail+'</div>'
+      +recBlockHTML(req,row,i,dd,row.id,sts.length>0&&sts.every(s=>s==='so'))
+      +chkSection
+      +'</div>';
   }).join('');
   const legend='<div class="legend">'
     +'<span class="small"><b style="color:var(--av)">AV</b> '+T('lg_av')+'</span>'
@@ -1459,23 +1846,47 @@ function staffWorkInner(req){
     +'<p class="foot">'+T('ws_foot')+'</p>'
     +(ui.role==='schk'
       ? (req.quoteRequested&&!req.quoteSent?'<p class="small" style="margin:8px 2px 2px">'+T('ws_qreq_note')+'</p>':'')
-        +(req.rows.length>1&&!allDone(req)?'<p class="small" style="margin:8px 2px 2px;color:var(--so)">'+TF('ws_partial_warn',{n:req.rows.length-doneCount(req)})+'</p>':'')
-        +'<div class="qbtns"><button class="qcopy" id="sendA">'+(req.rows.length>1&&!allDone(req)&&doneCount(req)>0
-          ?TF('btn_send_partial',{n:doneCount(req),t:req.rows.length})
+        +(totalCount(req)>1&&!allDone(req)?'<p class="small" style="margin:8px 2px 2px;color:var(--so)">'+TF('ws_partial_warn',{n:totalCount(req)-doneCount(req)})+'</p>':'')
+        +'<div class="qbtns"><button class="qcopy" id="sendA">'+(totalCount(req)>1&&!allDone(req)&&doneCount(req)>0
+          ?TF('btn_send_partial',{n:doneCount(req),t:totalCount(req)})
           :(req.status==='requested'?T('btn_send_ans'):T('btn_send_upd')))+'</button></div>'
-      : (((req.direct&&req.status==='answered')?'<div class="qbtns"><button class="'+(req.forwardedAt?'qgray':'qcopy')+'" id="fwdAgent">'+(req.forwardedAt?'✅ 에이전트에 전송됨':'📤 에이전트에게 전송')+'</button></div>'+(req.forwardedAt?'<p class="small" style="margin:4px 2px;color:var(--muted)">전송 '+dotDateTime(req.forwardedAt)+'</p>':'<p class="small" style="margin:4px 2px;color:var(--rq)">확인 후 에이전트에게 전송하면 에이전트가 결과를 볼 수 있습니다.</p>'):''))+'<div style="border-top:1px solid var(--line);margin-top:6px;padding-top:6px"><button class="linkbtn" id="qTog">'+(ui.qOpen?T('mkq_close'):T('mkq'))+'</button>'
-        +(ui.qOpen?quoteBuilderHTML(req):'')+'</div>'
-        +'<div class="qbtns"><button class="qcopy" id="sendA">'+(req.status==='requested'?T('btn_send_ans'):T('btn_send_upd'))+'</button><button class="qimg" id="sendQ">'+T('btn_sendq')+'</button></div>'
-        +'<div class="qbtns"><button class="qgray" data-recheck="'+req.id+'">'+T('btn_recheck')+'</button>'
-        +(req.contractedAt
-          ?'<button class="qgray" data-contract="'+req.id+'">'+T('btn_contract_x')+'</button>'
-          :'<button class="qcopy" data-contract="'+req.id+'">'+T('btn_contract')+'</button>')+'</div>'
-        +(!req.archivedAt&&!req.contractedAt?'<div class="qbtns"><button class="qgray" data-topast="'+req.id+'">'+T('btn_topast')+'</button></div>':''));
+      : (((req.direct&&req.status==='answered')?'<div class="qbtns"><button class="'+(req.forwardedAt?'qgray':'qcopy')+'" id="fwdAgent">'+(req.forwardedAt?'✅ 에이전트에 전송됨':'📤 에이전트에게 전송')+'</button></div>'+(req.forwardedAt?'<p class="small" style="margin:4px 2px;color:var(--muted)">전송 '+dotDateTime(req.forwardedAt)+'</p>':'<p class="small" style="margin:4px 2px;color:var(--rq)">확인 후 에이전트에게 전송하면 에이전트가 결과를 볼 수 있습니다.</p>'):''))        /* A안: 매번 누르는 "답변 보내기"만 크게. 되돌리기(다시 룸체크)는 그 옆에 두되
+           빨간 점선으로 성격을 갈라 놓는다 — 입력을 초기화하는 동작이라 오누름이 위험하다.
+           자주 안 쓰는 계약 완료·지난 리스트는 "⋯ 더보기" 안으로 접는다. */
+        +'<div class="qbtns" style="margin-top:12px"><button class="qprimary" id="sendA">'+(req.status==='requested'?T('btn_send_ans'):T('btn_send_upd'))+'</button>'
+        +'<button class="qdanger" data-recheck="'+req.id+'">'+T('btn_recheck')+'</button></div>'
+        +'<div class="qbtns"><button class="qghost" id="qTog">'+(ui.qOpen?T('mkq_close'):T('mkq'))+'</button>'
+        +'<button class="qghost" id="sendQ">'+T('btn_sendq')+'</button></div>'
+        +(ui.qOpen?quoteBuilderHTML(req):'')
+        +'<button class="moreTog'+(ui.moreOpen?' open':'')+'" id="moreTog">'+(ui.moreOpen?'▾ '+T('more_close'):'⋯ '+T('more_open'))+'</button>'
+        +(ui.moreOpen?'<div class="moreopen"><div class="qbtns" style="margin-top:0">'
+          +(req.contractedAt
+            ?'<button class="qquiet" data-contract="'+req.id+'">'+T('btn_contract_x')+'</button>'
+            :'<button class="qquiet qok" data-contract="'+req.id+'">'+T('btn_contract')+'</button>')
+          +(!req.archivedAt&&!req.contractedAt?'<button class="qquiet" data-topast="'+req.id+'">'+T('btn_topast')+'</button>':'')
+          +'</div></div>':''));
 }
 function stSel(cls,val,attrs,mixed){let o=STOPT.map(([v,t])=>opt(v,t,val===v)).join('');
   if(mixed)o='<option value="__mix" selected>'+T('ws_mixed')+'</option>'+o;
   return '<select class="'+cls+' '+(STCLS[val]||'')+'" '+attrs+'>'+o+'</select>';}
-function buildWsFromDOM(req){try{req.ws=req.ws||{};var dbg={na:0,np:0,sv:[],pv:[],wb:Object.keys(req.ws||{}).length};document.querySelectorAll('select.stsel[data-all]').forEach(function(sel){dbg.na++;dbg.sv.push(sel.dataset.all+'#'+sel.value);var v=sel.value;if(!v||v==='__mix')return;var rid=sel.dataset.all;var row=(req.rows||[]).find(function(r){return String(r.id)===String(rid)});if(!row)return;var idx=req.rows.indexOf(row);rDates(req,row,idx).dates.forEach(function(iso){var k=rid+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].status=v;});});document.querySelectorAll('select.stsel[data-key]').forEach(function(sel){var v=sel.value;if(!v||v==='__mix')return;var k=sel.dataset.key;req.ws[k]=req.ws[k]||{};req.ws[k].status=v;});document.querySelectorAll('input.pall').forEach(function(inp){dbg.np++;dbg.pv.push(inp.dataset.all+'#'+inp.value);var v=inp.value;if(v===''||v==null)return;var rid=inp.dataset.all;var row=(req.rows||[]).find(function(r){return String(r.id)===String(rid)});if(!row)return;var idx=req.rows.indexOf(row);rDates(req,row,idx).dates.forEach(function(iso){var k=rid+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].price=v;});});document.querySelectorAll('input.pone').forEach(function(inp){var v=inp.value;if(v===''||v==null)return;var k=inp.dataset.key;req.ws[k]=req.ws[k]||{};req.ws[k].price=v;});dbg.wa=Object.keys(req.ws||{}).length;dbg.dup=(typeof DB!=='undefined'&&DB.requests?DB.requests.filter(function(x){return x&&x.id===req.id}).length:-1);req._bwd=dbg;}catch(e){req._domerr=String(e);}}
+function buildWsFromDOM(req){try{req.ws=req.ws||{};var dbg={na:0,np:0,sv:[],pv:[],wb:Object.keys(req.ws||{}).length};document.querySelectorAll('select.stsel[data-all]').forEach(function(sel){dbg.na++;dbg.sv.push(sel.dataset.all+'#'+sel.value);var v=sel.value;if(!v||v==='__mix')return;var rid=sel.dataset.all;var row=(req.rows||[]).find(function(r){return String(r.id)===String(rid)});if(!row)return;var idx=req.rows.indexOf(row);rDates(req,row,idx).dates.forEach(function(iso){var k=rid+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].status=v;});});document.querySelectorAll('select.stsel[data-key]').forEach(function(sel){var v=sel.value;if(!v||v==='__mix')return;var k=sel.dataset.key;req.ws[k]=req.ws[k]||{};req.ws[k].status=v;});document.querySelectorAll('input.pall').forEach(function(inp){dbg.np++;dbg.pv.push(inp.dataset.all+'#'+inp.value);var v=inp.value;if(v===''||v==null)return;var rid=inp.dataset.all;var row=(req.rows||[]).find(function(r){return String(r.id)===String(rid)});if(!row)return;var idx=req.rows.indexOf(row);rDates(req,row,idx).dates.forEach(function(iso){var k=rid+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].price=v;});});document.querySelectorAll('input.pone').forEach(function(inp){var v=inp.value;if(v===''||v==null)return;var k=inp.dataset.key;req.ws[k]=req.ws[k]||{};req.ws[k].price=v;});
+/* 추가 호텔 — 호텔1과 동일하게 일괄값 먼저, 요일별 값이 덮어쓰기 */
+var _chkRow=function(cid){var rid=String(cid).split('_chk_')[0];return (req.rows||[]).find(function(r){return String(r.id)===rid});};
+var _chkDates=function(cid){var row=_chkRow(cid);if(!row)return null;return rDates(req,row,req.rows.indexOf(row)).dates;};
+document.querySelectorAll('select.stsel[data-chk]').forEach(function(sel){var v=sel.value;if(!v||v==='__mix')return;var cid=sel.dataset.chk,ds=_chkDates(cid);if(!ds)return;ds.forEach(function(iso){var k=cid+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].status=v;});});
+document.querySelectorAll('input.chkPrice[data-chk]').forEach(function(inp){var v=inp.value;if(v===''||v==null)return;var cid=inp.dataset.chk,ds=_chkDates(cid);if(!ds)return;ds.forEach(function(iso){var k=cid+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].price=v;});});
+document.querySelectorAll('select.stsel[data-chk-key]').forEach(function(sel){var v=sel.value;if(!v||v==='__mix')return;var k=sel.dataset.chkKey;req.ws[k]=req.ws[k]||{};req.ws[k].status=v;});
+document.querySelectorAll('input.chkone[data-chk-key]').forEach(function(inp){var v=inp.value;if(v===''||v==null)return;var k=inp.dataset.chkKey;req.ws[k]=req.ws[k]||{};req.ws[k].price=v;});
+/* 확인자 추천 — 진행률에는 안 들어가지만 상태·요금은 답변에 실려야 한다 */
+var _recDates=function(k){for(var i=0;i<req.rows.length;i++){var r=req.rows[i];
+  if((r.recommends||[]).some(function(x){return 'rec_'+x.id===k}))return rDates(req,r,i).dates;}return null;};
+document.querySelectorAll('select.stsel[data-rec]').forEach(function(sel){var v=sel.value;if(!v||v==='__mix')return;
+  var k=sel.dataset.rec,ds=_recDates(k);if(!ds)return;
+  ds.forEach(function(iso){var kk=k+'|'+iso;req.ws[kk]=req.ws[kk]||{};req.ws[kk].status=v;});});
+document.querySelectorAll('input.recPrice').forEach(function(inp){var v=inp.value;if(v===''||v==null)return;
+  var k=inp.dataset.rec,ds=_recDates(k);if(!ds)return;
+  ds.forEach(function(iso){var kk=k+'|'+iso;req.ws[kk]=req.ws[kk]||{};req.ws[kk].price=v;});});
+dbg.wa=Object.keys(req.ws||{}).length;dbg.dup=(typeof DB!=='undefined'&&DB.requests?DB.requests.filter(function(x){return x&&x.id===req.id}).length:-1);req._bwd=dbg;}catch(e){req._domerr=String(e);}}
 function bindStaff(){
   const ck=document.getElementById('checker');if(ck)ck.oninput=e=>{DB.checker=e.target.value;saveDB();};
   bindCommonList();
@@ -1526,13 +1937,14 @@ function bindStaff(){
   document.querySelectorAll('.woptAdd').forEach(b=>b.onclick=()=>{const r=req.rows.find(x=>x.id===Number(b.dataset.id));
     r.options=r.options||[];r.options.push({id:Date.now(),name:'',qty:1,amt:0,show:true,memo:''});saveDB();renderApp();});
   const qt=document.getElementById('qTog');if(qt)qt.onclick=()=>{ui.qOpen=!ui.qOpen;renderApp();};
+  const mt=document.getElementById('moreTog');if(mt)mt.onclick=()=>{ui.moreOpen=!ui.moreOpen;renderApp();};
   if(ui.qOpen)bindQuoteBuilder(req);
-  const sa=document.getElementById('sendA');if(sa)sa.onclick=()=>{buildWsFromDOM(req);req.status='answered';req.answeredAt=Date.now();req.manager=DB.checker||'심은선';req.answerComplete=allDone(req);recordFullbook(req);saveDB();renderApp();
+  const sa=document.getElementById('sendA');if(sa)sa.onclick=()=>{buildWsFromDOM(req);confirmChecks(req);req.status='answered';req.answeredAt=Date.now();req.manager=DB.checker||'심은선';req.answerComplete=allDone(req);recordFullbook(req);saveDB();renderApp();
     toast(isFullbookReq(req)?T('t_fullbook')+reqNo(req)
-      :(!allDone(req)?TF('t_partial',{n:doneCount(req),t:req.rows.length})+reqNo(req)
+      :(!allDone(req)?TF('t_partial',{n:doneCount(req),t:totalCount(req)})+reqNo(req)
       :T('t_answered')+reqNo(req)));};
   const fa=document.getElementById('fwdAgent');if(fa)fa.onclick=()=>{req.forwardedAt=Date.now();saveDB();renderApp();toast('에이전트에 전송 · '+reqNo(req));};
-  const sq=document.getElementById('sendQ');if(sq)sq.onclick=()=>{buildWsFromDOM(req);req.status='answered';req.answeredAt=Date.now();req.manager=DB.checker||'심은선';req.answerComplete=allDone(req);req.quoteSent=true;req.quoteRequested=false;req.quoteSentAt=Date.now();req.quoteBy=DB.checker||'심은선';recordFullbook(req);saveDB();renderApp();toast(T('t_qsent')+reqNo(req));};
+  const sq=document.getElementById('sendQ');if(sq)sq.onclick=()=>{buildWsFromDOM(req);confirmChecks(req);req.status='answered';req.answeredAt=Date.now();req.manager=DB.checker||'심은선';req.answerComplete=allDone(req);req.quoteSent=true;req.quoteRequested=false;req.quoteSentAt=Date.now();req.quoteBy=DB.checker||'심은선';recordFullbook(req);saveDB();renderApp();toast(T('t_qsent')+reqNo(req));};
   /* Phase 2: 추가 호텔 확인 버튼 바인딩 */
   document.querySelectorAll('[id^="btn-confirm-"]').forEach(btn=>{
     btn.onclick=()=>{
@@ -1570,23 +1982,63 @@ function bindStaff(){
       }
     };
   });
-  /* 추가 호텔 펼침/접힘 토글 */
+  /* ===== 확인자 추천 ===== */
+  const findRec=(rowId,recId)=>{
+    const row=req.rows.find(r=>String(r.id)===String(rowId));
+    return row&&(row.recommends||[]).find(x=>String(x.id)===String(recId));};
+  const recDates=recK=>{
+    for(let i=0;i<req.rows.length;i++){
+      const row=req.rows[i];
+      if((row.recommends||[]).some(x=>recKey(x)===recK))return rDates(req,row,i).dates;}
+    return null;};
+  document.querySelectorAll('.recAdd').forEach(b=>b.onclick=e=>{
+    e.preventDefault();e.stopPropagation();      /* 접기 바 토글까지 함께 실행되지 않게 */
+    ui.recOpen.delete(String(b.dataset.target)); /* 기본값(추천 있음 → 펼침)으로 되돌려 새 칸이 보이게 */
+    addRecommend(b.dataset.req,b.dataset.row,b.dataset.target);});
+  document.querySelectorAll('button.chkListTog[data-rec-tog]').forEach(b=>{
+    b.onclick=e=>{
+      if(e.target.closest('.recAdd'))return;     /* ＋추천은 위 핸들러가 처리 */
+      const t=String(b.dataset.recTog);
+      ui.recOpen.has(t)?ui.recOpen.delete(t):ui.recOpen.add(t);renderApp();};});
+  document.querySelectorAll('select.recRegion').forEach(sel=>sel.onchange=e=>{
+    const rec=findRec(sel.dataset.row,sel.dataset.rid);if(!rec)return;
+    clearHotelPick(rec,e.target.value);          /* 지역 바뀌면 호텔·룸타입 비움 */
+    saveDB();renderApp();});
+  document.querySelectorAll('input.recHotel').forEach(inp=>{
+    inp.onchange=e=>{
+      const rec=findRec(inp.dataset.row,inp.dataset.rid);if(!rec)return;
+      applyHotelPick(rec,e.target.value.trim()); /* 지역 자동 선택 + 룸타입 로드 */
+      saveDB();renderApp();};
+    const _rec=findRec(inp.dataset.row,inp.dataset.rid);
+    if(_rec)attachHotelFinder(inp,()=>_rec.region,name=>{
+      applyHotelPick(_rec,name);saveDB();renderApp();});});
+  document.querySelectorAll('input.recRoom').forEach(inp=>inp.onchange=e=>{
+    const rec=findRec(inp.dataset.row,inp.dataset.rid);if(!rec)return;
+    rec.roomType=e.target.value.trim();saveDB();renderApp();});
+  document.querySelectorAll('select.stsel[data-rec]').forEach(sel=>sel.onchange=e=>{
+    const k=e.target.dataset.rec,v=e.target.value;if(v==='__mix')return;
+    const ds=recDates(k);if(!ds)return;req.ws=req.ws||{};
+    ds.forEach(iso=>{const kk=k+'|'+iso;req.ws[kk]=req.ws[kk]||{};req.ws[kk].status=v;});
+    saveDB();renderApp();});
+  document.querySelectorAll('input.recPrice').forEach(inp=>inp.onchange=e=>{
+    const k=e.target.dataset.rec,v=e.target.value;
+    const ds=recDates(k);if(!ds)return;req.ws=req.ws||{};
+    ds.forEach(iso=>{const kk=k+'|'+iso;req.ws[kk]=req.ws[kk]||{};req.ws[kk].price=v;});
+    saveDB();renderApp();});
+  /* 추가 호텔 목록 전체 펼침/접힘.
+     [data-row]로 좁힌다 — 좁히지 않으면 추천 바(.recTog)까지 잡아 그 onclick을 덮어쓴다. */
+  document.querySelectorAll('button.chkListTog[data-row]').forEach(b=>b.onclick=e=>{
+    e.stopPropagation();
+    const rid=Number(b.dataset.row);
+    ui.chkListOpen.has(rid)?ui.chkListOpen.delete(rid):ui.chkListOpen.add(rid);renderApp();});
+  /* 추가 호텔 개별 카드 펼침/접힘 토글 */
   document.querySelectorAll('[data-chk-toggle]').forEach(el=>el.onclick=e=>{
     if(e.target.closest('select,input,textarea,button,a'))return;
     const id=el.dataset.chkToggle;ui.checkExpand.has(id)?ui.checkExpand.delete(id):ui.checkExpand.add(id);renderApp();});
   /* 추가 호텔 찾기 헬퍼 */
   const findChk=cid=>{for(const row of req.rows){if(!row.checkRequests)continue;
     for(let ci=0;ci<row.checkRequests.length;ci++){if(row.id+'_chk_'+ci===cid)return {row,chk:row.checkRequests[ci],ci};}}return null;};
-  /* 추가 호텔 상태 선택자 (전체 날짜 일괄) */
-  document.querySelectorAll('select.chkSel[data-chk]').forEach(sel=>sel.onchange=e=>{
-    const chkId=e.target.dataset.chk,v=e.target.value;if(v==='__mix')return;
-    const f=findChk(chkId);if(!f)return;
-    f.chk.bookingStatus=v;req.ws=req.ws||{};
-    const dd=rDates(req,f.row,req.rows.indexOf(f.row));
-    dd.dates.forEach(iso=>{const k=chkId+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].status=v;});
-    f.chk.savedAt=Date.now();saveDB();renderApp();});
-  /* 추가 호텔 금액 입력 (전체 날짜 일괄) */
-  /* Phase 4-F: 확인자 추가 호텔 상태 선택 (호텔1과 동일) */
+  /* Phase 4-F: 추가 호텔 상태 선택 (전체 날짜 일괄 — 호텔1의 stsel[data-all]과 동일) */
   document.querySelectorAll('select.stsel[data-chk]').forEach(sel=>sel.onchange=e=>{
     const chkId=e.target.dataset.chk,v=e.target.value;if(v==='__mix')return;
     const f=findChk(chkId);if(!f)return;
@@ -1604,8 +2056,8 @@ function bindStaff(){
     const dd=rDates(req,f.row,req.rows.indexOf(f.row));
     dd.dates.forEach(iso=>{const k=chkId+'|'+iso;req.ws[k]=req.ws[k]||{};req.ws[k].price=numVal;});
     f.chk.savedAt=Date.now();saveDB();renderApp();});
-  /* 추가 호텔 요일별 상태 선택자 */
-  document.querySelectorAll('select.chksel[data-chk-key]').forEach(sel=>sel.onchange=e=>{
+  /* 추가 호텔 요일별 상태 선택자 (호텔1의 stsel[data-key]와 동일) */
+  document.querySelectorAll('select.stsel[data-chk-key]').forEach(sel=>sel.onchange=e=>{
     const k=e.target.dataset.chkKey,v=e.target.value;req.ws=req.ws||{};req.ws[k]=req.ws[k]||{};req.ws[k].status=v;
     const f=findChk(k.split('|')[0]);if(f)f.chk.savedAt=Date.now();
     saveDB();renderApp();});
@@ -1631,24 +2083,73 @@ function bindStaff(){
   document.querySelectorAll('.chkPhWho').forEach(inp=>{
     inp.oninput=e=>{const f=findChk(inp.dataset.chkid);if(f)f.chk.manager=e.target.value;};
     inp.onchange=e=>{const f=findChk(inp.dataset.chkid);if(f)f.chk.savedAt=Date.now();saveDB();renderApp();};});
-  /* Phase 3-C: 룸체크 답변보내기 버튼 */
-  document.querySelectorAll('[id^="sendChkAnswer_"]').forEach(btn=>btn.onclick=()=>{
-    const rid=Number(btn.id.replace('sendChkAnswer_',''));
-    const row=req.rows.find(r=>r.id===rid);
-    if(!row||!row.checkRequests)return;
-    buildWsFromDOM(req);
-    row.checkRequests.forEach(chk=>{chk.status='confirmed';chk.confirmedAt=Date.now();chk.confirmedBy=DB.checker||'심은선';});
-    saveDB();renderApp();
-    toast('추가 호텔 정보가 저장되었습니다 · '+reqNo(req));
-  });
+  /* Phase 3-C: 추가 호텔 답변은 하단 "룸체크 답변보내기"(sendA) 하나로 통일 */
+}
+/* 답변 전송 시 완료된 추가 호텔을 확정 처리 — 호텔1의 rowDone과 동일 기준 */
+function confirmChecks(req){
+  req.rows.forEach((row,i)=>(row.checkRequests||[]).forEach((chk,ci)=>{
+    if(!chkDone(req,row,i,ci))return;
+    chk.status='confirmed';chk.confirmedAt=Date.now();chk.confirmedBy=DB.checker||'심은선';
+  }));
 }
 
 /* ================= ④ 간단 견적 ================= */
 function hotelTHB(req,row,i){let t=0;rDates(req,row,i).dates.forEach(iso=>{const c=(req.ws||{})[row.id+'|'+iso]||{};t+=(Number(c.price)||0)*Number(row.rooms);});return t;}
+/* ===== 견적 여러 장 =====
+   기존에는 req.quote 객체 하나뿐이라 두 번째 견적이 첫 번째를 덮어썼다.
+   quotes[] 배열로 바꾸고, 예전에 저장된 견적은 quotes[0]으로 옮겨 담아 잃지 않는다.
+   옛 견적의 환율은 그대로 두어 과거 금액이 바뀌지 않게 한다. */
+const QRATE=45; /* 환율 기본값 */
+function mkQuote(n,src){return Object.assign(
+  {id:Date.now()+'_'+(Math.random()*1e6|0),name:T('q_nth').replace('{n}',n||1),
+   rate:QRATE,pax:2,addl:[],override:null,remark:'',picks:{}},src||{});}
+function migQuotes(r){
+  if(!Array.isArray(r.quotes)){
+    r.quotes=[mkQuote(1,r.quote?JSON.parse(JSON.stringify(r.quote)):null)];
+    delete r.quote;
+  }
+  if(!r.quotes.length)r.quotes=[mkQuote(1)];
+  r.quotes.forEach(q=>{q.picks=q.picks||{};q.addl=q.addl||[];});
+  return r.quotes;
+}
+function curQuote(req){const qs=migQuotes(req);
+  return qs[Math.min(Math.max(0,ui.qIdx|0),qs.length-1)];}
+/* 한 구간(호텔 N 자리)에 들어갈 수 있는 후보 — 기본·추가·추천을 한 목록으로 */
+function legCandidates(req,row,i){
+  const out=[{key:String(row.id),kind:'base',name:row.hotel,roomType:row.roomType,rooms:row.rooms}];
+  (row.checkRequests||[]).forEach((c,ci)=>out.push({key:row.id+'_chk_'+ci,kind:'add',
+    name:c.hotel,roomType:c.roomType,rooms:c.rooms||row.rooms}));
+  (row.recommends||[]).forEach(r=>out.push({key:'rec_'+r.id,kind:'rec',
+    name:r.hotel,roomType:r.roomType,rooms:row.rooms}));
+  return out;
+}
+function keyTHB(req,row,i,key,rooms){let t=0;
+  rDates(req,row,i).dates.forEach(iso=>{const c=(req.ws||{})[key+'|'+iso]||{};
+    t+=(Number(c.price)||0)*Number(rooms||1);});return t;}
+/* 견적서 이름 — 저장하지 않고 고른 호텔과 투숙 기간에서 만든다.
+   호텔을 바꾸면 이름도 따라 바뀌므로 탭만 봐도 어느 조합인지 알 수 있다. */
+function quoteName(req,q){
+  const hs=req.rows.map((r,i)=>{const p=pickedFor(req,r,i,q);
+    return String(dHotel(p.name)||'').trim();}).filter(Boolean);
+  const names=hs.length?hs.join(' + '):T('no_input');
+  if(!req.rows.length)return names;
+  const inD=rDates(req,req.rows[0],0).checkIn;
+  const outD=req.mode==='parallel'?addDays(req.startDate,totalN(req)):finalOut(req);
+  return names+' · '+fdshort(inD)+'~'+fdshort(outD);
+}
+function pickedFor(req,row,i,q){
+  const cands=legCandidates(req,row,i);
+  const k=(q.picks||{})[row.id];
+  return cands.find(x=>x.key===k)||cands[0];
+}
 function hotelOptsList(req){const l=[];req.rows.forEach(r=>(r.options||[]).forEach(o=>l.push({rid:r.id,hotel:r.hotel,o})));return l;}
-function quoteCalc(req){
-  const q=req.quote,rate=Number(q.rate)||0,pax=Math.max(1,Number(q.pax)||1);
-  const perHotel=req.rows.map((r,i)=>({row:r,name:r.hotel||'-',thb:hotelTHB(req,r,i),showRate:!!r.showRate}));
+function quoteCalc(req,q){
+  q=q||curQuote(req);
+  const rate=Number(q.rate)||0,pax=Math.max(1,Number(q.pax)||1);
+  /* 구간마다 고른 호텔 하나씩만 합산한다 — 같은 구간을 두 번 세면 숙박비가 두 배가 된다 */
+  const perHotel=req.rows.map((r,i)=>{const p=pickedFor(req,r,i,q);
+    return {row:r,key:p.key,kind:p.kind,name:p.name||'-',roomType:p.roomType,
+      thb:keyTHB(req,r,i,p.key,p.rooms),showRate:!!r.showRate};});
   const hTHB=perHotel.reduce((a,x)=>a+x.thb,0);
   const optTHB=hotelOptsList(req).reduce((a,{o})=>a+lineTHB(o),0);
   const baseTHB=hTHB+optTHB;
@@ -1657,7 +2158,7 @@ function quoteCalc(req){
   const perMan=q.override!=null?Number(q.override):per/10000;
   return {rate,pax,perHotel,hTHB,optTHB,baseTHB,addlKRW,totalKRW,per,perMan,totalMan:perMan*pax};}
 function quoteText(req){
-  const c=quoteCalc(req);
+  const q=curQuote(req),c=quoteCalc(req,q);
   const optLine=o=>o.memo?o.memo:o.name;
   let t='The Nirvana · 여행 견적\n'
     +'요청 : '+(req.agent||'-')+(req.agentManager?'-'+req.agentManager:'')+'\n'+kdotDateTime(req.createdAt)+'\n'
@@ -1668,13 +2169,14 @@ function quoteText(req){
     if(row.region&&row.region!=='전체')t+=dRegion(row.region)+'\n';
     t+=(dHotel(row.hotel)||'-')+(req.status==='answered'?' → '+avKo(availOf(req,row,i)):'')+'\n'+(dRoom(row.roomType)||'-')+' · '+row.rooms+'실\n';
     sh.forEach(o=>{t+=optLine(o)+'\n';});
-    if(row.showRate)t+='   호텔 요금 ₩'+won(hotelTHB(req,row,i)*c.rate)+'\n';});
-  req.quote.addl.filter(x=>x.show&&(x.memo||x.desc)).forEach(x=>{t+='· '+(x.memo||x.desc)+'\n';});
-  if(req.quote.remark)t+='\n※ '+req.quote.remark+'\n';
+    /* 호텔 원가 노출은 요청자·확인자에게만. 에이전트에게는 견적 확정 금액만 나간다 */
+    if(row.showRate&&costVisible())t+='   호텔 요금 ₩'+won(c.perHotel[i].thb*c.rate)+'\n';});
+  q.addl.filter(x=>x.show&&(x.memo||x.desc)).forEach(x=>{t+='· '+(x.memo||x.desc)+'\n';});
+  if(q.remark)t+='\n※ '+q.remark+'\n';
   t+='\n견적금액 · 1인 '+manwonF(c.perMan)+'\n'+c.pax+'인 기준 '+manwonF(c.totalMan);
   return t;}
 function quoteCardHTML(req){
-  const c=quoteCalc(req),q=req.quote;
+  const q=curQuote(req),c=quoteCalc(req,q);
   const answered=req.status==='answered';
   const legs=req.rows.map((row,i)=>{const dd=rDates(req,row,i);
     const sh=(row.options||[]).filter(o=>o.show&&o.name);
@@ -1686,7 +2188,7 @@ function quoteCardHTML(req){
       +(av?'<span class="avbig av-'+av.k+'" style="margin-top:0;font-size:11.5px;padding:4px 9px">'+avKo(av)+'</span>':'')+'</div>'
       +'<div class="qc-rt">'+escT(dRoom(row.roomType)||'-')+' <span class="sm">· '+row.rooms+'실</span></div>'
       +optLines
-      +(row.showRate?'<div class="qc-price">호텔 요금 ₩'+won(hotelTHB(req,row,i)*c.rate)+'</div>':'')
+      +((row.showRate&&costVisible())?'<div class="qc-price">호텔 요금 ₩'+won(c.perHotel[i].thb*c.rate)+'</div>':'')
       +'</div>';}).join('');
   const incLines=q.addl.filter(x=>x.show&&(x.memo||x.desc)).map(x=>'<div style="margin-top:2px"><span class="qc-addl-txt">'+escT(x.memo||x.desc)+'</span></div>').join('');
   const qBy=req.quoteBy||DB.checker||req.registrant||'심은선';
@@ -1702,7 +2204,7 @@ function quoteCardHTML(req){
     +'<div class="qc-sub">'+c.pax+'인 기준 '+manwonF(c.totalMan)+'</div></div>';
 }
 function quoteBuilderHTML(req){
-  const c=quoteCalc(req),q=req.quote;
+  const q=curQuote(req),c=quoteCalc(req,q);
   const hotelRows=c.perHotel.map(h=>'<div class="brow"><span style="flex:1">'+escT(dHotel(h.name))+'</span><span class="mono">฿'+won(h.thb)+'</span></div>').join('');
   const hopts=hotelOptsList(req);
   const hoptRows=hopts.length?hopts.map(({rid,hotel,o})=>'<div class="optitem" data-hrid="'+rid+'" data-hoid="'+o.id+'">'
@@ -1716,59 +2218,125 @@ function quoteBuilderHTML(req){
     +'<div class="optline"><input type="number" class="adAmt" value="'+(x.amt||'')+'" placeholder="'+esc(T('ws_unit_ph'))+'"><span class="x">×</span><input type="number" class="adQty qty" min="1" value="'+(x.qty||1)+'"><select class="adCur"><option value="thb"'+(x.cur==='thb'?' selected':'')+'>฿</option><option value="krw"'+(x.cur==='krw'?' selected':'')+'>₩</option></select><span class="linetot">= '+(x.cur==='krw'?'₩':'฿')+won(lineTHB(x))+'</span></div>'
     +'<input class="adMemo" style="margin-top:6px" value="'+esc(x.memo||'')+'" placeholder="'+esc(T('qb_memo_ph'))+'"></div>').join('');
   const ovrVal=Math.round(c.perMan*10)/10;
-  return '<div style="margin-top:4px">'
-    +'<div class="line l2" style="margin-top:0">'
-      +'<div><div class="label">'+T('qb_rate')+'</div><input type="number" id="qRate" value="'+q.rate+'"></div>'
-      +'<div><div class="label">'+T('qb_pax')+'</div><input type="number" id="qPax" min="1" value="'+q.pax+'"></div></div>'
-    +'<div style="margin-top:12px;border-top:1px solid var(--line);padding-top:8px"><div class="label" style="margin-bottom:2px">'+T('qb_hsum')+'</div>'+hotelRows
-      +'<div class="brow" style="border-top:1px solid var(--line);font-weight:800"><span>'+T('qb_htotal')+'</span><span class="mono">฿'+won(c.hTHB)+'</span></div></div>'
-    +'<div style="margin-top:12px"><div class="label">'+T('ws_opt_label')+'</div>'+hoptRows+'</div>'
-    +'<div style="margin-top:8px"><div class="label">'+T('qb_addl')+'</div>'+adRows+'<button id="adAdd" class="addbtn sm">'+T('qb_addl_btn')+'</button></div>'
-    +'<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:8px">'
-      +'<div class="brow"><span>'+T('qb_htotal')+'</span><span class="mono">฿'+won(c.hTHB)+'</span></div>'
-      +'<div class="brow"><span>'+T('qb_optsum')+'</span><span class="mono">฿'+won(c.optTHB)+'</span></div>'
-      +'<div class="brow"><span>'+T('qb_sub_rate')+' '+won(c.rate)+'</span><span class="mono">฿'+won(c.baseTHB)+' → ₩'+won(c.baseTHB*c.rate)+'</span></div>'
-      +'<div class="brow"><span>'+T('qb_addl_sum')+'</span><span class="mono">₩'+won(c.addlKRW)+'</span></div>'
-      +'<div class="brow tot" style="color:var(--brand)"><span>'+T('qb_krw_total')+' ('+c.pax+T('ppl')+')</span><span class="mono">₩'+won(c.totalKRW)+'</span></div>'
-      +'<div class="brow" style="color:var(--muted)"><span>'+T('qb_auto1')+'</span><span class="mono">₩'+won(c.per)+' · '+manwonF(c.per/10000)+'</span></div></div>'
-    +'<div style="margin-top:10px;border:1px solid var(--brand);border-radius:10px;padding:10px 12px;background:var(--avBg)">'
-      +'<div class="label" style="color:var(--brand)">'+T('qb_final')+'</div>'
-      +'<div class="flex aic" style="gap:8px"><input type="number" step="0.1" id="ovr" value="'+ovrVal+'" style="flex:1;text-align:right;font-weight:800;font-size:16px"><span style="font-weight:700">'+T('qb_man')+'</span>'
-      +'<button id="ovrReset" class="curbtn" style="width:auto;padding:8px 12px">'+T('qb_auto')+'</button></div></div>'
-    +'<div style="margin-top:12px"><div class="label">'+T('qb_remark')+'</div>'
-      +'<textarea id="qRemark" placeholder="'+esc(T('qb_remark_ph'))+'">'+escT(q.remark||'')+'</textarea></div>'
-    +'<div class="label" style="margin-top:12px">'+T('qb_preview')+'</div>'+quoteCardHTML(req)
-    +'<div class="qbtns"><button class="qcopy" id="qbCopy">'+T('qb_copy')+'</button><button class="qimg" id="qbImg">'+T('btn_qimg')+'</button></div>'
-    +'<div class="qbtns"><button class="qmgr" id="fullImg">'+T('btn_fullimg')+'</button><button class="qmgr" id="fullUrl">'+T('btn_fullurl')+'</button></div>'
+  const qs=migQuotes(req),qi=qs.indexOf(q);
+  const st=ui.qStep;                         /* 단계마다 따로 접고 편다 */
+  const K={base:'q_k_base',add:'q_k_add',rec:'q_k_rec'};
+  /* ① 구간별 호텔 드롭다운 — 기본·추가·추천을 한 목록에 종류 표시와 함께 */
+  const legRows=req.rows.map((r,i)=>{const dd=rDates(req,r,i),p=pickedFor(req,r,i,q);
+    const os=legCandidates(req,r,i).map(cd=>{
+      const amt=keyTHB(req,r,i,cd.key,cd.rooms);
+      return '<option value="'+esc(cd.key)+'"'+(cd.key===p.key?' selected':'')+'>'
+        +'['+T(K[cd.kind])+'] '+escT(dHotel(cd.name)||T('no_input'))
+        +(amt?' · ฿'+won(amt):'')+'</option>';}).join('');
+    return '<div class="qleg"><div class="qleglab">'+T('q_leg').replace('{n}',i+1)
+      +'<span class="qlegdate">'+fdshort(dd.checkIn)+' → '+fdshort(dd.checkOut)+' · '+dd.nights+T('n_sfx')+'</span></div>'
+      +'<select class="qPick" data-row="'+r.id+'">'+os+'</select>'
+      +'<div class="qlegamt">฿'+won(keyTHB(req,r,i,p.key,p.rooms))+'</div></div>';}).join('');
+  const step=(n,key,val,body)=>{const op=st.has(n);
+    return '<div class="qstep'+(op?' on':'')+'">'
+    +'<div class="qstephd" data-qstep="'+n+'"><span class="chev'+(op?' open':'')+'">▶</span>'
+    +'<span class="qstepnum">'+n+'</span>'+T(key)
+    +'<span class="qstepval">'+val+'</span></div>'
+    +(op?'<div class="qstepbody">'+body+'</div>':'')+'</div>';};
+  return '<div class="qbuild">'
+    /* 견적 여러 장 — 탭 */
+    +'<div class="qtabs">'+qs.map((x,ix)=>{const nm=quoteName(req,x);
+      return '<button class="qtab'+(ix===qi?' on':'')+'" data-qtab="'+ix+'" title="'+esc(nm)+'">'+escT(nm)+'</button>';}).join('')
+      +'<button class="qtab add" id="qAdd">'+T('q_new')+'</button></div>'
+    /* ── 입력 카드 ── */
+    +'<div class="qedit">'
+    +step(1,'q_s1','฿'+won(c.hTHB),legRows)
+    +step(2,'q_s2',(c.optTHB||q.addl.length)?'฿'+won(c.optTHB):T('q_empty'),
+        '<div class="label">'+T('ws_opt_label')+'</div>'+hoptRows
+        +'<div class="label" style="margin-top:10px">'+T('qb_addl')+'</div>'+adRows
+        +'<button id="adAdd" class="addbtn sm">'+T('qb_addl_btn')+'</button>')
+    +step(3,'q_s3',manwonF(c.perMan),
+        '<div class="line l2" style="margin-top:0">'
+        +'<div><div class="label">'+T('qb_rate')+'</div><input type="number" id="qRate" value="'+q.rate+'"></div>'
+        +'<div><div class="label">'+T('qb_pax')+'</div><input type="number" id="qPax" min="1" value="'+q.pax+'"></div></div>'
+        +'<div class="qsum">'
+          +'<div class="brow"><span>'+T('qb_htotal')+'</span><span class="mono">฿'+won(c.hTHB)+'</span></div>'
+          +'<div class="brow"><span>'+T('qb_optsum')+'</span><span class="mono">฿'+won(c.optTHB)+'</span></div>'
+          +'<div class="brow"><span>'+T('qb_sub_rate')+' '+won(c.rate)+'</span><span class="mono">฿'+won(c.baseTHB)+' → ₩'+won(c.baseTHB*c.rate)+'</span></div>'
+          +'<div class="brow"><span>'+T('qb_addl_sum')+'</span><span class="mono">₩'+won(c.addlKRW)+'</span></div>'
+          +'<div class="brow tot" style="color:var(--brand)"><span>'+T('qb_krw_total')+' ('+c.pax+T('ppl')+')</span><span class="mono">₩'+won(c.totalKRW)+'</span></div>'
+          +'<div class="brow" style="color:var(--muted)"><span>'+T('qb_auto1')+'</span><span class="mono">₩'+won(c.per)+' · '+manwonF(c.per/10000)+'</span></div></div>'
+        +'<div class="qovr"><div class="label" style="color:var(--brand)">'+T('qb_final')+'</div>'
+        +'<div class="flex aic" style="gap:8px"><input type="number" step="0.1" id="ovr" value="'+ovrVal+'" style="flex:1;text-align:right;font-weight:800;font-size:16px"><span style="font-weight:700">'+T('qb_man')+'</span>'
+        +'<button id="ovrReset" class="curbtn" style="width:auto;padding:8px 12px">'+T('qb_auto')+'</button></div></div>')
+    +step(4,'q_s4',q.remark?'●':T('q_empty'),
+        '<div class="label">'+T('qb_remark')+'</div>'
+        +'<textarea id="qRemark" placeholder="'+esc(T('qb_remark_ph'))+'">'+escT(q.remark||'')+'</textarea>'
+        +'<div class="label" style="margin-top:12px">'+T('qb_preview')+'</div>'+quoteCardHTML(req)
+        /* A안: 무엇을 내보내느냐(견적서만 / 결과+견적)로 먼저 묶고, 그 안에서 형식을 고른다.
+           초록(.qmgr #2F7A55)은 AV 상태색과 같은 값이라 버렸다 — 상태색은 상태에만 쓴다. */
+        +'<div class="qgrp"><div class="qgrptop">📄 '+T('exp_quote')+'<span class="n">'+T('exp_quote_n')+'</span></div>'
+          +'<div class="qbtns" style="margin-top:0"><button class="qprimary2" id="qbCopy">'+T('exp_text')+'</button>'
+          +'<button class="qprimary2" id="qbImg">'+T('exp_img')+'</button></div></div>'
+        +'<div class="qgrp"><div class="qgrptop">📦 '+T('exp_full')+'<span class="n">'+T('exp_full_n')+'</span></div>'
+          +'<div class="qbtns" style="margin-top:0"><button class="qghost2" id="fullUrl">'+T('exp_link')+'</button>'
+          +'<button class="qghost2" id="fullImg">'+T('exp_img')+'</button></div></div>'
+        +(qs.length>1?'<button class="qdelq" id="qDel">'+T('q_del')+'</button>':''))
+    +'</div>'
+    /* ── 결과: 어느 단계를 접든 최종 금액은 항상 보인다 ── */
+    +'<div class="qhero"><div class="k">'+T('qb_final')+'</div>'
+      +'<div class="v">'+manwonF(c.perMan)+'</div>'
+      +'<div class="s">'+c.pax+T('ppl')+' '+manwonF(c.totalMan)+'</div></div>'
     +'<p class="foot">'+T('qb_foot')+'</p>'
     +'</div>';
 }
 function bindQuoteBuilder(req){
+  /* 아코디언이라 접힌 단계의 요소는 DOM에 없다 — 모든 접근에 가드를 둔다 */
   const el=id=>document.getElementById(id);
-  el('qRate').onchange=e=>{req.quote.rate=Number(e.target.value)||0;saveDB();renderApp();};
-  el('qPax').onchange=e=>{req.quote.pax=Math.max(1,Number(e.target.value)||1);saveDB();renderApp();};
-  el('ovr').onchange=e=>{req.quote.override=Number(e.target.value)||0;saveDB();renderApp();};
-  el('ovrReset').onclick=()=>{req.quote.override=null;saveDB();renderApp();};
-  el('adAdd').onclick=()=>{req.quote.addl.push({id:Date.now(),desc:'',amt:0,qty:1,cur:'thb',show:true,memo:''});saveDB();renderApp();};
+  const on=(id,ev,fn)=>{const n=el(id);if(n)n[ev]=fn;};
+  const Q=curQuote(req),qs=migQuotes(req);
+  /* 단계 열고 닫기 — 한 번에 하나만 */
+  document.querySelectorAll('[data-qstep]').forEach(h=>h.onclick=()=>{
+    const n=Number(h.dataset.qstep);
+    ui.qStep.has(n)?ui.qStep.delete(n):ui.qStep.add(n);renderApp();});
+  /* 견적 탭 */
+  document.querySelectorAll('button.qtab[data-qtab]').forEach(b=>b.onclick=()=>{
+    ui.qIdx=Number(b.dataset.qtab);renderApp();});
+  /* 새 견적은 지금 보고 있는 견적을 복제해서 만든다 — 호텔 선택·환율·인원·추가 항목·비고를
+     그대로 가져오고, 바꾸고 싶은 것만 고치면 된다. id와 이름만 새로 받는다. */
+  on('qAdd','onclick',()=>{const src=JSON.parse(JSON.stringify(Q));
+    delete src.id;delete src.name;
+    src.addl=(src.addl||[]).map((x,i)=>Object.assign({},x,{id:Date.now()+i}));
+    qs.push(mkQuote(qs.length+1,src));ui.qIdx=qs.length-1;
+    saveDB();renderApp();toast(T('q_copied'));});
+  on('qDel','onclick',()=>{if(qs.length<2)return;if(!confirm(T('q_del_confirm')))return;
+    const i=qs.indexOf(Q);qs.splice(i,1);ui.qIdx=Math.max(0,i-1);saveDB();renderApp();});
+  /* ① 구간별 호텔 선택 */
+  document.querySelectorAll('select.qPick').forEach(sel=>sel.onchange=e=>{
+    Q.picks=Q.picks||{};Q.picks[sel.dataset.row]=e.target.value;saveDB();renderApp();});
+  /* ③ 금액 */
+  on('qRate','onchange',e=>{Q.rate=Number(e.target.value)||0;saveDB();renderApp();});
+  on('qPax','onchange',e=>{Q.pax=Math.max(1,Number(e.target.value)||1);saveDB();renderApp();});
+  on('ovr','onchange',e=>{Q.override=Number(e.target.value)||0;saveDB();renderApp();});
+  on('ovrReset','onclick',()=>{Q.override=null;saveDB();renderApp();});
+  /* ② 옵션 · 추가 항목 */
+  on('adAdd','onclick',()=>{Q.addl.push({id:Date.now(),desc:'',amt:0,qty:1,cur:'thb',show:true,memo:''});saveDB();renderApp();});
   document.querySelectorAll('.optitem[data-hoid]').forEach(rowEl=>{const rid=Number(rowEl.dataset.hrid),oid=Number(rowEl.dataset.hoid);
     const r=req.rows.find(x=>x.id===rid),o=r&&(r.options||[]).find(x=>x.id===oid);if(!o)return;
     rowEl.querySelector('.hoptAmt').onchange=e=>{o.amt=Number(e.target.value)||0;saveDB();renderApp();};
     rowEl.querySelector('.hoptQty').onchange=e=>{o.qty=Math.max(1,Number(e.target.value)||1);saveDB();renderApp();};
     rowEl.querySelector('.hoptShow').onclick=()=>{o.show=!o.show;saveDB();renderApp();};
     rowEl.querySelector('.hoptMemo').oninput=e=>{o.memo=e.target.value;saveDB();};});
-  document.querySelectorAll('.optitem[data-aid]').forEach(rowEl=>{const id=Number(rowEl.dataset.aid),it=req.quote.addl.find(x=>x.id===id);
+  document.querySelectorAll('.optitem[data-aid]').forEach(rowEl=>{const id=Number(rowEl.dataset.aid),it=Q.addl.find(x=>x.id===id);
+    if(!it)return;
     rowEl.querySelector('.adDesc').oninput=e=>{it.desc=e.target.value;saveDB();};
     rowEl.querySelector('.adAmt').onchange=e=>{it.amt=Number(e.target.value)||0;saveDB();renderApp();};
     rowEl.querySelector('.adQty').onchange=e=>{it.qty=Math.max(1,Number(e.target.value)||1);saveDB();renderApp();};
     rowEl.querySelector('.adCur').onchange=e=>{it.cur=e.target.value;saveDB();renderApp();};
     rowEl.querySelector('.adShow').onclick=()=>{it.show=!it.show;saveDB();renderApp();};
     rowEl.querySelector('.adMemo').oninput=e=>{it.memo=e.target.value;saveDB();};
-    rowEl.querySelector('.adDel').onclick=()=>{req.quote.addl=req.quote.addl.filter(x=>x.id!==id);saveDB();renderApp();};});
-  const qr=el('qRemark');if(qr){qr.oninput=e=>{req.quote.remark=e.target.value;saveDB();};qr.onchange=()=>renderApp();}
-  el('qbCopy').onclick=()=>copyText(quoteText(req),T('t_qtcopied'));
-  el('qbImg').onclick=()=>saveImg('qcard'+req.id,'견적.png');
-  const fi=el('fullImg');if(fi)fi.onclick=()=>saveFullImg(req);
-  const fu=el('fullUrl');if(fu)fu.onclick=()=>copyText(reqURL(req),T('t_fullurl'));
+    rowEl.querySelector('.adDel').onclick=()=>{Q.addl=Q.addl.filter(x=>x.id!==id);saveDB();renderApp();};});
+  /* ④ 비고 · 발송 */
+  const qr=el('qRemark');if(qr){qr.oninput=e=>{Q.remark=e.target.value;saveDB();};qr.onchange=()=>renderApp();}
+  on('qbCopy','onclick',()=>copyText(quoteText(req),T('t_qtcopied')));
+  on('qbImg','onclick',()=>saveImg('qcard'+req.id,'견적.png'));
+  on('fullImg','onclick',()=>saveFullImg(req));
+  on('fullUrl','onclick',()=>copyText(reqURL(req),T('t_fullurl')));
 }
 
 /* ================= 달력 (범위 선택) ================= */

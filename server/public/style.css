@@ -535,3 +535,301 @@ input[type=number]::selection{background:var(--brand);color:#fff}
 
 .check-request-item .del:hover{background:#D0E5DE;border-color:#A8D4C7}
 
+
+/* ================= C안: 호텔 그룹 박스 (호텔 + 추가 호텔) ================= */
+/* 상태색(초록 av / 주황 rq / 빨강 so)과 겹치지 않는 계열만 사용한다 */
+.hgroup{
+  /* 페이지별 --brand를 쓰지 않는다. 확인자 페이지의 --brand(#B07908)는 RQ 상태색과
+     값이 같아 "이 호텔이 RQ인가?"라는 오독을 만든다. 요청자/확인자 색을 통일하려 고정값 사용. */
+  --hgc:#0B6E6B;              /* 틸 */
+  border:1.5px solid color-mix(in srgb, var(--hgc) 30%, var(--line));
+  border-radius:15px;background:#F4F6F5;padding:9px;margin-bottom:14px;
+}
+.hgroup.hg1{--hgc:#3B5BA9}   /* 인디고 */
+.hgroup.hg2{--hgc:#6B4E9E}   /* 퍼플 */
+.hgrouphd{
+  display:flex;align-items:center;gap:7px;padding:2px 4px 9px;
+  font-size:11.5px;font-weight:800;letter-spacing:.2px;color:var(--hgc);
+}
+.hgcnt{
+  margin-left:auto;font-family:var(--mono);font-size:10.5px;font-weight:700;
+  color:var(--sub);background:var(--surface);border:1px solid var(--line);
+  border-radius:6px;padding:1px 7px;
+}
+.hgnum{
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+  min-width:20px;height:20px;padding:0 5px;border-radius:6px;
+  font-family:var(--mono);font-size:11px;font-weight:800;letter-spacing:-.3px;
+  background:var(--hgc);color:#fff;
+}
+.hgnum.sub{
+  background:var(--surface);color:var(--hgc);
+  border:1.5px dashed color-mix(in srgb, var(--hgc) 55%, var(--line));
+  height:19px;font-size:10px;
+}
+.hgroup > .wscard{margin-bottom:0}
+
+/* 추가 호텔 펼침 버튼 */
+.chkListTog{
+  display:flex;align-items:center;gap:7px;width:100%;margin-top:8px;
+  padding:8px 11px;border-radius:10px;cursor:pointer;
+  background:var(--surface);
+  border:1px dashed color-mix(in srgb, var(--hgc) 45%, var(--line));
+  color:var(--hgc);font-family:var(--sans);font-size:12px;font-weight:800;
+  text-align:left;
+}
+.chkListTog:hover{background:color-mix(in srgb, var(--hgc) 5%, var(--surface))}
+.chkListTog.open{border-style:solid;border-bottom-left-radius:0;border-bottom-right-radius:0}
+.chkListTog .chev{color:inherit}
+.chklist{
+  border:1px solid color-mix(in srgb, var(--hgc) 45%, var(--line));
+  border-top:none;border-radius:0 0 10px 10px;padding:9px;background:#EDF0EF;
+}
+.chklist > .wscard{margin-bottom:8px}
+.chklist > .wscard:last-child{margin-bottom:0}
+.subcard .rq-hotel{font-size:13.5px}
+
+@media(max-width:520px){
+  .hgroup{padding:7px;border-radius:13px}
+  .hgrouphd{font-size:11px;padding-bottom:7px}
+  .chklist{padding:7px}
+}
+
+/* 기본정보 입력 폼: 호텔 블록 머리 — 요청 리스트의 그룹 머리와 동일한 표기 */
+.hblocknum{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:800;
+  letter-spacing:.2px;color:#0B6E6B}
+.hblocknum .hgnum{--hgc:#0B6E6B}
+
+/* ================= B안: 입력 폼 날짜 범위 칩 + 숫자칸 =================
+   첵인·첵아웃을 칩 하나로 합쳐 라벨 1개와 달력 버튼 1개를 없앤다.
+   그렇게 번 약 70px 자리에 박수·객실수 입력칸이 들어가 한 줄이 된다.
+   실측(요청자 360px): 여유 50px / 320px: 여유 28px                    */
+.brow{display:flex;align-items:flex-end;gap:6px;margin-top:12px}
+.brange{flex:1 1 auto;min-width:0}
+.bchip{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:9px;
+  background:var(--surface);padding:9px 9px;font-family:var(--mono);font-size:12.5px;
+  font-weight:700;white-space:nowrap;overflow:hidden;cursor:pointer}
+.bchip:hover{border-color:var(--brand)}
+.bchip .bdv{flex:0 0 auto}
+.bchip .barw{flex:0 0 auto;color:var(--muted);font-weight:800}
+.bchip .bcal{margin-left:auto;flex:0 0 auto;font-size:13px;line-height:1}
+.bqty{flex:0 0 auto;width:48px}
+.bqty .label{text-align:center;margin-bottom:5px}
+.bqty input[type=number]{text-align:center;padding:8px 2px;font-size:15px;font-weight:800}
+@media(max-width:340px){
+  /* 320px에서 에이전트 한국어 날짜(26.08.23)까지 들어가도록 폭을 더 조인다 */
+  .brow{gap:5px}
+  .bqty{width:42px}
+  .bchip{gap:3px;padding:9px 6px;font-size:11.5px}
+  .bqty input[type=number]{font-size:14px;padding:8px 1px}
+}
+
+/* ===== 입력 폼 그룹 박스 내부 카드 (요청 리스트의 .wscard 역할) ===== */
+.hgroup .gcard{border:1px solid var(--line);border-radius:13px;background:var(--surface);
+  padding:11px}
+.gclab{font-size:10.5px;font-weight:800;letter-spacing:.3px;color:var(--muted);
+  text-transform:uppercase}
+/* 펼침 버튼 안의 ＋추가 — 상태색(초록)을 쓰지 않고 그룹 색을 쓴다 */
+.chkAddBtn{margin-left:auto;flex:0 0 auto;font-size:10.5px;font-weight:800;
+  border:1px solid color-mix(in srgb, var(--hgc) 45%, var(--line));border-radius:6px;
+  padding:3px 8px;color:var(--hgc);background:var(--surface);cursor:pointer}
+.chkAddBtn:hover{background:color-mix(in srgb, var(--hgc) 10%, var(--surface))}
+.chklist .check-inputs-container{display:flex;flex-direction:column;gap:8px}
+.chklist .check-inputs-container:empty{display:none}
+.chklist .subcard{border:1px solid var(--line);border-radius:11px;background:var(--surface);
+  padding:10px;margin-bottom:8px}
+.chklist .subcard:last-child{margin-bottom:0}
+.chklist .subcard .del{width:28px;height:28px;font-size:15px}
+
+/* ================= C안: 확인자 추천 =================
+   추가 호텔과 동일한 접기 바 구조. 색만 퍼플(#6B4E9E)로 갈라 놓는다.
+   퍼플은 av(초록)/rq(주황)/so(빨강) 어느 상태색과도 겹치지 않는다. */
+.hgroup{--rec:#6B4E9E}
+.chkListTog.recTog{border-color:color-mix(in srgb,var(--rec) 45%,var(--line));color:var(--rec)}
+.chkListTog.recTog:hover{background:color-mix(in srgb,var(--rec) 5%,var(--surface))}
+.chkListTog.recTog .chkAddBtn{border-color:color-mix(in srgb,var(--rec) 45%,var(--line));
+  color:var(--rec)}
+.chkListTog.recTog .chkAddBtn:hover{background:color-mix(in srgb,var(--rec) 10%,var(--surface))}
+.chklist.reclist{border-color:color-mix(in srgb,var(--rec) 45%,var(--line));
+  background:color-mix(in srgb,var(--rec) 5%,#EDF0EF)}
+.reclist .reccap{font-size:10.5px;font-weight:800;color:var(--rec);margin:0 0 8px 2px;
+  letter-spacing:.2px}
+.reclist .subcard{border:1px solid var(--line);
+  border-left:3px solid color-mix(in srgb,var(--rec) 60%,var(--line));
+  border-radius:11px;background:var(--surface);padding:10px;margin-bottom:8px}
+.reclist .subcard:last-child{margin-bottom:0}
+.reclist .cardhd{display:flex;align-items:center;gap:7px;margin-bottom:7px;flex-wrap:wrap}
+.reclist .strow{display:flex;align-items:center;gap:6px;margin-top:8px}
+.reclist .strow .pbox{flex:0 0 auto}
+.hgnum.rec{background:var(--surface);color:var(--rec);
+  border:1.5px dashed color-mix(in srgb,var(--rec) 55%,var(--line));height:19px;font-size:10px}
+.b-rec{background:color-mix(in srgb,var(--rec) 12%,transparent);color:var(--rec);
+  border:1px solid color-mix(in srgb,var(--rec) 35%,transparent)}
+
+/* 에이전트 결과 카드: 추천을 대상 호텔 안쪽에 붙인다 */
+.agtsec{font-size:10.5px;font-weight:800;letter-spacing:.3px;color:var(--muted);
+  text-transform:uppercase;margin:10px 0 6px}
+.agtchk{border:1px solid var(--line);border-radius:10px;background:var(--paper);
+  padding:9px 11px;margin-top:6px}
+.agtrec{border:1px solid color-mix(in srgb,#6B4E9E 32%,var(--line));border-radius:11px;
+  background:color-mix(in srgb,#6B4E9E 5%,var(--surface));padding:10px 11px;margin-top:8px}
+.agtreccap{font-size:10.5px;font-weight:800;color:#6B4E9E;margin-bottom:5px;letter-spacing:.2px}
+.agtrecav{margin-top:5px;font-size:12.5px;font-weight:800}
+.agtrecav.av-ok{color:var(--av)}
+.agtrecav.av-no{color:var(--so)}
+.agtrecav.av-rq{color:var(--rq)}
+
+/* 전화 아이콘 자체가 통화 링크 (별도 "전화" 버튼 없음) */
+.phcall{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  width:30px;height:30px;border-radius:8px;border:1px solid var(--line);
+  background:var(--surface);font-size:14px;line-height:1;text-decoration:none}
+.phcall:hover{background:var(--paper);border-color:var(--brand)}
+
+/* ================= A안: 하단 버튼 위계 =================
+   주동선(답변 보내기)만 크게, 되돌리기는 옆에 빨간 점선으로,
+   자주 안 쓰는 것은 "⋯ 더보기" 안으로.                        */
+.qbtns .qprimary{flex:2;background:var(--brand);color:#fff;border:none;border-radius:12px;
+  padding:15px 10px;font-size:15px;font-weight:800;cursor:pointer;
+  box-shadow:0 2px 8px color-mix(in srgb,var(--brand) 28%,transparent)}
+.qbtns .qprimary:active{background:var(--brandDark);box-shadow:none}
+.qbtns .qdanger{flex:1;background:var(--surface);color:var(--so);
+  border:1.5px dashed color-mix(in srgb,var(--so) 45%,var(--line))!important;
+  border-radius:11px;padding:13px 6px;font-size:12.5px;font-weight:800;cursor:pointer}
+.qbtns .qdanger:hover{background:var(--soBg)}
+.qbtns .qghost{flex:1;background:var(--surface);color:var(--brand);
+  border:1.5px solid var(--brand)!important;border-radius:11px;padding:12px;
+  font-size:13.5px;font-weight:800;cursor:pointer}
+.qbtns .qghost:hover{background:color-mix(in srgb,var(--brand) 7%,var(--surface))}
+.qbtns .qquiet{flex:1;background:none;border:none!important;color:var(--muted);
+  padding:10px 4px;font-size:12.5px;font-weight:700;cursor:pointer}
+.qbtns .qquiet:hover{color:var(--ink)}
+.qbtns .qquiet.qok{color:var(--av)}
+button.moreTog{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+  margin-top:12px;padding:10px;border:1px dashed var(--line);border-radius:11px;
+  background:var(--surface);color:var(--muted);font-family:var(--sans);
+  font-size:12.5px;font-weight:800;cursor:pointer}
+button.moreTog:hover{background:var(--paper)}
+button.moreTog.open{border-style:solid;border-bottom-left-radius:0;border-bottom-right-radius:0}
+.moreopen{border:1px solid var(--line);border-top:none;border-radius:0 0 11px 11px;
+  padding:8px 9px;background:var(--paper)}
+@media(max-width:400px){
+  .qbtns .qprimary{padding:14px 6px;font-size:14px}
+  .qbtns .qdanger{padding:12px 4px;font-size:11.5px}
+}
+
+/* ================= 견적 빌더: 견적 여러 장 + 단계 아코디언 ================= */
+.qbuild{margin-top:6px}
+/* 견적 탭 */
+.qtabs{display:flex;gap:5px;background:var(--paper);border:1px solid var(--line);
+  border-radius:11px;padding:3px;margin-bottom:11px;overflow-x:auto}
+.qtabs .qtab{flex:0 0 auto;padding:7px 11px;border:none;border-radius:8px;background:none;
+  font-family:var(--sans);font-size:11.5px;font-weight:800;color:var(--muted);
+  white-space:nowrap;cursor:pointer}
+.qtabs .qtab.on{background:var(--brand);color:#fff}
+.qtabs .qtab.add{border:1px dashed var(--line);color:var(--brand)}
+/* 입력 카드 */
+.qedit{border:1px solid var(--brand);border-radius:13px;padding:9px;
+  background:color-mix(in srgb,var(--brand) 4%,var(--surface))}
+/* 단계 아코디언 */
+.qstep{border:1px solid var(--line);border-radius:11px;margin-bottom:7px;overflow:hidden;
+  background:var(--surface)}
+.qstep:last-child{margin-bottom:0}
+.qstephd{display:flex;align-items:center;gap:8px;padding:11px;font-size:12.5px;font-weight:800;
+  background:var(--paper);cursor:pointer}
+.qstep.on .qstephd{background:color-mix(in srgb,var(--brand) 9%,var(--surface));color:var(--brand)}
+.qstepnum{width:19px;height:19px;flex:0 0 auto;border-radius:50%;background:var(--line);
+  color:var(--muted);font-family:var(--mono);font-size:10.5px;font-weight:800;
+  display:flex;align-items:center;justify-content:center}
+.qstep.on .qstepnum{background:var(--brand);color:#fff}
+.qstepval{margin-left:auto;font-family:var(--mono);font-size:11px;font-weight:800;color:var(--sub)}
+.qstep.on .qstepval{color:var(--brand)}
+.qstepbody{padding:10px 11px 12px}
+/* ① 구간별 호텔 드롭다운 */
+.qleg{border:1px solid var(--line);border-radius:10px;padding:9px;background:var(--paper);
+  margin-bottom:8px}
+.qleg:last-child{margin-bottom:0}
+.qleglab{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:800;
+  color:var(--sub);margin-bottom:6px}
+.qlegdate{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted);font-weight:700}
+.qleg select{font-size:12.5px;font-weight:700;padding:9px 8px}
+.qlegamt{text-align:right;font-family:var(--mono);font-size:11.5px;font-weight:800;
+  color:var(--sub);margin-top:5px}
+/* ③ 계산 내역 */
+.qsum{border:1px solid var(--line);border-radius:10px;background:var(--paper);
+  padding:8px 10px;margin-top:11px}
+.qovr{margin-top:10px;border:1px solid var(--brand);border-radius:10px;padding:10px 12px;
+  background:var(--avBg)}
+/* 항상 보이는 최종 금액 */
+.qhero{margin-top:11px;border:1.5px solid var(--brand);border-radius:12px;background:var(--avBg);
+  padding:11px 14px}
+.qhero .k{font-size:10px;font-weight:800;color:var(--brand);text-transform:uppercase;
+  letter-spacing:.3px}
+.qhero .v{font-family:var(--mono);font-size:24px;font-weight:800;color:var(--brand);
+  line-height:1.2;margin-top:2px}
+.qhero .s{font-size:11.5px;color:var(--sub);font-weight:700}
+button.qdelq{width:100%;margin-top:10px;padding:9px;border-radius:10px;background:var(--surface);
+  color:var(--so);border:1px dashed color-mix(in srgb,var(--so) 45%,var(--line));
+  font-family:var(--sans);font-size:12px;font-weight:800;cursor:pointer}
+@media(max-width:400px){
+  .qstephd{padding:10px 9px;font-size:12px}
+  .qstepbody{padding:9px}
+  .qhero .v{font-size:21px}
+}
+
+/* 단계 헤더의 펼침 화살표 (여러 단계를 동시에 열 수 있다) */
+.qstephd .chev{width:13px;font-size:10px}
+
+/* ===== A안: 견적 내보내기 버튼 (무엇을 × 어떤 형식) =====
+   초록(#2F7A55)은 AV 상태색과 같은 값이라 쓰지 않는다. 상태색은 상태에만. */
+.qgrp{border:1px solid var(--line);border-radius:12px;padding:9px;background:var(--paper);
+  margin-top:10px}
+.qgrptop{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--sub);
+  margin-bottom:7px}
+.qgrptop .n{margin-left:auto;font-size:9.5px;font-weight:700;color:var(--muted)}
+.qbtns .qprimary2{flex:1;background:var(--brand);color:#fff;border:none;border-radius:10px;
+  padding:12px 8px;font-size:12.5px;font-weight:800;cursor:pointer}
+.qbtns .qprimary2:active{background:var(--brandDark)}
+.qbtns .qghost2{flex:1;background:var(--surface);color:var(--brand);
+  border:1.5px solid var(--brand)!important;border-radius:10px;padding:11px 8px;
+  font-size:12.5px;font-weight:800;cursor:pointer}
+.qbtns .qghost2:hover{background:color-mix(in srgb,var(--brand) 7%,var(--surface))}
+/* 견적 탭 — 이름이 길어지므로 폭을 제한하고 말줄임 */
+.qtabs .qtab{max-width:180px;overflow:hidden;text-overflow:ellipsis}
+
+/* ===== 견적 산출 내역 (전체 이미지에 실린다) ===== */
+.qbd{border:1px solid var(--line);border-radius:12px;background:var(--surface);
+  padding:11px 12px;margin-top:10px}
+.qbd-t{font-size:11.5px;font-weight:800;color:var(--brand);letter-spacing:.2px;
+  padding-bottom:7px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.qbd-tb{width:100%;border-collapse:collapse;font-size:11.5px}
+.qbd-tb td{padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink)}
+.qbd-tb tr:last-child td{border-bottom:none}
+.qbd-h td{font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.3px;background:var(--paper)}
+.qbd-l{white-space:nowrap;font-weight:700}
+.qbd-n{white-space:nowrap;font-family:var(--mono);font-size:10.5px;color:var(--sub)}
+.qbd-a{text-align:right;white-space:nowrap;font-family:var(--mono);font-weight:800}
+.qbd-d{font-size:9.5px;color:var(--muted);font-weight:600;margin-top:2px}
+.qbd-s td{font-weight:800;background:color-mix(in srgb,var(--brand) 4%,var(--surface))}
+.qbd-tot td{font-weight:800;color:var(--brand);font-size:12.5px;
+  background:color-mix(in srgb,var(--brand) 8%,var(--surface))}
+.qbd-k{font-size:9px;font-weight:800;border-radius:4px;padding:1px 4px}
+.qbd-base{background:color-mix(in srgb,#0B6E6B 12%,transparent);color:#0B6E6B}
+.qbd-add{background:var(--paper);color:var(--sub);border:1px solid var(--line)}
+.qbd-rec{background:color-mix(in srgb,#6B4E9E 12%,transparent);color:#6B4E9E}
+
+/* ── 호텔 이름 빨리 찾기 목록 ─────────────────────────── */
+.hfind{position:absolute;z-index:60;left:0;right:auto;top:100%;margin-top:3px;
+  min-width:100%;width:max-content;max-width:min(280px,calc(100vw - 28px));
+  background:#fff;border:1px solid var(--line,#d8dee6);border-radius:10px;
+  box-shadow:0 8px 22px rgba(15,23,42,.14);max-height:236px;overflow-y:auto;
+  -webkit-overflow-scrolling:touch}
+.hfind .hfitem{display:flex;align-items:center;gap:8px;justify-content:space-between;
+  padding:9px 11px;font-size:13px;line-height:1.25;cursor:pointer;
+  border-bottom:1px solid #f1f4f8}
+.hfind .hfitem:last-child{border-bottom:0}
+.hfind .hfitem:hover,.hfind .hfitem.on{background:#eef4ff}
+.hfind .hfn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:#111827;font-weight:600}
+.hfind .hfr{flex:none;font-size:11px;color:#64748b;background:#f1f5f9;
+  border-radius:999px;padding:2px 7px;white-space:nowrap}

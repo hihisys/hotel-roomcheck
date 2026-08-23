@@ -1,6 +1,29 @@
 <?php
 /* ===== DB 연결 + 스키마 (SQLite 개발 / MySQL 운영) ===== */
+/* .env 로더 — getenv()만으로는 php -S나 공유호스팅에서 값을 넣기 번거롭다.
+   server/.env 가 있으면 한 번만 읽어 환경변수로 올린다. 이미 설정된 값은 덮지 않는다. */
+function loadDotEnv(): void {
+  static $done = false;
+  if ($done) return;
+  $done = true;
+  $f = __DIR__ . '/../.env';
+  if (!is_readable($f)) return;
+  foreach (file($f, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+    $line = trim($line);
+    if ($line === '' || $line[0] === '#') continue;
+    $eq = strpos($line, '=');
+    if ($eq === false) continue;
+    $k = trim(substr($line, 0, $eq));
+    $v = trim(substr($line, $eq + 1));
+    if ($k === '' || getenv($k) !== false) continue;
+    if (strlen($v) > 1 && (($v[0] === '"' && str_ends_with($v, '"')) || ($v[0] === "'" && str_ends_with($v, "'")))) {
+      $v = substr($v, 1, -1);
+    }
+    putenv("$k=$v");
+  }
+}
 function env(string $k, ?string $d = null): ?string {
+  loadDotEnv();
   $v = getenv($k);
   return ($v === false || $v === '') ? $d : $v;
 }

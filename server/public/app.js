@@ -1525,7 +1525,7 @@ function sectionsHTML(itemFn,sub){
     +'</section>';
 }
 function agentListHTML(){
-  return sectionsHTML(agentItemHTML,T('sub_agent'));
+  return sectionsHTML(agentItemHTML,T('sub_agent_hint'));   /* 헤더의 '에이전트 콘솔'과 겹치지 않게 별도 키 */
 }
 function resultCardHTML(req,asReq){
   const answered=!asReq&&req.status==='answered';

@@ -425,11 +425,13 @@ function formHTML(){
         +'<div class="dg-tall" style="grid-area:1/3/3/4"><div class="label">'+T('rooms_label')+'</div><input type="number" class="inRooms" min="1" value="'+row.rooms+'"></div></div>'
       : '<div style="margin-top:10px"><div class="label">'+T('date_common')+'</div><div class="datebox"><span class="dv">'+fdate(dd.checkIn)+'</span><span class="arrow">→</span><span class="dv">'+fdate(dd.checkOut)+'</span><span class="nightsb">'+dd.nights+T('n_sfx')+'</span><span class="nightsb">'+(d.sharedRooms||1)+T('r_sfx')+'</span></div></div>';
     return '<div class="hblock" data-id="'+row.id+'">'
-      +'<div class="flex between aic"><span class="bnum">'+T('hotel_n')+' '+(i+1)+'</span><button class="del btnDel" title="'+esc(T('del_hotel'))+'">−</button></div>'
+      +'<div class="flex between aic"><span class="bnum">'+escT(dRegion(row.region||'전체'))+' | '+esc(row.phone||'번호 없음')+' | '+esc(row.manager||'-')+'</span><button class="del btnDel" title="'+esc(T('del_hotel'))+'">−</button></div>'
       +'<div class="line lhotel" style="margin-top:8px">'
         +'<div><div class="label">'+T('region')+'</div><select class="selRegion">'+rlist+'</select></div>'
         +'<div><div class="label">'+T('hotel_sel')+'</div><input class="inHotel" list="hdl'+row.id+'" value="'+esc(dHotel(row.hotel))+'" placeholder="'+esc(T('ph_hotel'))+'"><datalist id="hdl'+row.id+'">'+hdl+'</datalist></div>'
-        +'<div><div class="label">'+T('room_sel')+'</div><input class="inRoom" list="rdl'+row.id+'" value="'+esc(dRoom(row.roomType))+'" placeholder="'+esc(T('ph_room'))+'"><datalist id="rdl'+row.id+'">'+rdl+'</datalist></div></div>'
+        +'<div><div class="label">'+T('room_sel')+'</div><input class="inRoom" list="rdl'+row.id+'" value="'+esc(dRoom(row.roomType))+' "placeholder="'+esc(T('ph_room'))+'"><datalist id="rdl'+row.id+'">'+rdl+'</datalist></div>'
+        +'<div><div class="label">호텔 담당자</div><input type="text" class="inManager" value="'+esc(row.manager||'')+' "placeholder="담당자 입력" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
+        +'<div><div class="label">전화번호</div><input type="text" class="inPhone" value="'+esc(row.phone||'')+' "placeholder="전화번호 입력" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div></div>'
       +dateRow
       +'<div style="margin-top:10px"><div class="label">'+T('opt_label')+'</div>'
         +(row.options||[]).map(o=>{const custom=o._custom||(!!o.name&&!OPTLIST.includes(o.name));

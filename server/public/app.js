@@ -4,18 +4,18 @@
    응답이 없거나 503(not_configured)이면 아래 기본 목록으로 자동 폴백해 화면이 멈추지 않는다.
    그래서 const가 아니라 let 이다. */
 let HOTELS=[
- {name:"마이카오락 비치 리조트",region:"카오락",rooms:["디럭스","디럭스 풀액세스","주니어 스위트"]},
- {name:"로빈슨 클럽 카오락",region:"카오락",rooms:["디럭스","풀빌라","비치프론트"]},
- {name:"카오락 에메랄드 비치 리조트",region:"카오락",rooms:["디럭스","프리미어 디럭스","풀액세스"]},
- {name:"JW 메리어트 카오락",region:"카오락",rooms:["디럭스","풀액세스","풀빌라"]},
- {name:"카오락 메리어트 비치 리조트",region:"카오락",rooms:["디럭스","풀액세스","이그제큐티브"]},
- {name:"카타타니 푸켓 비치 리조트",region:"푸켓",rooms:["디럭스","씨뷰","풀 스위트"]},
- {name:"더 쇼어 앳 카타타니",region:"푸켓",rooms:["풀빌라","오션프론트 풀빌라"]},
- {name:"로얄 클리프 비치 호텔",region:"파타야",rooms:["디럭스","씨뷰","스위트"]},
- {name:"아바니 파타야",region:"파타야",rooms:["디럭스","풀액세스"]},
+ {name:"마이카오락 비치 리조트",region:"Khao Lak",rooms:["디럭스","디럭스 풀액세스","주니어 스위트"]},
+ {name:"로빈슨 클럽 카오락",region:"Khao Lak",rooms:["디럭스","풀빌라","비치프론트"]},
+ {name:"카오락 에메랄드 비치 리조트",region:"Khao Lak",rooms:["디럭스","프리미어 디럭스","풀액세스"]},
+ {name:"JW 메리어트 카오락",region:"Khao Lak",rooms:["디럭스","풀액세스","풀빌라"]},
+ {name:"카오락 메리어트 비치 리조트",region:"Khao Lak",rooms:["디럭스","풀액세스","이그제큐티브"]},
+ {name:"카타타니 푸켓 비치 리조트",region:"Phuket",rooms:["디럭스","씨뷰","풀 스위트"]},
+ {name:"더 쇼어 앳 카타타니",region:"Phuket",rooms:["풀빌라","오션프론트 풀빌라"]},
+ {name:"로얄 클리프 비치 호텔",region:"Pattaya",rooms:["디럭스","씨뷰","스위트"]},
+ {name:"아바니 파타야",region:"Pattaya",rooms:["디럭스","풀액세스"]},
 ];
 const GENERIC=["디럭스","슈페리어","풀액세스","풀빌라","주니어 스위트","스위트","씨뷰","비치프론트","오션뷰"];
-let REGIONS=["전체","카오락","푸켓","파타야","크라비"];
+let REGIONS=["전체","Khao Lak","Phuket","Pattaya","Krabi"];  /* 지역은 영문 풀네임만 */
 const OPTLIST=["올인","올인 2회","풀보드","하프보드","조식 포함","허니문 세팅","고층 요청","커넥팅룸","레이트 체크아웃","얼리 체크인","패스트 트랙","VIP 라운지","공항 픽업"];
 const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const WDK=["일","월","화","수","목","금","토"];
@@ -38,12 +38,15 @@ const kdshort=iso=>{const d=_utc(iso);return String(d.getUTCMonth()+1).padStart(
 /* 직원 요청자 페이지: 영문·호텔식 표기 */
 const HOTEL_EN={"마이카오락 비치 리조트":"My Khaolak Beach Resort","로빈슨 클럽 카오락":"Robinson Khao Lak","카오락 에메랄드 비치 리조트":"Khaolak Emerald Beach Resort","JW 메리어트 카오락":"JW Marriott Khao Lak Resort","카오락 메리어트 비치 리조트":"Khao Lak Marriott Beach Resort","카타타니 푸켓 비치 리조트":"Katathani Phuket Beach Resort","더 쇼어 앳 카타타니":"The Shore at Katathani","로얄 클리프 비치 호텔":"Royal Cliff Beach Hotel","아바니 파타야":"Avani Pattaya Resort"};
 const RT_EN={"디럭스":"Deluxe","슈페리어":"Superior","풀액세스":"Pool Access","풀빌라":"Pool Villa","주니어 스위트":"Junior Suite","스위트":"Suite","씨뷰":"Sea View","비치프론트":"Beachfront","오션뷰":"Ocean View","디럭스 풀액세스":"Deluxe Pool Access","프리미어 디럭스":"Premier Deluxe","이그제큐티브":"Executive","풀 스위트":"Pool Suite","오션프론트 풀빌라":"Oceanfront Pool Villa"};
+/* RG_EN 은 옛 한글 지역명 → 영문 매핑. 지금은 AREA_TABLE 이 대신하며
+   dRegion 은 이 표를 쓰지 않는다. 옛 데이터 참조용으로 남겨 둔다. */
 const RG_EN={"카오락":"Khao Lak","푸켓":"Phuket","파타야":"Pattaya","크라비":"Krabi"};
 let FORCE_KO=false; /* 전체 이미지(고객용) 렌더 시 한국어 강제 */
 const isEN=()=>!FORCE_KO&&typeof ui!=='undefined'&&(ui.role==='sreq'||ui.role==='schk');
 const dHotel=n=>isEN()?(HOTEL_EN[n]||n):n;
 const dRoom=n=>isEN()?(RT_EN[n]||n):n;
-const dRegion=n=>isEN()?(RG_EN[n]||n):n;
+/* 지역만은 역할·언어와 무관하게 언제나 영문 풀네임 (약어 금지) — canonRegion 참조 */
+const dRegion=n=>{const c=canonRegion(n);return c===RG_ALL?n:c;};
 const fdate=iso=>isEN()?fmtD(iso):kdstr(iso);
 const fdshort=iso=>isEN()?fmtD(iso):kdshort(iso);
 /* 입력 폼 전용 최단 표기 — 한국어 "26.08.31"(연도 2자리·요일 없음).
@@ -66,17 +69,73 @@ const opt=(v,t,sel)=>'<option value="'+esc(v)+'"'+(sel?' selected':'')+'>'+t+'</
 /* 지역 코드 → 풀네임.
    API는 area 를 코드(PK, PT …)로만 준다. 확인된 것: PK=푸켓, PT=파타야 (실응답).
    나머지는 추정이므로, 표에 없으면 호텔 한글명에서 지역어를 찾아내 보완한다. */
-const AREA_NAME={PK:'푸켓',PT:'파타야',KL:'카오락',KB:'크라비',BK:'방콕',BKK:'방콕',
-  SM:'사무이',KS:'사무이',CM:'치앙마이',HH:'후아힌',PP:'피피',CR:'치앙라이',HY:'핫야이'};
-const AREA_WORDS=['카오락','푸켓','파타야','크라비','방콕','사무이','치앙마이','후아힌','피피','치앙라이','핫야이'];
-/* 코드가 표에 없으면 호텔 한글명에 섞인 지역어로 유추한다
-   (예: "스플래시 비치 리조트 푸켓" → 푸켓). 그래도 없으면 코드를 그대로 둔다. */
-function areaLabel(code,nameKr){
-  if(AREA_NAME[code])return AREA_NAME[code];
-  const up=String(code||'').toUpperCase();
-  if(AREA_NAME[up])return AREA_NAME[up];
-  const hit=AREA_WORDS.find(w=>String(nameKr||'').includes(w));
-  return hit||code||'';
+/* 지역 표기 규칙 (2026-08-23) — 화면에는 언제나 영문 풀네임만 쓴다.
+   약어·코드(PK, KL, KI-PK …)는 어떤 역할·언어에서도 노출하지 않는다.
+   ko 는 저장된 옛 데이터와 호텔 이름 유추용으로만 남겨 둔다. */
+const AREA_TABLE=[
+  {en:'Phuket',    ko:'푸켓',   codes:['PK','PKT','HKT'],       alias:['phuket']},
+  {en:'Khao Lak',  ko:'카오락', codes:['KL','KHL','KHAOLAK'],   alias:['khaolak','khao lak','kaolak']},
+  {en:'Pattaya',   ko:'파타야', codes:['PT','PTY','PTA'],       alias:['pattaya']},
+  {en:'Krabi',     ko:'크라비', codes:['KB','KBV','KRB'],       alias:['krabi','aonang','ao nang','아오낭']},
+  {en:'Bangkok',   ko:'방콕',   codes:['BK','BKK'],             alias:['bangkok']},
+  {en:'Koh Samui', ko:'사무이', codes:['SM','KS','USM','SAMUI'],alias:['samui','kohsamui','koh samui','꼬사무이']},
+  {en:'Chiang Mai',ko:'치앙마이',codes:['CM','CNX'],            alias:['chiangmai','chiang mai']},
+  {en:'Chiang Rai',ko:'치앙라이',codes:['CR','CEI'],            alias:['chiangrai','chiang rai']},
+  {en:'Hua Hin',   ko:'후아힌', codes:['HH','HHQ'],             alias:['huahin','hua hin']},
+  {en:'Phi Phi',   ko:'피피',   codes:['PP','PHIPHI'],          alias:['phiphi','phi phi','꼬피피']},
+  {en:'Hat Yai',   ko:'핫야이', codes:['HY','HDY'],             alias:['hatyai','hat yai']},
+  {en:'Koh Chang', ko:'꼬창',   codes:['KC','TDX'],             alias:['kohchang','koh chang','코창']},
+  {en:'Koh Tao',   ko:'꼬따오', codes:['KT','KOHTAO'],          alias:['kohtao','koh tao','코타오']},
+  {en:'Koh Lanta', ko:'꼬란타', codes:['KLT','LANTA'],          alias:['kohlanta','koh lanta','란타']},
+  {en:'Rayong',    ko:'라용',   codes:['RY','RYG'],             alias:['rayong']},
+  {en:'Trang',     ko:'뜨랑',   codes:['TR','TST'],             alias:['trang']},
+  {en:'Pai',       ko:'빠이',   codes:['PAI'],                  alias:['pai']}
+];
+const RG_ALL='전체';
+const _rgKey=s=>String(s==null?'':s).toLowerCase().replace(/[^a-z0-9가-힣]/g,'');
+const RG_LOOKUP=(()=>{const m={};
+  AREA_TABLE.forEach(a=>{
+    m[_rgKey(a.en)]=a.en; m[_rgKey(a.ko)]=a.en;
+    (a.alias||[]).forEach(x=>{m[_rgKey(x)]=a.en;});
+    (a.codes||[]).forEach(c=>{m['#'+String(c).toUpperCase()]=a.en;});
+  });return m;})();
+const _looksLikeCode=s=>/^[A-Za-z0-9]{1,4}([^A-Za-z0-9]+[A-Za-z0-9]{1,4})*$/.test(String(s||''));
+/* 무엇이 들어와도(코드·한글명·영문명·"KI-PK" 같은 합성코드) 영문 풀네임으로 돌려준다.
+   끝내 못 알아보면 약어를 그대로 내보내는 대신 빈 문자열을 준다. */
+const _rgIn=hay=>{const k=_rgKey(hay);if(!k)return null;
+  const a=AREA_TABLE.find(x=>k.includes(_rgKey(x.en))||k.includes(_rgKey(x.ko)));return a?a.en:null;};
+function canonRegion(v,hint){
+  const s=String(v==null?'':v).trim();
+  if(s===''||s===RG_ALL||_rgKey(s)==='all')return RG_ALL;
+  /* ① 값 자체가 아는 이름·별칭·코드일 때 */
+  const k=_rgKey(s);
+  if(RG_LOOKUP[k])return RG_LOOKUP[k];
+  const up=s.toUpperCase();
+  if(RG_LOOKUP['#'+up])return RG_LOOKUP['#'+up];
+  /* ② 값 안에 지역어가 섞여 있을 때 ("Phuket Town" 등) */
+  const inSelf=_rgIn(s); if(inSelf)return inSelf;
+  /* ③ 호텔 이름이 말해 주는 지역 — 합성코드보다 이름을 믿는다.
+        예: area="KI-PK" 인데 이름이 "로빈슨 클럽 카오락" → Khao Lak */
+  const inHint=_rgIn(hint); if(inHint)return inHint;
+  /* ④ "KI-PK" 처럼 코드가 붙어 온 경우 조각마다 확인 */
+  for(const pt of up.split(/[^A-Z0-9가-힣]+/).filter(Boolean)){
+    if(RG_LOOKUP['#'+pt])return RG_LOOKUP['#'+pt];
+    if(RG_LOOKUP[_rgKey(pt)])return RG_LOOKUP[_rgKey(pt)];
+  }
+  return _looksLikeCode(s)?'':s;   /* 약어로 보이면 감춘다. 실제 지명 같으면 그대로 */
+}
+/* 두 지역 값이 같은 곳을 가리키는가 (옛 한글 데이터 ↔ 새 영문 값 비교용) */
+const sameRegion=(a,b)=>canonRegion(a)===canonRegion(b);
+/* 지역 칩 표시용 — '전체'·빈값·못 알아본 약어는 아예 그리지 않는다 */
+const rgShow=v=>{const c=canonRegion(v);return (!c||c===RG_ALL)?'':c;};
+/* API 응답 한 건에서 지역을 뽑는다: area_name → area 코드 → 호텔 이름 유추 순 */
+function regionOfHotel(h,nameHint){
+  for(const c of [_pick(h,'area_name','region_name'),_pick(h,'area','area_code')]){
+    if(!c)continue;
+    const r=canonRegion(c,nameHint);
+    if(r&&r!==RG_ALL)return r;
+  }
+  return _rgIn(nameHint)||'';        /* 코드가 아예 없으면 호텔 이름에서 */
 }
 let HOTEL_SRC='local';                 /* 'api' 로 바뀌면 서버 목록을 쓰는 중 */
 const HOTEL_IDX={};                    /* 호텔명 → API idx */
@@ -93,7 +152,7 @@ function normHotel(h){
     idx:_pick(h,'idx','id','hotel_idx'),
     name:kr||en,                                   /* 앱의 기준 이름은 한글 */
     nameEn:en,
-    region:_pick(h,'area_name','region_name')||areaLabel(code,kr),
+    region:regionOfHotel(h,kr+' '+en),          /* 영문 풀네임으로 정규화 */
     phone:_pick(h,'telnumber','tel','phone','reservation_number'),
     rooms:rooms,
     main:_pick(h,'main_hotel_yn','main_yn')==='Y'
@@ -184,7 +243,7 @@ const HFIND_MAX=8;
 const _hnorm=s=>String(s||'').toLowerCase().replace(/[\s\-_.()]/g,'');
 function hotelSearch(q,region){
   const nq=_hnorm(q);
-  const inRegion=(region&&region!=='전체')?HOTELS.filter(h=>h.region===region):HOTELS;
+  const inRegion=(region&&region!==RG_ALL)?HOTELS.filter(h=>sameRegion(h.region,region)):HOTELS;
   if(!nq)return inRegion.slice(0,HFIND_MAX);
   const scan=base=>{
     const hit=[];
@@ -222,7 +281,7 @@ function attachHotelFinder(input,getRegion,onPick){
     box.innerHTML=items.map((h,i)=>
       '<div class="hfitem'+(i===cur?' on':'')+'" data-i="'+i+'">'
       +'<span class="hfn">'+esc(dHotel(h.name))+'</span>'
-      +(h.region?'<span class="hfr">'+esc(h.region)+'</span>':'')
+      +(rgShow(h.region)?'<span class="hfr">'+esc(rgShow(h.region))+'</span>':'')
       +'</div>').join('');
     box.style.display='block';
     /* 좁은 화면에서 목록이 오른쪽으로 삐져나가면 왼쪽으로 당긴다 */
@@ -254,7 +313,7 @@ function attachHotelFinder(input,getRegion,onPick){
 /* 룸타입 자동완성 목록 (호텔이 정해져 있으면 그 호텔 것) */
 const roomDL=(id,hotel)=>'<datalist id="'+id+'">'
   +roomsFor(hotel||'').map(r=>'<option value="'+esc(dRoom(r))+'">').join('')+'</datalist>';
-const hotelsIn=r=>r==="전체"?HOTELS:HOTELS.filter(h=>h.region===r);
+const hotelsIn=r=>(!r||r===RG_ALL)?HOTELS:HOTELS.filter(h=>sameRegion(h.region,r));
 const roomsFor=name=>{
   if(ROOMS_CACHE[name]&&ROOMS_CACHE[name].length)return ROOMS_CACHE[name];
   const h=HOTELS.find(x=>x.name===name);
@@ -649,7 +708,7 @@ function formHTML(){
       +'<div><div class="label">'+T('total_nights')+'</div><div class="autobox">'+totalN(d)+T('n_sfx')+'</div></div></div>';
   const blocks=d.rows.map((row,i)=>{
     const dd=rDates(d,row,i);
-    const rlist=REGIONS.map(r=>opt(r,RG_DISP(r),r===row.region)).join('');
+    const rlist=REGIONS.map(r=>opt(r,RG_DISP(r),sameRegion(r,row.region))).join('');
     const hdl=hotelsIn(row.region).map(h=>'<option value="'+esc(dHotel(h.name))+'">').join('');
     const rdl=roomsFor(row.hotel).map(r=>'<option value="'+esc(dRoom(r))+'">').join('');
     const dateRow = d.mode==='multi'
@@ -709,7 +768,7 @@ function formHTML(){
               +'<div class="line lhotel">'
                 +'<div><div class="label">'+T('region')+'</div><select class="checkRegion" data-row="'+row.id+'" data-tempid="'+inp.tempId+'">'
                   +'<option value="">'+T('opt_select')+'</option>'
-                  +REGIONS.map(r=>'<option value="'+esc(r)+'"'+(inp.region===r?' selected':'')+'>'+escT(dRegion(r))+'</option>').join('')
+                  +REGIONS.map(r=>'<option value="'+esc(r)+'"'+(sameRegion(inp.region,r)&&inp.region?' selected':'')+'>'+escT(RG_DISP(r))+'</option>').join('')
                 +'</select></div>'
                 +'<div><div class="label">'+T('hotel_sel')+'</div><input type="text" class="checkHotel" data-row="'+row.id+'" data-tempid="'+inp.tempId+'" list="chdl'+inp.tempId+'" placeholder="'+esc(T('ph_hotel'))+'" value="'+esc(inp.hotel)+'">'
                   +'<datalist id="chdl'+inp.tempId+'">'+hotelsIn(inp.region||'전체').map(h=>'<option value="'+esc(dHotel(h.name))+'">').join('')+'</datalist></div>'
@@ -1261,7 +1320,7 @@ function reqSummaryHTML(req){
       return '<div class="rq-item rq-plain">'
         +'<div class="rq-datebar">'+fdate(dd.checkIn)+' → '+fdate(dd.checkOut)+' <span class="nightsb">'+dd.nights+T('n_sfx')+'</span><span class="rq-idx">'+T('hotel_n')+' '+(i+1)+'</span></div>'
         +'<div class="rq-body">'
-        +(row.region&&row.region!=='전체'?'<div class="rq-region">'+escT(dRegion(row.region))+'</div>':'')
+        +(rgShow(row.region)?'<div class="rq-region">'+escT(rgShow(row.region))+'</div>':'')
         +'<div class="rq-line"><span class="rq-hotel">'+escT(dHotel(row.hotel)||T('no_hotel'))+'</span><span class="rq-type">'+escT(dRoom(row.roomType)||'-')+' <span class="sm">· '+row.rooms+T('r_sfx')+'</span></span></div>'
         +(row.note?'<div class="rq-note">📝 '+escT(row.note)+'</div>':'')
         +(opts?'<div>'+opts+'</div>':'')+(subs?'<div>'+subs+'</div>':'')+'</div></div>';
@@ -1303,7 +1362,7 @@ function agentItemHTML(req){
                       +'<strong>'+escT(chk.hotel)+'</strong>'
                       +'<span style="font-size:11px;color:var(--muted)">'+escT(chk.roomType)+'</span>'
                     +'</div>'
-                    +'<div style="font-size:12px;color:var(--muted);margin-bottom:6px">'+fdate(chk.checkInDate)+' ~ '+fdate(chk.checkOutDate)+(chk.region&&chk.region!=='전체'?' · '+escT(chk.region):'')+' '+escT(chk.notes||'')+'</div>';
+                    +'<div style="font-size:12px;color:var(--muted);margin-bottom:6px">'+fdate(chk.checkInDate)+' ~ '+fdate(chk.checkOutDate)+(rgShow(chk.region)?' · '+escT(rgShow(chk.region)):'')+' '+escT(chk.notes||'')+'</div>';
 
               /* 확인자(schk)일 때만 금액 표시/입력 */
               if(ui.role==='schk'){
@@ -1362,7 +1421,7 @@ function agentItemHTML(req){
             +'<div class="line lhotel" style="margin-bottom:10px">'
               +'<div><div class="label">지역</div><select class="agentCheckRegion" data-req="'+req.id+'" data-tempid="'+inp.tempId+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px">'
                 +'<option value="">선택</option>'
-                +REGIONS.map(r=>'<option value="'+esc(r)+'"'+(inp.region===r?' selected':'')+'>'+esc(r)+'</option>').join('')
+                +REGIONS.map(r=>'<option value="'+esc(r)+'"'+(sameRegion(inp.region,r)&&inp.region?' selected':'')+'>'+escT(RG_DISP(r))+'</option>').join('')
               +'</select></div>'
               +'<div><div class="label">호텔명</div><input type="text" class="agentCheckHotel" data-req="'+req.id+'" data-tempid="'+inp.tempId+'" placeholder="호텔명 입력" value="'+esc(inp.hotel)+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
               +'<div><div class="label">룸타입</div><input type="text" class="agentCheckRoom" data-req="'+req.id+'" data-tempid="'+inp.tempId+'" placeholder="룸타입 입력" value="'+esc(inp.roomType)+'" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px"></div>'
@@ -1518,7 +1577,7 @@ function resultCardHTML(req,asReq){
     return '<div class="rq-item">'
       +'<div class="rq-datebar">'+fdate(dd.checkIn)+' → '+fdate(dd.checkOut)+' <span class="nightsb">'+dd.nights+'박</span><span class="rq-idx">호텔 '+(i+1)+'</span></div>'
       +'<div class="rq-body">'
-      +(row.region&&row.region!=='전체'?'<div class="rq-region">'+escT(dRegion(row.region))+'</div>':'')
+      +(rgShow(row.region)?'<div class="rq-region">'+escT(rgShow(row.region))+'</div>':'')
       +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(row.hotel)||'-')+'</span><span class="rq-type">'+escT(dRoom(row.roomType)||'-')+' <span class="sm">· '+row.rooms+'실</span></span></span>'
       +'<span class="avbig av-'+av.k+'" style="margin-top:0">'+av.t+'</span></div>'
       +(row.note?'<div class="rq-note">📝 '+escT(row.note)+'</div>':'')
@@ -1719,7 +1778,7 @@ function recBlockHTML(req,row,i,dd,targetId,targetSO){
           +(canEdit
             ?'<div class="line lhotel" style="margin-top:0">'
               +'<div><div class="label">'+T('region')+'</div><select class="recRegion" data-rid="'+rec.id+'" data-row="'+row.id+'">'
-                +REGIONS.map(rg=>opt(rg,escT(dRegion(rg)),rg===(rec.region||'전체'))).join('')
+                +REGIONS.map(rg=>opt(rg,escT(RG_DISP(rg)),sameRegion(rg,rec.region||RG_ALL))).join('')
               +'</select></div>'
               /* 칸이 좁아 "(선택·입력)"까지 넣으면 라벨이 2~3줄로 감긴다 — 짧은 라벨을 쓴다 */
               +'<div><div class="label">'+T('hotel_n')+'</div><input class="recHotel" data-rid="'+rec.id+'" data-row="'+row.id+'" list="rdl_rec'+rec.id+'" value="'+esc(dHotel(rec.hotel))+'" placeholder="'+esc(T('ph_hotel'))+'">'
@@ -1752,7 +1811,7 @@ function staffWorkInner(req){
       +'<div class="rq-datebar"><span class="chev'+(isOpen?' open':'')+'" style="width:13px">▶</span>'+fdate(dd.checkIn)+' → '+fdate(dd.checkOut)+' <span class="nightsb">'+dd.nights+T('n_sfx')+'</span><span class="rq-idx">'+T('hotel_n')+' '+(i+1)+stChip+'</span></div>'
       +'<div class="rq-body">'
       +'<div class="flex aic" style="gap:5px;flex-wrap:wrap;margin-bottom:5px">'
-      +(row.region&&row.region!=='전체'?'<span class="rq-region" style="margin-bottom:0">'+escT(dRegion(row.region))+'</span>':'')
+      +(rgShow(row.region)?'<span class="rq-region" style="margin-bottom:0">'+escT(rgShow(row.region))+'</span>':'')
       +phoneHTML(req,row)
       +(row.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+dotDateTime(row.savedAt)+'</span>':'')+'</div>'
       +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(row.hotel)||T('no_hotel'))+'</span><span class="rq-type">'+escT(dRoom(row.roomType)||'-')+' <span class="sm">· '+row.rooms+T('r_sfx')+'</span></span></span>'
@@ -1792,7 +1851,7 @@ function staffWorkInner(req){
           +'<div class="rq-datebar"><span class="chev'+(chkOpen?' open':'')+'" style="width:13px">▶</span><span class="hgnum sub">'+(i+1)+'-'+(ci+1)+'</span>'+fdate(dd.checkIn)+' → '+fdate(dd.checkOut)+' <span class="nightsb">'+dd.nights+T('n_sfx')+'</span><span class="rq-idx">'+T('chk_more')+' '+(ci+1)+chkChip+'</span></div>'
           +'<div class="rq-body">'
           +'<div class="flex aic" style="gap:5px;flex-wrap:wrap;margin-bottom:5px">'
-          +(chk.region&&chk.region!=='전체'?'<span class="rq-region" style="margin-bottom:0">'+escT(dRegion(chk.region))+'</span>':'')
+          +(rgShow(chk.region)?'<span class="rq-region" style="margin-bottom:0">'+escT(rgShow(chk.region))+'</span>':'')
           +chkPhoneHTML(req,chk,chkId)
           +(chk.savedAt?'<span class="small" style="color:var(--muted);flex:0 0 auto">'+dotDateTime(chk.savedAt)+'</span>':'')+'</div>'
           +'<div class="qc-rowline" style="align-items:center;margin-top:0"><span class="rq-line"><span class="rq-hotel">'+escT(dHotel(chk.hotel))+'</span><span class="rq-type">'+escT(dRoom(chk.roomType)||'-')+' <span class="sm">· '+(chk.rooms||row.rooms||1)+T('r_sfx')+'</span></span></span>'
@@ -2166,7 +2225,7 @@ function quoteText(req){
   req.rows.forEach((row,i)=>{const dd=rDates(req,row,i);
     const sh=(row.options||[]).filter(o=>o.show&&o.name);
     t+='\n'+(i+1)+') '+kdstr(dd.checkIn)+' → '+kdstr(dd.checkOut)+' ('+dd.nights+'박)\n';
-    if(row.region&&row.region!=='전체')t+=dRegion(row.region)+'\n';
+    if(rgShow(row.region))t+=rgShow(row.region)+'\n';
     t+=(dHotel(row.hotel)||'-')+(req.status==='answered'?' → '+avKo(availOf(req,row,i)):'')+'\n'+(dRoom(row.roomType)||'-')+' · '+row.rooms+'실\n';
     sh.forEach(o=>{t+=optLine(o)+'\n';});
     /* 호텔 원가 노출은 요청자·확인자에게만. 에이전트에게는 견적 확정 금액만 나간다 */
@@ -2183,7 +2242,7 @@ function quoteCardHTML(req){
     const optLines=sh.map(o=>'<div style="margin-top:2px"><span class="qc-opt">'+escT(o.memo?o.memo:o.name)+'</span></div>').join('');
     const av=answered?availOf(req,row,i):null;
     return '<div class="qc-leg"><div class="qc-dbar"><span class="qc-dnum">'+(i+1)+'</span><span class="qc-dt">'+kdstr(dd.checkIn)+' <b class="qc-arw">→</b> '+kdstr(dd.checkOut)+'</span><span class="qc-dn">'+dd.nights+'박</span></div>'
-      +(row.region!=='전체'&&row.region?'<div class="qc-region">'+escT(dRegion(row.region))+'</div>':'')
+      +(rgShow(row.region)?'<div class="qc-region">'+escT(rgShow(row.region))+'</div>':'')
       +'<div class="qc-rowline" style="align-items:center;margin-top:1px"><span class="qc-h" style="margin-top:0">'+escT(dHotel(row.hotel)||'-')+'</span>'
       +(av?'<span class="avbig av-'+av.k+'" style="margin-top:0;font-size:11.5px;padding:4px 9px">'+avKo(av)+'</span>':'')+'</div>'
       +'<div class="qc-rt">'+escT(dRoom(row.roomType)||'-')+' <span class="sm">· '+row.rooms+'실</span></div>'

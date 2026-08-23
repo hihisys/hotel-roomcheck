@@ -42,11 +42,14 @@ const RT_EN={"디럭스":"Deluxe","슈페리어":"Superior","풀액세스":"Pool
    dRegion 은 이 표를 쓰지 않는다. 옛 데이터 참조용으로 남겨 둔다. */
 const RG_EN={"카오락":"Khao Lak","푸켓":"Phuket","파타야":"Pattaya","크라비":"Krabi"};
 let FORCE_KO=false; /* 전체 이미지(고객용) 렌더 시 한국어 강제 */
-const isEN=()=>!FORCE_KO&&typeof ui!=='undefined'&&(ui.role==='sreq'||ui.role==='schk');
+/* 화면 표기 언어. 역할이 아니라 '실제로 고른 언어'를 따른다.
+   agent 는 ko 만, sreq 는 en/ko, schk 는 th/en 중에서 고를 수 있다.
+   호텔·룸타입·지역의 태국어 이름은 없으므로 ko 가 아니면 전부 영문으로 본다. */
+const isEN=()=>!FORCE_KO&&typeof ui!=='undefined'&&typeof lang==='function'&&lang()!=='ko';
 const dHotel=n=>isEN()?(HOTEL_EN[n]||n):n;
 const dRoom=n=>isEN()?(RT_EN[n]||n):n;
-/* 지역만은 역할·언어와 무관하게 언제나 영문 풀네임 (약어 금지) — canonRegion 참조 */
-const dRegion=n=>{const c=canonRegion(n);return c===RG_ALL?n:c;};
+/* 지역: 고른 언어를 따른다. 한글 이름이 없으면 영문으로 (약어는 어느 쪽이든 안 쓴다) */
+const dRegion=n=>{const c=canonRegion(n);return c===RG_ALL?n:regionName(c);};
 const fdate=iso=>isEN()?fmtD(iso):kdstr(iso);
 const fdshort=iso=>isEN()?fmtD(iso):kdshort(iso);
 /* 입력 폼 전용 최단 표기 — 한국어 "26.08.31"(연도 2자리·요일 없음).
@@ -126,8 +129,15 @@ function canonRegion(v,hint){
 }
 /* 두 지역 값이 같은 곳을 가리키는가 (옛 한글 데이터 ↔ 새 영문 값 비교용) */
 const sameRegion=(a,b)=>canonRegion(a)===canonRegion(b);
+/* 영문 풀네임 → 화면에 쓸 이름. ko 화면이면 한글, 한글이 없으면 영문 그대로. */
+function regionName(en){
+  if(!en)return '';
+  if(isEN())return en;
+  const a=AREA_TABLE.find(x=>x.en===en);
+  return (a&&a.ko)?a.ko:en;          /* 한글이 없으면 영어로 */
+}
 /* 지역 칩 표시용 — '전체'·빈값·못 알아본 약어는 아예 그리지 않는다 */
-const rgShow=v=>{const c=canonRegion(v);return (!c||c===RG_ALL)?'':c;};
+const rgShow=v=>{const c=canonRegion(v);return (!c||c===RG_ALL)?'':regionName(c);};
 /* API 응답 한 건에서 지역을 뽑는다: area_name → area 코드 → 호텔 이름 유추 순 */
 function regionOfHotel(h,nameHint){
   for(const c of [_pick(h,'area_name','region_name'),_pick(h,'area','area_code')]){
@@ -210,7 +220,13 @@ function fetchRooms(name){
       const rt=d.room_types||d.rooms||[];
       const rooms=(Array.isArray(rt)?rt:[])
         .filter(usableRoom)
-        .map((x,i)=>({n:pickRoomName(x),s:Number((x&&x.sort)||0),i:i}))
+        .map((x,i)=>{
+          /* 한글·영문이 둘 다 오면 서로 매핑해 둔다 — 언어를 바꿔도 이름이 따라온다 */
+          if(typeof x==='object'&&x){
+            const rk=_pick(x,'name_kr'), re=_pick(x,'name','name_full');
+            if(rk&&re&&rk!==re){RT_EN[rk]=re;RT_KO[re]=rk;}
+          }
+          return {n:pickRoomName(x),s:Number((x&&x.sort)||0),i:i};})
         .filter(x=>x.n)
         .sort((a,b)=>(a.s-b.s)||(a.i-b.i))          /* sort 값 우선, 같으면 원래 순서 */
         .map(x=>x.n)

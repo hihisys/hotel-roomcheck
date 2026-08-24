@@ -255,13 +255,13 @@ function clearHotelPick(target,region){
    직접 칠 때 한글·영문 어느 쪽으로 쳐도, 띄어쓰기·대소문자 상관없이 걸러서
    입력칸 바로 아래 목록으로 보여준다. datalist 는 브라우저마다 동작이 달라
    (특히 모바일) 직접 만든다. */
-const HFIND_MIN=2;   /* 두 글자부터 걸러 준다. 그 전까지는 전체를 보여 준다 */
+const HFIND_MIN=1;   /* 한 글자부터 걸러 준다. 빈 칸이면 전체를 보여 준다 */
 const _hnorm=s=>String(s||'').toLowerCase().replace(/[\s\-_.()]/g,'');
 /* 화면에 보이는 이름 기준으로 정렬한다 — 한글 화면이면 ㄱㄴㄷ, 영문 화면이면 A→Z */
 const nameSort=(a,b)=>String(a||'').localeCompare(String(b||''),isEN()?'en':'ko',
   {numeric:true,sensitivity:'base'});
 /* 호텔 찾기. 한글·영문 어느 쪽으로 쳐도 찾는다(입력 언어 무관).
-   두 글자 미만이면 거르지 않고 그 지역 전체를 이름순으로 돌려준다. */
+   한 글자부터 걸러 준다. 빈 칸이면 그 지역 전체를 이름순으로 돌려준다. */
 function hotelSearch(q,region){
   const nq=_hnorm(q);
   const inRegion=(region&&region!==RG_ALL)?HOTELS.filter(h=>sameRegion(h.region,region)):HOTELS;

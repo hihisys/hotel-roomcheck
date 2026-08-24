@@ -255,29 +255,34 @@ function clearHotelPick(target,region){
    직접 칠 때 한글·영문 어느 쪽으로 쳐도, 띄어쓰기·대소문자 상관없이 걸러서
    입력칸 바로 아래 목록으로 보여준다. datalist 는 브라우저마다 동작이 달라
    (특히 모바일) 직접 만든다. */
-const HFIND_MAX=8;
+const HFIND_MIN=2;   /* 두 글자부터 걸러 준다. 그 전까지는 전체를 보여 준다 */
 const _hnorm=s=>String(s||'').toLowerCase().replace(/[\s\-_.()]/g,'');
+/* 화면에 보이는 이름 기준으로 정렬한다 — 한글 화면이면 ㄱㄴㄷ, 영문 화면이면 A→Z */
+const nameSort=(a,b)=>String(a||'').localeCompare(String(b||''),isEN()?'en':'ko',
+  {numeric:true,sensitivity:'base'});
+/* 호텔 찾기. 한글·영문 어느 쪽으로 쳐도 찾는다(입력 언어 무관).
+   두 글자 미만이면 거르지 않고 그 지역 전체를 이름순으로 돌려준다. */
 function hotelSearch(q,region){
   const nq=_hnorm(q);
   const inRegion=(region&&region!==RG_ALL)?HOTELS.filter(h=>sameRegion(h.region,region)):HOTELS;
-  if(!nq)return inRegion.slice();          /* ▾ 로 열면 그 지역 전체 (목록은 스크롤) */
-  const scan=base=>{
-    const hit=[];
-    base.forEach(h=>{
-      const keys=[h.name,h.nameEn].filter(Boolean).map(_hnorm);
-      let best=-1;
-      keys.forEach(k=>{const p=k.indexOf(nq);if(p>=0&&(best<0||p<best))best=p;});
-      if(best>=0)hit.push({h:h,p:best});
-    });
-    hit.sort((a,b)=>(a.p-b.p)||String(a.h.name).localeCompare(String(b.h.name)));
-    return hit.slice(0,HFIND_MAX).map(x=>x.h);
-  };
+  const byName=list=>list.slice().sort((a,b)=>nameSort(dHotel(a.name),dHotel(b.name)));
+  if(nq.length<HFIND_MIN)return byName(inRegion);
+  const scan=base=>byName(base.filter(h=>
+    [h.name,h.nameEn].filter(Boolean).some(k=>_hnorm(k).includes(nq))));
   const r=scan(inRegion);
   /* 고른 지역 안에 없으면 전체에서 다시 찾아준다 (고르면 지역이 따라온다) */
   return r.length?r:(inRegion===HOTELS?r:scan(HOTELS));
 }
-/* 룸타입 후보 — 비어 있으면 그 호텔에 등록된 전부, 글자를 치면 걸러서.
-   걸렀는데 하나도 없으면 전체를 돌려준다(빈 목록을 보여 주지 않는다). */
+/* 룸타입 후보. 한글·영문 어느 쪽으로 쳐도 찾는다.
+   순서는 호텔에 등록된 순서(API sort 값)를 그대로 지킨다 — 이름순으로 섞지 않는다. */
+function roomSearch(q,hotel){
+  const all=roomsFor(hotel||'')||[];
+  const nq=_hnorm(q);
+  if(nq.length<HFIND_MIN)return all.slice();
+  const keys=r=>[r,RT_EN[r],RT_KO[r],dRoom(r)].filter(Boolean);
+  const hit=all.filter(r=>keys(r).some(k=>_hnorm(k).includes(nq)));
+  return hit.length?hit:all.slice();   /* 걸러서 없으면 전체 */
+}
 function roomSearch(q,hotel){
   const all=roomsFor(hotel||'')||[];
   const nq=_hnorm(q);
@@ -312,6 +317,9 @@ function attachFinder(input,opts){
   wrap.appendChild(box);wrap.appendChild(arrow);
 
   let items=[],cur=-1,showAll=false;
+  let stash=null;      /* 편집을 시작하기 전의 값 {label,value} — 안 고르고 나가면 되돌린다 */
+  let typed=false;     /* 편집 중에 실제로 글자를 쳤는가 */
+
   const close=()=>{if(box.isConnected)box.style.display='none';
     cur=-1;showAll=false;wrap.classList.remove('pkopen');};
   const draw=()=>{
@@ -330,43 +338,66 @@ function attachFinder(input,opts){
     if(over>0)box.style.left=(-over)+'px';
     const on=box.querySelector('.hfitem.on');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest'});
   };
-  const openAll=()=>{showAll=true;cur=-1;draw();};   /* 고른 값과 무관하게 전부 */
+  /* 칸을 누르거나 ▾ 를 누르면 — 이미 들어 있던 이름을 지우고 새로 칠 수 있게 비운다.
+     (전에는 전부 지운 뒤에야 다시 칠 수 있었다) 값은 stash 에 넣어 두었다가
+     아무것도 안 고르고 빠져나가면 그대로 되돌린다. */
+  const beginEdit=()=>{
+    if(stash===null){
+      stash={label:input.value,value:opts.get?opts.get():input.value};
+      typed=false;
+      input.value='';
+    }
+    showAll=true;cur=-1;draw();
+  };
+  /* 안 고르고 나갔을 때 원래 값으로 복구 */
+  const revert=()=>{
+    if(stash===null)return;
+    const st=stash;stash=null;
+    input.value=st.label;
+    /* 글자를 쳤다면 입력 도중 모델이 이미 덮였으므로 원래 값으로 되돌려 준다.
+       실제로 달라진 게 없으면 다시 그리지 않는다 — 다른 칸으로 옮겨간 포커스를 뺏지 않기 위해 */
+    const now=opts.get?opts.get():null;
+    if(typed&&opts.onPick&&now!==st.value)setTimeout(()=>opts.onPick(st.value),0);
+    typed=false;
+  };
   /* 고르면 목록을 먼저 걷어내고 포커스를 뺀 다음 반영한다.
      (다시 그리는 도중에 blur 가 겹치면 브라우저가 innerHTML 오류를 낸다) */
   const pick=i=>{const it=items[i];if(!it)return;
+    stash=null;typed=false;                 /* 확정 — 되돌리지 않는다 */
     input.value=it.label;close();
     try{input.blur();}catch(e){}
     setTimeout(()=>opts.onPick(it.value),0);};
+
   box.addEventListener('mousedown',e=>{            /* blur 보다 먼저 잡아야 한다 */
     const el=e.target.closest('.hfitem');if(!el)return;
     e.preventDefault();pick(Number(el.dataset.i));});
   arrow.addEventListener('mousedown',e=>{
     e.preventDefault();
     if(box.style.display!=='none'){close();return;} /* 열려 있으면 닫기 */
-    input.focus();openAll();});
-  input.addEventListener('focus',openAll);          /* 칸을 눌러도 전체가 열린다 */
-  input.addEventListener('input',()=>{showAll=false;cur=-1;draw();});
-  input.addEventListener('blur',()=>setTimeout(close,180));
+    input.focus();beginEdit();});
+  input.addEventListener('focus',beginEdit);        /* 칸을 눌러도 비우고 전체가 열린다 */
+  input.addEventListener('input',()=>{typed=true;showAll=false;cur=-1;draw();});
+  input.addEventListener('blur',()=>setTimeout(()=>{close();revert();},180));
   input.addEventListener('keydown',e=>{
-    if(box.style.display==='none'){if(e.key==='ArrowDown'){e.preventDefault();openAll();}return;}
+    if(box.style.display==='none'){if(e.key==='ArrowDown'){e.preventDefault();beginEdit();}return;}
     if(e.key==='ArrowDown'){e.preventDefault();cur=Math.min(items.length-1,cur+1);draw();}
     else if(e.key==='ArrowUp'){e.preventDefault();cur=Math.max(0,cur-1);draw();}
     else if(e.key==='Enter'&&cur>=0){e.preventDefault();pick(cur);}
-    else if(e.key==='Escape'){close();}
+    else if(e.key==='Escape'){close();revert();try{input.blur();}catch(err){}}
   });
 }
 /* 호텔 이름 칸에 붙이기 */
-function attachHotelFinder(input,getRegion,onPick){
+function attachHotelFinder(input,getRegion,onPick,getVal){
   attachFinder(input,{
     list:q=>hotelSearch(q,getRegion?getRegion():'').map(h=>(
       {label:dHotel(h.name),value:h.name,sub:rgShow(h.region)})),
-    onPick:onPick});
+    get:getVal,onPick:onPick});
 }
 /* 룸타입 칸에 붙이기 — getHotel() 이 현재 고른 호텔을 돌려준다 */
-function attachRoomFinder(input,getHotel,onPick){
+function attachRoomFinder(input,getHotel,onPick,getVal){
   attachFinder(input,{
     list:q=>roomSearch(q,getHotel?getHotel():'').map(r=>({label:dRoom(r),value:r})),
-    onPick:onPick});
+    get:getVal,onPick:onPick});
 }
 /* 룸타입 자동완성 목록 (호텔이 정해져 있으면 그 호텔 것) */
 const roomDL=(id,hotel)=>'<datalist id="'+id+'">'
@@ -1140,12 +1171,12 @@ function bindForm(){
     const hi=el.querySelector('.inHotel');if(hi){
       hi.oninput=e=>{row.hotel=HOTEL_KO[e.target.value]||e.target.value;};
       hi.onchange=e=>{applyHotelPick(row,e.target.value);renderApp();};
-      attachHotelFinder(hi,()=>row.region,name=>{applyHotelPick(row,name);saveDB();renderApp();});
+      attachHotelFinder(hi,()=>row.region,name=>{applyHotelPick(row,name);saveDB();renderApp();},()=>row.hotel);
     }
     const ri=el.querySelector('.inRoom');if(ri){
       ri.oninput=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;};
       ri.onchange=e=>{row.roomType=RT_KO[e.target.value]||e.target.value;renderApp();};
-      attachRoomFinder(ri,()=>row.hotel,v=>{row.roomType=v;saveDB();renderApp();});
+      attachRoomFinder(ri,()=>row.hotel,v=>{row.roomType=v;saveDB();renderApp();},()=>row.roomType);
     }
     const n=el.querySelector('.inNights');if(n)n.onchange=e=>{row.nights=Math.max(1,Number(e.target.value)||1);renderApp();};
     const rm=el.querySelector('.inRooms');if(rm)rm.onchange=e=>{row.rooms=Math.max(1,Number(e.target.value)||1);};
@@ -1179,13 +1210,13 @@ function bindForm(){
     if(chEl){
       chEl.oninput=e=>{inp.hotel=e.target.value;};
       attachHotelFinder(chEl,()=>inp.region,name=>{
-        applyHotelPick(inp,name);updateCheckListsForRow(rowId);renderApp();});
+        applyHotelPick(inp,name);updateCheckListsForRow(rowId);renderApp();},()=>inp.hotel);
     }
     const croomEl=block.querySelector('.checkRoom');
     if(croomEl){
       croomEl.oninput=e=>{inp.roomType=e.target.value;};
       attachRoomFinder(croomEl,()=>inp.hotel,v=>{
-        inp.roomType=v;updateCheckListsForRow(rowId);renderApp();});
+        inp.roomType=v;updateCheckListsForRow(rowId);renderApp();},()=>inp.roomType);
     }
     const cpEl=block.querySelector('.checkPrice');if(cpEl)cpEl.oninput=e=>{inp.price=Number(e.target.value)||0;};
   });
@@ -2134,13 +2165,13 @@ function bindStaff(){
       saveDB();renderApp();};
     const _rec=findRec(inp.dataset.row,inp.dataset.rid);
     if(_rec)attachHotelFinder(inp,()=>_rec.region,name=>{
-      applyHotelPick(_rec,name);saveDB();renderApp();});});
+      applyHotelPick(_rec,name);saveDB();renderApp();},()=>_rec.hotel);});
   document.querySelectorAll('input.recRoom').forEach(inp=>{
     inp.onchange=e=>{
       const rec=findRec(inp.dataset.row,inp.dataset.rid);if(!rec)return;
       rec.roomType=e.target.value.trim();saveDB();renderApp();};
     const _r=findRec(inp.dataset.row,inp.dataset.rid);
-    if(_r)attachRoomFinder(inp,()=>_r.hotel,v=>{_r.roomType=v;saveDB();renderApp();});});
+    if(_r)attachRoomFinder(inp,()=>_r.hotel,v=>{_r.roomType=v;saveDB();renderApp();},()=>_r.roomType);});
   document.querySelectorAll('select.stsel[data-rec]').forEach(sel=>sel.onchange=e=>{
     const k=e.target.dataset.rec,v=e.target.value;if(v==='__mix')return;
     const ds=recDates(k);if(!ds)return;req.ws=req.ws||{};

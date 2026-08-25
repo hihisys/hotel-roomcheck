@@ -50,6 +50,7 @@ agency_parent_name  VARCHAR(190) NULL  에이전시 이름      ← 저장 시�
 - **새 요청에만 채운다.** 기존 요청은 비워 둔다 (사용자 결정)
 - 브라우저가 보낸 값 우선, 없으면 로그인 세션에서 채움
 - `currentUser()` SELECT 에 `agency_parent_idx` / `agency_kind` 를 추가해야 했다 (빠져 있었음)
+- 부계정 로그인 API의 `parent_agent_name`을 `agency` 세션에 함께 보관
 
 ### 화면
 - 모바일 분기점 400px → 440px. 아이폰 에어(402px)가 데스크톱 설정을 받던 문제
@@ -102,6 +103,7 @@ agency_parent_name  VARCHAR(190) NULL  에이전시 이름      ← 저장 시�
 | `server/src/lib.php` | 권역 계산, `currentUser()` SELECT 보강 |
 | `server/src/events.php` | 알림 권역·중복 |
 | `server/src/router.php` | 알림 읽기 권역 필터, requests 칼럼 채우기 |
+| `server/src/agency.php` | 부계정 로그인 세션에 `parent_agent_name` 보관 |
 | `server/src/db.php` | `notifications.zone`, `requests` 칼럼 4개 |
 | `docs/룸첵-작동원리.html` | 작동 원리 설명서 (도표 7개) |
 | `.dockerignore` | 2줄 → 67줄. 배포 이미지에 들어갈 것만 남긴다 |

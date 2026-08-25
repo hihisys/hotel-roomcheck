@@ -94,6 +94,7 @@ function agencyLoginRoute(PDO $pdo, array $in): void {
   $agency = [                                 // 세션에 저장할 인증 정보 (요구사항 3)
     'idx' => $idx,
     'parent_idx' => isset($d['parent_idx']) ? (int)$d['parent_idx'] : null,
+    'parent_agent_name' => trim((string)($d['parent_agent_name'] ?? '')),
     'kind' => (string)($d['kind'] ?? ''),
     'login_id' => (string)($d['login_id'] ?? $loginId),
     'nickname' => (string)($d['nickname'] ?? ''),
@@ -121,7 +122,7 @@ function agencyLoginRoute(PDO $pdo, array $in): void {
 
   session_regenerate_id(true);
   $_SESSION['uid'] = (int)$u['id'];
-  $_SESSION['agency'] = $agency;              // idx / parent_idx / kind 세션 보관
+  $_SESSION['agency'] = $agency;              // idx / parent_idx / parent_agent_name / kind 세션 보관
   $u['name'] = $name;
   jsonOut(['ok' => true, 'user' => publicUser($u)]);
 }

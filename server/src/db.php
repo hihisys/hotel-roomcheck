@@ -80,6 +80,9 @@ function migrate(PDO $pdo): void {
     params $TXT NULL,
     created_at BIGINT NOT NULL
   )");
+  /* 알림 관할권역 (2026-08-24): 어느 권역의 요청인지. NULL 이면 권역 무관 */
+  ensureColumn($pdo, 'notifications', 'zone', 'VARCHAR(20) NULL');
+
   /* 에이전시 부계정 연동 컬럼 (2026-07-17): 외부 인증 사용자 식별 */
   ensureColumn($pdo, 'users', 'agency_idx', 'BIGINT NULL');
   ensureColumn($pdo, 'users', 'agency_parent_idx', 'BIGINT NULL');

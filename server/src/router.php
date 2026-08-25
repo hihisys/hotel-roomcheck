@@ -140,12 +140,24 @@ function route(string $path, string $method): void {
       $out['seqD'] = (int)metaGet($pdo, 'seqD', 0);
     }
     // 알림 (역할 대상, 본인 행동 제외)
-    $st = $pdo->prepare("SELECT type,req_no,params,created_at,exclude_user FROM notifications
-      WHERE role=? AND (exclude_user IS NULL OR exclude_user<>?) ORDER BY id DESC LIMIT 20");
-    $st->execute([$u['role'], $u['id']]);
+    /* 관할권역 필터 (2026-08-24): 권역을 정한 직원은 자기 권역 알림만.
+       zone 이 NULL 인 알림(에이전트용 등)과 권역 미설정 직원은 제한 없음. */
+    $nsql = "SELECT type,req_no,params,created_at,exclude_user FROM notifications
+      WHERE role=? AND (exclude_user IS NULL OR exclude_user<>?)";
+    $nargs = [$u['role'], $u['id']];
+    if (!empty($u['region'])) { $nsql .= " AND (zone IS NULL OR zone=?)"; $nargs[] = $u['region']; }
+    $nsql .= " ORDER BY id DESC LIMIT 20";
+    $st = $pdo->prepare($nsql);
+    $st->execute($nargs);
+    /* 두 권역에 걸친 요청은 알림이 권역별로 들어 있다. 권역을 정하지 않은
+       직원에게는 둘 다 걸리므로 같은 알림을 한 번만 보여 준다. */
+    $seenNotif = [];
     $items = [];
     $unread = 0;
     foreach ($st->fetchAll() as $n) {
+      $dupKey = $n['type'].'|'.($n['req_no'] ?? '').'|'.$n['created_at'];
+      if (isset($seenNotif[$dupKey])) continue;
+      $seenNotif[$dupKey] = true;
       $it = ['type' => $n['type'], 'no' => $n['req_no'], 'p' => json_decode($n['params'] ?: '{}', true), 'at' => (int)$n['created_at']];
       if ((int)$n['created_at'] > (int)$u['notif_read_at']) { $it['new'] = true; $unread++; }
       $items[] = $it;

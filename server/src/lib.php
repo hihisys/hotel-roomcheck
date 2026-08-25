@@ -96,9 +96,57 @@ function isPendingForChecker(array $p): bool {
 function isPendingForRequester(array $p): bool {
   return !empty($p['quoteRequested']) && empty($p['quoteSent']);
 }
+/* ── 관할권역 (2026-08-24) ──────────────────────────────────────────────
+   직원의 region 은 단일 지역이 아니라 권역이다 (profile.html 참조).
+     krabi   = 카오락 + 푸켓 + 크라비
+     bangkok = 방콕 + 파타야
+   호텔의 지역(rows[].region)에서 권역을 뽑아 낸다. 표에 없는 지역
+   (사무이·치앙마이 등)은 푸켓·카오락 담당(krabi)이 맡는다.
+
+   전에는 요청에 region 을 넣는 코드가 없어 $p['region'] 이 늘 비었고,
+   그 결과 직원이 '본인이 만든 요청'만 보였다. 이제 payload 를 읽을 때마다
+   행에서 직접 계산하므로 예전에 저장된 요청도 그대로 살아난다. */
+const ZONE_DEFAULT = 'krabi';
+function regionZone(?string $region): string {
+  $r = strtolower(trim((string)$region));
+  $r = str_replace([' ', '-', '_'], '', $r);
+  static $map = [
+    'phuket' => 'krabi',   '푸켓'   => 'krabi',
+    'khaolak' => 'krabi',  '카오락' => 'krabi',
+    'krabi' => 'krabi',    '크라비' => 'krabi',
+    'bangkok' => 'bangkok','방콕'   => 'bangkok',
+    'pattaya' => 'bangkok','파타야' => 'bangkok',
+  ];
+  if ($r === '' || $r === '전체' || $r === 'all') return '';   // 지역 미지정 → 권역 없음
+  return $map[$r] ?? ZONE_DEFAULT;                            // 표에 없으면 krabi 담당
+}
+/* 요청 한 건이 걸쳐 있는 권역 전부. 기본 호텔과 추가 호텔을 함께 본다
+   (다중호텔 숙박이면 카오락→방콕처럼 두 권역에 걸칠 수 있다). */
+function requestZones(array $p): array {
+  $zones = [];
+  foreach (($p['rows'] ?? []) as $row) {
+    if (!is_array($row)) continue;
+    $z = regionZone($row['region'] ?? null);
+    if ($z !== '') $zones[$z] = true;
+    foreach (($row['checkRequests'] ?? []) as $c) {
+      if (!is_array($c)) continue;
+      $z = regionZone($c['region'] ?? null);
+      if ($z !== '') $zones[$z] = true;
+    }
+  }
+  if (!$zones) $zones[ZONE_DEFAULT] = true;   /* 어느 행에도 지역이 없으면 기본 담당에게 */
+  return array_keys($zones);
+}
+/* 이 사용자가 이 요청을 볼 수 있는 권역인가.
+   관할지역을 정하지 않은 직원은 제한 없이 전부 본다. */
+function zoneVisible(?string $userRegion, array $p): bool {
+  if (!$userRegion) return true;
+  return in_array($userRegion, requestZones($p), true);
+}
+
 /* 권한 기반 요청 필터링 (2026-07-22): 현재 사용자가 볼 수 있는 요청만 반환
    - 최고관리자(super): 전체 요청
-   - 일반 사용자: 본인 지역 + 본인이 요청한 것
+   - 일반 사용자: 본인 관할권역에 걸친 요청 + 본인이 요청한 것 (관할지역 미설정이면 전부)
    - 에이전트: 모든 요청 (지역 제한 없음) */
 function allRequests(PDO $pdo, ?array $currentUser = null): array {
   $out = [];
@@ -134,10 +182,9 @@ function allRequests(PDO $pdo, ?array $currentUser = null): array {
       continue;
     }
 
-    // 직원: 본인 지역의 요청만 포함
+    // 직원: 본인 관할권역에 걸친 요청만 포함 (관할지역 미설정이면 전부)
     if (in_array($userRole, ['sreq', 'schk'], true)) {
-      $reqRegion = $p['region'] ?? null;
-      if ($userRegion && $reqRegion === $userRegion) {
+      if (zoneVisible($userRegion, $p)) {
         $out[] = $p;
       }
     }

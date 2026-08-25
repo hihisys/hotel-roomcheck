@@ -1431,6 +1431,9 @@ function bindForm(){
     const req={id:Date.now(),no:DB[_sk],createdAt:Date.now(),status:'requested',direct:!!direct,
       quoteRequested:direct?false:((d.quoteKind||0)>0),quoteOnly:(d.quoteKind===1),quoteSent:false,answeredAt:null,
       registrant:(d.registrant||'심은선').trim()||'심은선',agentManager:(d.agentManager||'').trim(),
+      /* 에이전시 식별값 (2026-08-25) — 서버가 requests 칼럼에 옮겨 담는다.
+         에이전트가 직접 등록하면 본인 부계정, 요청자가 대신 등록하면 화면에서 고른 에이전시. */
+      ...agencyStamp(d),
       mode:d.mode,startDate:d.startDate,sharedNights:d.sharedNights,agent:d.agent,manager:d.manager,notes:d.notes,
       rows:JSON.parse(JSON.stringify(d.rows)),ws:{},
       quotes:[mkQuote(1,d._quote?JSON.parse(JSON.stringify(d._quote)):null)]};
@@ -2390,6 +2393,26 @@ function hotelTHB(req,row,i){let t=0;rDates(req,row,i).dates.forEach(iso=>{const
    기존에는 req.quote 객체 하나뿐이라 두 번째 견적이 첫 번째를 덮어썼다.
    quotes[] 배열로 바꾸고, 예전에 저장된 견적은 quotes[0]으로 옮겨 담아 잃지 않는다.
    옛 견적의 환율은 그대로 두어 과거 금액이 바뀌지 않게 한다. */
+/* 요청에 남길 에이전시 식별값.
+   ① 로그인한 사람이 에이전시 부계정이면 그 사람 기준 (에이전트가 직접 등록)
+   ② 아니면 화면에서 고른 에이전트 기준 (요청자가 대신 등록)
+   이름은 저장 시점 스냅샷 — 이후 담당자가 이직하거나 회사명이 바뀌어도 그대로 남는다. */
+function agencyStamp(d){
+  const out={};
+  const me=(SRV.on&&SRV.me)||null, ag=me&&me.agency;
+  if(ag&&ag.idx){                         /* 에이전시 부계정으로 로그인한 상태 */
+    out.agencyIdx=ag.idx;
+    out.agencyName=me.name||ag.nickname||'';
+    if(ag.parent_idx)out.agencyParentIdx=ag.parent_idx;
+  }
+  const picked=(d.agent||'').trim();      /* 화면에서 고른 에이전트(회사) */
+  if(picked){
+    out.agencyParentName=picked;
+    const ix=AGENCY_IDX[picked];
+    if(ix)out.agencyParentIdx=ix;         /* API 목록에서 고른 것이면 idx 도 함께 */
+  }
+  return out;
+}
 const QRATE=45; /* 환율 기본값 */
 function mkQuote(n,src){return Object.assign(
   {id:Date.now()+'_'+(Math.random()*1e6|0),name:T('q_nth').replace('{n}',n||1),

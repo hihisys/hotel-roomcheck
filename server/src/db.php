@@ -80,6 +80,16 @@ function migrate(PDO $pdo): void {
     params $TXT NULL,
     created_at BIGINT NOT NULL
   )");
+  /* 요청을 넣은 에이전시 (2026-08-25)
+     니르바나 부계정/에이전시를 요청 행에 직접 남긴다. payload(JSON) 안을 뒤지지 않고
+     조회·집계할 수 있고, 이름은 저장 시점 스냅샷이라 담당자가 이직하거나 회사명이
+     바뀌어도 과거 기록이 흔들리지 않는다.
+     parent 는 니르바나 API 의 parent_idx (부계정의 상위 = 소속 에이전시)를 그대로 쓴다. */
+  ensureColumn($pdo, 'requests', 'agency_idx',         'BIGINT NULL');
+  ensureColumn($pdo, 'requests', 'agency_name',        'VARCHAR(120) NULL');
+  ensureColumn($pdo, 'requests', 'agency_parent_idx',  'BIGINT NULL');
+  ensureColumn($pdo, 'requests', 'agency_parent_name', 'VARCHAR(190) NULL');
+
   /* 알림 관할권역 (2026-08-24): 어느 권역의 요청인지. NULL 이면 권역 무관 */
   ensureColumn($pdo, 'notifications', 'zone', 'VARCHAR(20) NULL');
 

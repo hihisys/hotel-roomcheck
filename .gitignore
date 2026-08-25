@@ -19,6 +19,8 @@ server/.env
 *.bak
 *.bak[0-9]
 *.bak_*
+*.backup
+*.backup_*
 *.orig
 *.rej
 *.old
@@ -27,7 +29,9 @@ server/.env
 *.swo
 *~
 app.js.*
+style.css.*
 !app.js
+!style.css
 
 # ── OS · 편집기 ────────────────────────────────
 .DS_Store

@@ -36,7 +36,7 @@ function currentUser(): ?array {
   startSession();
   $uid = $_SESSION['uid'] ?? null;
   if (!$uid) return null;
-  $st = db()->prepare("SELECT id,name,email,role,status,lang,telegram_chat_id,notif_read_at,phone,nickname,bank_account,agency_idx,agency_login_id,off_days,region FROM users WHERE id=?");
+  $st = db()->prepare("SELECT id,name,email,role,status,lang,telegram_chat_id,notif_read_at,phone,nickname,bank_account,agency_idx,agency_parent_idx,agency_kind,agency_login_id,off_days,region FROM users WHERE id=?");
   $st->execute([$uid]);
   $u = $st->fetch();
   return $u ?: null;

@@ -1,3 +1,67 @@
+# ══════════════════════════════════════════════════════════
+#  .dockerignore — Cloud Run 이미지에 들어가면 안 되는 것
+#  Dockerfile 이 `COPY . /var/www/html/` 로 전체를 복사하므로
+#  여기서 걸러내지 않으면 전부 이미지에 들어간다.
+#  DocumentRoot 는 /var/www/html/server/public 이고
+#  server/ 는 자기완결 구조다 (index.php → ../src/router.php).
+#  최종 갱신: 2026-08-25
+# ══════════════════════════════════════════════════════════
 
+# ── 로컬 데이터베이스 ───────────────────────────
 # 로컬 테스트용 SQLite가 이미지에 섞이지 않도록 (2026-08-02)
+# 운영은 Cloud SQL(MySQL)을 쓴다.
 data/
+**/*.sqlite
+**/*.sqlite-wal
+**/*.sqlite-shm
+**/*.db
+
+# ── 환경설정 (비밀값) ──────────────────────────
+**/.env
+**/.env.*
+
+# ── 배포 대상이 아닌 폴더 (2026-08-25) ──────────
+_to_delete/
+OLD/
+live/
+private/
+claude/
+harness/
+docs/
+public/
+src/
+node_modules/
+
+# ── 저장소 · CI 메타 ───────────────────────────
+.git/
+.github/
+.gitignore
+.dockerignore
+
+# ── 백업 · 임시 파일 ───────────────────────────
+# server/public 은 웹 루트다. 여기 남으면 주소로 받아진다.
+**/*.bak
+**/*.bak[0-9]
+**/*.bak_*
+**/*.backup
+**/*.backup_*
+**/*.orig
+**/*.rej
+**/*.old
+**/*.new
+**/*.swp
+**/*.swo
+**/*~
+**/app.js.*
+**/style.css.*
+
+# ── OS · 편집기 ───────────────────────────────
+**/.DS_Store
+**/Thumbs.db
+.idea/
+.vscode/
+
+# ── 문서 · 개인 자료 · 설치 스크립트 ─────────────
+*.md
+*.xlsx
+setup-wif-github-actions.sh

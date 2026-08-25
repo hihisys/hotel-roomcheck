@@ -195,32 +195,50 @@
 .cd.endr{background:var(--brand);color:#fff;font-weight:800}
 .calfoot{display:flex;justify-content:flex-end;margin-top:10px}
 /* 갤럭시 폴드(커버 화면 등 좁은 폭) 최적화 */
-@media(max-width:400px){
-  .wrap{padding:14px 9px 50px}
-  .card{padding:12px 10px;border-radius:14px}
-  h1{font-size:23px}
-  select,input,textarea,.datebtn{padding:8px 7px;font-size:12.5px}
-  .line{gap:5px}
-  .lhotel{grid-template-columns:72px 1.4fr 1fr;gap:5px}
-  .autobox{padding:8px 7px;font-size:12px}
-  .seg button{padding:8px 3px;font-size:11.5px}
-  .stsel{width:58px;font-size:12px;padding:8px 3px}
-  .pbox{width:80px}
-  .ddate{width:64px;font-size:11.5px}
+/* 폰 (2026-08-25) — 분기점을 440px 로 넓혔다. 전에는 400px 이라
+   아이폰 에어(402px) 같은 기기가 데스크톱 설정을 받아 좌우가 비고
+   열이 좁아져 라벨이 두 줄로 감겼다.
+   좌우로 버리는 폭을 줄이고, 그만큼 글씨를 키운다. */
+@media(max-width:440px){
+  .wrap{padding:14px 7px 50px}
+  .card{padding:13px 9px;border-radius:14px}
+  h1{font-size:24px}
+  select,input,textarea,.datebtn{padding:9px 8px;font-size:15px}
+  .label{font-size:11.5px;letter-spacing:.2px}
+  .line{gap:6px}
+  .lhotel{grid-template-columns:70px 1.35fr 1fr;gap:6px}
+  .autobox{padding:9px 8px;font-size:13.5px}
+  .seg button{padding:9px 4px;font-size:13px}
+  .stsel{width:62px;font-size:13px;padding:8px 4px}
+  .pbox{width:84px}
+  .ddate{width:68px;font-size:12.5px}
   .hblock{padding:9px}
   .lstitem{padding:9px 9px}
-  .datebig{font-size:12px}
-  .qbtns button{padding:11px 6px;font-size:12.5px}
-  .rq-datebar{padding:7px 9px;font-size:11.5px}
+  .datebig{font-size:13px}
+  .qbtns button{padding:12px 6px;font-size:13.5px}
+  .rq-datebar{padding:7px 9px;font-size:12.5px}
   .rq-body{padding:8px 9px 10px}
-  .rq-hotel{font-size:14px}
-  .quotecard{padding:14px 12px}
+  .rq-hotel{font-size:15px}
+  .quotecard{padding:14px 11px}
+  .cta{font-size:15px}
+  .chip{font-size:13px;padding:8px 11px}
+}
+/* 아주 좁은 화면(갤럭시 폴드 커버 등)은 기존 크기를 지킨다 */
+@media(max-width:360px){
+  .wrap{padding:14px 6px 50px}
+  .card{padding:12px 8px}
+  select,input,textarea,.datebtn{padding:8px 7px;font-size:13px}
+  .label{font-size:10.5px}
+  .lhotel{grid-template-columns:62px 1.35fr 1fr;gap:5px}
+  .seg button{font-size:11.5px}
+  .stsel{width:58px;font-size:12px}
+  .ddate{width:64px;font-size:11.5px}
 }
 /* 체크인/체크아웃 좌측 상하 + 박수/객실수 우측 세로 통칸 */
 .dategrid{display:grid;grid-template-columns:1.6fr .75fr .75fr;grid-template-rows:auto auto;gap:7px 8px;margin-top:10px}
 .dg-tall{display:flex;flex-direction:column}
 .dg-tall input{flex:1;text-align:center;font-size:17px;font-weight:800;padding:6px}
-@media(max-width:400px){
+@media(max-width:440px){
   .dategrid{grid-template-columns:1.5fr .7fr .7fr;gap:5px 5px}
   .dg-tall input{font-size:15px}
 }
@@ -229,14 +247,14 @@
 .dlab{font-family:var(--sans);font-size:10.5px;font-weight:800;color:var(--muted);flex:0 0 auto;letter-spacing:.3px}
 .dg-tall .label{text-align:center}
 .dg-tall input{font-size:15.5px}
-@media(max-width:400px){
+@media(max-width:440px){
   .dlab{font-size:9.5px}
   .datebtn{gap:5px}
 }
 /* 날짜 줄바꿈 방지 + 폭 배분 */
 .dategrid{grid-template-columns:2fr .65fr .65fr}
 .datebtn{white-space:nowrap;font-size:13px;overflow:hidden;padding:9px 8px}
-@media(max-width:400px){
+@media(max-width:440px){
   .dategrid{grid-template-columns:2fr .6fr .6fr}
   .datebtn{font-size:11.5px;padding:8px 6px}
 }
@@ -250,7 +268,7 @@
 /* 날짜 줄맞춤 + 박수/객실수 폭 축소 */
 .dategrid{grid-template-columns:1fr 58px 58px;gap:7px 7px}
 .dlab{width:50px}
-@media(max-width:400px){.dategrid{grid-template-columns:1fr 46px 46px;gap:5px}.dlab{width:44px}}
+@media(max-width:440px){.dategrid{grid-template-columns:1fr 46px 46px;gap:5px}.dlab{width:44px}}
 @media(max-width:340px){.dategrid{grid-template-columns:1fr 42px 42px}}
 /* 달력 년/월 선택 + 직접 입력 */
 .calym{display:flex;gap:5px}
@@ -270,7 +288,7 @@
 .datewrap{display:flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:0 1px 0 8px;min-width:0}
 .datewrap .dateinput{border:none;background:none;border-radius:0;padding:10px 0;flex:1;min-width:0;font-family:var(--mono);font-size:14.5px;font-weight:800;width:auto;letter-spacing:-.3px}
 .calico{border:none;background:none;font-size:14px;cursor:pointer;padding:6px 5px;flex:0 0 auto;line-height:1}
-@media(max-width:400px){
+@media(max-width:440px){
   .datewrap{padding-left:6px}
   .datewrap .dateinput{font-size:13px;padding:9px 0}
   .calico{font-size:13px;padding:5px 4px}
@@ -311,7 +329,7 @@ input[type=number]::selection{background:var(--brand);color:#fff}
 /* 직접 등록: 카드 크기 동일하게 (리본 제거, 색상으로만 강조) */
 .lstitem.ls-direct{position:static;border:1px solid #6C5CE7;border-left:5px solid #6C5CE7;background:#F1EEFF;box-shadow:0 1px 4px rgba(108,92,231,.3);padding-top:11px}
 .lstitem.ls-direct::before{content:none}
-@media(max-width:400px){.lstitem.ls-direct{padding-top:9px}}
+@media(max-width:440px){.lstitem.ls-direct{padding-top:9px}}
 /* 견적서 카드 정렬 개편 */
 .qc-region{font-size:12px;color:var(--muted);font-weight:700;margin-top:7px}
 .qc-rt{font-size:14.5px;font-weight:800;color:var(--brand);margin-top:2px}
@@ -344,7 +362,7 @@ input[type=number]::selection{background:var(--brand);color:#fff}
 .qc-dval{font-size:16px;font-weight:800;color:var(--ink);letter-spacing:.2px;white-space:nowrap}
 .qc-arw{color:var(--brand)}
 .qc-dn{margin-left:8px;flex:0 0 auto;background:var(--brand);color:#fff;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:800;white-space:nowrap;align-self:center}
-@media (max-width:400px){.qc-dt{font-size:12.5px}.qc-dval{font-size:15px}.qc-dn{padding:3.5px 10px;font-size:11.5px}}
+@media (max-width:440px){.qc-dt{font-size:12.5px}.qc-dval{font-size:15px}.qc-dn{padding:3.5px 10px;font-size:11.5px}}
 @media (max-width:340px){.qc-dt{font-size:11.5px;letter-spacing:0}.qc-dval{font-size:13.5px}.qc-dlab{width:22px;font-size:10px}}
 
 /* 견적서 추가 항목 카드 (호텔 카드와 구분되는 색) */
@@ -414,7 +432,7 @@ input[type=number]::selection{background:var(--brand);color:#fff}
 .datewrap{padding:0 0 0 6px}
 .datewrap .dateinput{letter-spacing:-.5px;padding-right:0}
 .calico{padding:6px 3px}
-@media(max-width:400px){
+@media(max-width:440px){
   .datewrap{padding-left:4px}
   .datewrap .dateinput{font-size:12px;letter-spacing:-.7px;padding:9px 0}
   .calico{font-size:12px;padding:5px 2px}
@@ -712,7 +730,7 @@ button.moreTog:hover{background:var(--paper)}
 button.moreTog.open{border-style:solid;border-bottom-left-radius:0;border-bottom-right-radius:0}
 .moreopen{border:1px solid var(--line);border-top:none;border-radius:0 0 11px 11px;
   padding:8px 9px;background:var(--paper)}
-@media(max-width:400px){
+@media(max-width:440px){
   .qbtns .qprimary{padding:14px 6px;font-size:14px}
   .qbtns .qdanger{padding:12px 4px;font-size:11.5px}
 }
@@ -770,7 +788,7 @@ button.moreTog.open{border-style:solid;border-bottom-left-radius:0;border-bottom
 button.qdelq{width:100%;margin-top:10px;padding:9px;border-radius:10px;background:var(--surface);
   color:var(--so);border:1px dashed color-mix(in srgb,var(--so) 45%,var(--line));
   font-family:var(--sans);font-size:12px;font-weight:800;cursor:pointer}
-@media(max-width:400px){
+@media(max-width:440px){
   .qstephd{padding:10px 9px;font-size:12px}
   .qstepbody{padding:9px}
   .qhero .v{font-size:21px}
@@ -819,8 +837,8 @@ button.qdelq{width:100%;margin-top:10px;padding:9px;border-radius:10px;backgroun
 .qbd-rec{background:color-mix(in srgb,#6B4E9E 12%,transparent);color:#6B4E9E}
 
 /* ── 호텔 이름 빨리 찾기 목록 ─────────────────────────── */
-.hfind{position:absolute;z-index:60;left:0;right:auto;top:100%;margin-top:3px;
-  min-width:100%;width:max-content;max-width:min(280px,calc(100vw - 28px));
+.hfind{position:fixed;z-index:60;left:0;top:0;
+  max-width:calc(100vw - 16px);
   background:#fff;border:1px solid var(--line,#d8dee6);border-radius:10px;
   box-shadow:0 8px 22px rgba(15,23,42,.14);max-height:236px;overflow-y:auto;
   -webkit-overflow-scrolling:touch}

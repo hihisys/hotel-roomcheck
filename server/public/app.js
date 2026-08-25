@@ -335,10 +335,18 @@ function attachFinder(input,opts){
       +(it.sub?'<span class="hfr">'+esc(it.sub)+'</span>':'')
       +'</div>').join('');
     box.style.display='block';wrap.classList.add('pkopen');
-    /* 좁은 화면에서 목록이 오른쪽으로 삐져나가면 왼쪽으로 당긴다 */
-    box.style.left='0px';
-    const r=box.getBoundingClientRect(),over=r.right-(window.innerWidth-10);
-    if(over>0)box.style.left=(-over)+'px';
+    /* 목록은 화면에 얹는다(position:fixed). 문서 안에 두면 오른쪽으로 넘칠 때
+       페이지 자체가 넓어져 가로 스크롤이 생기고 틀이 한쪽으로 쏠린다. */
+    const ir=input.getBoundingClientRect();
+    const vw=document.documentElement.clientWidth;
+    box.style.width=Math.max(ir.width,180)+'px';
+    let L=ir.left, W=box.getBoundingClientRect().width;
+    if(L+W>vw-8) L=Math.max(8, vw-8-W);            /* 오른쪽으로 넘치면 왼쪽으로 */
+    box.style.left=Math.round(L)+'px';
+    /* 아래 공간이 부족하면 입력칸 위로 띄운다 (키보드에 가리지 않게) */
+    const bh=box.getBoundingClientRect().height;
+    const below=window.innerHeight-ir.bottom-8;
+    box.style.top=(below<bh&&ir.top>bh+8 ? Math.round(ir.top-bh-4) : Math.round(ir.bottom+4))+'px';
     const on=box.querySelector('.hfitem.on');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest'});
   };
   /* 칸을 누르거나 ▾ 를 누르면 — 이미 들어 있던 이름을 지우고 새로 칠 수 있게 비운다.
@@ -377,13 +385,21 @@ function attachFinder(input,opts){
   box.addEventListener('mousedown',e=>{            /* blur 보다 먼저 잡아야 한다 */
     const el=e.target.closest('.hfitem');if(!el)return;
     e.preventDefault();pick(Number(el.dataset.i));});
+  /* ▾ 는 목록만 연다 — 입력칸에 포커스를 주지 않는다.
+     포커스를 주면 아이폰에서 키보드가 뜨고, 사파리가 그 칸을 보이게 하려고
+     화면을 옆으로 밀어 전체 틀이 왼쪽으로 쏠린다. 직접 칠 때는 평소대로 뜬다. */
   arrow.addEventListener('mousedown',e=>{
     e.preventDefault();
     if(box.style.display!=='none'){close();return;} /* 열려 있으면 닫기 */
-    input.focus();beginEdit();});
+    beginEdit();});
+  arrow.addEventListener('click',e=>e.preventDefault());
   input.addEventListener('focus',beginEdit);        /* 칸을 눌러도 비우고 전체가 열린다 */
   input.addEventListener('input',()=>{typed=true;showAll=false;cur=-1;draw();});
   input.addEventListener('blur',()=>setTimeout(()=>{close();revert();},180));
+  /* fixed 로 얹으므로 스크롤하면 위치가 어긋난다 — 스크롤·회전 시 닫는다 */
+  const onMove=()=>{if(box.style.display!=='none')close();};
+  window.addEventListener('scroll',onMove,{passive:true,capture:true});
+  window.addEventListener('resize',onMove);
   input.addEventListener('keydown',e=>{
     if(box.style.display==='none'){if(e.key==='ArrowDown'){e.preventDefault();beginEdit();}return;}
     if(e.key==='ArrowDown'){e.preventDefault();cur=Math.min(items.length-1,cur+1);draw();}

@@ -1,6 +1,9 @@
 # PROJECT_STATUS.md — 현재 진행 상황
 
-**최종 갱신**: 2026-08-25 (저장소 · 배포 이미지 정리)
+**최종 갱신**: 2026-08-25 16:42 (저장소 정리 + 상태 저장 규칙)
+
+> ⚠️ **커밋 5개가 아직 push 되지 않았다.** 배포에 반영되지 않은 상태다.
+> Mac 터미널에서 `cd ~/nirvana_project/"hotel roomcheck" && git push origin main`
 **배포 URL**: https://hotel-roomcheck-356950571433.asia-southeast1.run.app/
 
 > 새 세션은 `CLAUDE.md`(변하지 않는 개발 원칙)를 먼저 읽고, 이 문서의
@@ -81,6 +84,11 @@ agency_parent_name  VARCHAR(190) NULL  에이전시 이름      ← 저장 시�
 지운 파일은 전부 `_to_delete/` 로 옮겨두었다 (약 190MB). 확인 후 폴더째 버리면 된다.
 배포 동작 변화는 없다 — `server/public` 23개 파일과 `server/src` 는 그대로다.
 
+### 상태 저장 규칙 (2026-08-25)
+`CLAUDE.md` **9-11절** 신설. 이 프로젝트(`~/nirvana_project/hotel roomcheck`)에서
+**"현재 상태 저장해"** 는 이 문서를 갱신하라는 뜻으로 확정했다. 7개 절 구조 유지,
+기존 내용 삭제 금지, 틀린 기록은 3절에 정정 추가, 갱신 전 백업, `docs:` 커밋.
+
 ---
 
 ## 2. 수정한 파일
@@ -97,6 +105,8 @@ agency_parent_name  VARCHAR(190) NULL  에이전시 이름      ← 저장 시�
 | `server/src/db.php` | `notifications.zone`, `requests` 칼럼 4개 |
 | `docs/룸첵-작동원리.html` | 작동 원리 설명서 (도표 7개) |
 | `.dockerignore` | 2줄 → 67줄. 배포 이미지에 들어갈 것만 남긴다 |
+| `CLAUDE.md` | 9-11절 — "현재 상태 저장해" 의 뜻과 갱신 규칙 |
+| `PROJECT_STATUS.md` | 1·2·3·5·6·7절 갱신 (저장소 정리 · 정정 · 검증) |
 
 ---
 
@@ -181,10 +191,24 @@ Playwright + PHP 8.4 로 Cloud Run 과 같은 구조에서 검증. **JS 오류 0
 - 루트 `public/app.js` 미커밋 변경 7건 중 6건이 배포본에 이미 반영 (3건은 주석까지 동일).
   남은 1건은 이후 `hgnum` 그룹 헤더 설계로 교체된 것
 
+### 커밋 (2026-08-25, 전부 미push)
+```
+a84dd16  docs: "현재 상태 저장해" = PROJECT_STATUS.md 갱신 규칙 추가 (9-11)
+08d7ada  docs: PROJECT_STATUS 갱신 — 저장소 · 배포 이미지 정리 반영
+2da4b5c  chore: 텔레그램 ID 권한 자료.xlsx 를 private/ 로 이동
+3c7e4f0  chore: OLD 아카이브 · live 중복 저장소 · 모의 API 파일 제거
+814c1b7  chore: 배포 이미지에서 server-laravel 제거 + .dockerignore 보강
+```
+워킹트리는 깨끗하다. **push 후 배포 결과 확인이 남아 있다.**
+
 ---
 
 ## 6. 다음에 할 일
 
+0. **먼저 `git push origin main`** — 커밋 5개가 밀려 있다. push 하면 Actions 가
+   자동 배포한다 (3~5분). 배포 후 사이트 정상 동작과 이미지 용량 감소를 확인한다.
+   Cowork 원격 세션에서는 push 가 막혀 있으므로 **Mac 터미널에서 실행**한다
+   (3절 "작업 환경" 참조)
 1. **에이전트 목록 거르기를 회사 기준으로 바꾸고 서버로 이동** — 위 "구조 문제" 첫 항목.
    운영 확인 결과에 따라 방향이 갈린다
 2. **금액 가림을 서버로 이동** — 서버가 에이전트에게 보낼 때 `ws` 의 `price` 를 제거
@@ -200,6 +224,8 @@ Playwright + PHP 8.4 로 Cloud Run 과 같은 구조에서 검증. **JS 오류 0
 
 ### 완료 (2026-08-25)
 - ~~`.dockerignore` 에 백업 파일 패턴 추가~~ → 1절 "저장소 · 배포 이미지 정리" 참조
+- ~~저장소 2개(본체 + `live`) 정리~~ → 하나로 통합
+- ~~`_to_delete/` 정리 대상 분류~~ → 약 190MB. 사용자가 확인 후 버리면 된다
 
 ---
 

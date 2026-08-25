@@ -54,7 +54,7 @@
       <div class="field"><div class="label" data-i="new_pw">새 비밀번호 (6자 이상)</div><input id="newPw" type="password" autocomplete="new-password"></div>
       <button class="cta" id="pwBtn" data-i="pw_btn">비밀번호 변경</button>
     </div>
-    <div class="note" id="extNote" style="display:none" data-i="ext_note">에이전시 부계정의 비밀번호·이메일은 에이전시 시스템에서 관리됩니다.</div>
+    <div class="note" id="extNote" style="display:none" data-i="ext_note">아이디·비밀번호는 니르바나에서 관리합니다. 비밀번호를 바꾸거나 잊으셨다면 니르바나 담당자에게 재발급을 요청해 주세요.</div>
     <div class="msg" id="msg2"></div>
   </section>
   <section class="card" id="tgCard" style="display:none">
@@ -76,7 +76,7 @@ const LD={
 ko:{back:"← 돌아가기",lede:"회원정보를 확인하고 수정합니다.",title:"회원정보",name:"이름",acct:"계정",nickname:"닉네임",email:"이메일",phone:"연락처 (전화번호)",bank:"은행 계좌",region:"관할지역",save:"저장",
  ph_name:"이름 (한글이름)",ph_nickname:"표시용 닉네임 (선택사항)",ph_bank:"은행명 + 계좌번호 (선택사항)",region_none:"선택 안 함",region_krabi:"카오락 + 푸켓",region_bangkok:"방콕 + 파타야",
  pw_title:"비밀번호 변경",cur_pw:"현재 비밀번호",new_pw:"새 비밀번호 (6자 이상)",pw_btn:"비밀번호 변경",
- ext_note:"에이전시 부계정의 비밀번호·이메일은 에이전시 시스템에서 관리됩니다.",
+ ext_note:"아이디·비밀번호는 니르바나에서 관리합니다. 비밀번호를 바꾸거나 잊으셨다면 니르바나 담당자에게 재발급을 요청해 주세요.",
  saved:"저장되었습니다.",pw_saved:"비밀번호가 변경되었습니다.",bad_password:"현재 비밀번호가 올바르지 않습니다.",weak_password:"새 비밀번호는 6자 이상이어야 합니다.",
  invalid_email:"이메일 형식을 확인해주세요.",email_exists:"이미 사용 중인 이메일입니다.",invalid_phone:"연락처를 확인해주세요.",invalid_nickname:"닉네임을 확인해주세요.",invalid_bank_account:"계좌 정보를 확인해주세요.",noserver:"서버에 연결할 수 없습니다.",
  role_agent:"에이전트",role_sreq:"직원 · 요청자",role_schk:"직원 · 확인자",role_admin:"관리자",agency_acct:"에이전시 부계정",
@@ -84,7 +84,7 @@ ko:{back:"← 돌아가기",lede:"회원정보를 확인하고 수정합니다."
 en:{back:"← Back",lede:"View and update your account info.",title:"My Info",name:"Name",acct:"Account",nickname:"Nickname",email:"Email",phone:"Phone",bank:"Bank Account",region:"Region",save:"Save",
  ph_name:"Name (Korean name)",ph_nickname:"Display nickname (optional)",ph_bank:"Bank name + Account number (optional)",region_none:"Not selected",region_krabi:"Krabi + Phuket",region_bangkok:"Bangkok + Pattaya",
  pw_title:"Change Password",cur_pw:"Current password",new_pw:"New password (6+ chars)",pw_btn:"Change password",
- ext_note:"Password and email of agency sub-accounts are managed in the agency system.",
+ ext_note:"Your login ID and password are managed by Nirvana. To change or reset your password, please ask your Nirvana representative to reissue it.",
  saved:"Saved.",pw_saved:"Password changed.",bad_password:"Current password is incorrect.",weak_password:"New password must be 6+ characters.",
  invalid_email:"Please check the email format.",email_exists:"This email is already in use.",invalid_phone:"Please check the phone number.",invalid_nickname:"Please check the nickname.",invalid_bank_account:"Please check the bank account info.",noserver:"Cannot reach the server.",
  role_agent:"Agent",role_sreq:"Staff · Requester",role_schk:"Staff · Checker",role_admin:"Admin",agency_acct:"Agency sub-account",
@@ -92,7 +92,7 @@ en:{back:"← Back",lede:"View and update your account info.",title:"My Info",na
 th:{back:"← กลับ",lede:"ดูและแก้ไขข้อมูลบัญชีของคุณ",title:"ข้อมูลของฉัน",name:"ชื่อ",acct:"บัญชี",nickname:"ชื่อเล่น",email:"อีเมล",phone:"เบอร์โทร",bank:"บัญชีธนาคาร",region:"ภูมิภาค",save:"บันทึก",
  ph_name:"ชื่อ (ชื่อเกาหลี)",ph_nickname:"ชื่อเล่น (ไม่บังคับ)",ph_bank:"ชื่อธนาคาร + หมายเลขบัญชี (ไม่บังคับ)",region_none:"ไม่เลือก",region_krabi:"กระบี่ + ภูเก็ต",region_bangkok:"กรุงเทพ + พัทยา",
  pw_title:"เปลี่ยนรหัสผ่าน",cur_pw:"รหัสผ่านปัจจุบัน",new_pw:"รหัสผ่านใหม่ (6 ตัวขึ้นไป)",pw_btn:"เปลี่ยนรหัสผ่าน",
- ext_note:"รหัสผ่านและอีเมลของบัญชีย่อยเอเจนซีจัดการในระบบเอเจนซี",
+ ext_note:"ชื่อผู้ใช้และรหัสผ่านจัดการโดย Nirvana หากต้องการเปลี่ยนหรือลืมรหัสผ่าน กรุณาขอให้ผู้ดูแลของ Nirvana ออกรหัสใหม่",
  saved:"บันทึกแล้ว",pw_saved:"เปลี่ยนรหัสผ่านแล้ว",bad_password:"รหัสผ่านปัจจุบันไม่ถูกต้อง",weak_password:"รหัสผ่านใหม่ต้อง 6 ตัวขึ้นไป",
  invalid_email:"กรุณาตรวจสอบรูปแบบอีเมล",email_exists:"อีเมลนี้ถูกใช้แล้ว",invalid_phone:"กรุณาตรวจสอบเบอร์โทร",invalid_nickname:"กรุณาตรวจสอบชื่อเล่น",invalid_bank_account:"กรุณาตรวจสอบบัญชีธนาคาร",noserver:"เชื่อมต่อเซิร์ฟเวอร์ไม่ได้",
  role_agent:"เอเจนต์",role_sreq:"พนักงาน · ผู้ขอ",role_schk:"พนักงาน · ผู้ตรวจสอบ",role_admin:"ผู้ดูแล",agency_acct:"บัญชีย่อยเอเจนซี",

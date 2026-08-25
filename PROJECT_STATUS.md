@@ -1,6 +1,6 @@
 # PROJECT_STATUS.md — 현재 진행 상황
 
-**최종 갱신**: 2026-08-25
+**최종 갱신**: 2026-08-25 (저장소 · 배포 이미지 정리)
 **배포 URL**: https://hotel-roomcheck-356950571433.asia-southeast1.run.app/
 
 > 새 세션은 `CLAUDE.md`(변하지 않는 개발 원칙)를 먼저 읽고, 이 문서의
@@ -61,6 +61,26 @@ agency_parent_name  VARCHAR(190) NULL  에이전시 이름      ← 저장 시�
 - `.gitignore` 신규 생성 — sqlite · `.env` · 모든 백업 파일
 - 백업 파일 15개를 git 추적에서 제외 (파일은 디스크에 남음)
 
+### 저장소 · 배포 이미지 정리 (2026-08-25)
+`Dockerfile` 이 `COPY . /var/www/html/` 로 폴더 전체를 복사하는데 `.dockerignore` 가
+`data/` 한 줄뿐이라, 쓰지 않는 파일이 전부 이미지에 실려 나가고 있었다.
+
+- **`server-laravel`, `server-laravel.backup.1786125886` 제거 — 합계 178MB**
+  현재 구조는 PHP 8.4 + Apache 이고 참조하는 코드가 없다. 매 배포마다 실려 나갔다
+- **`live/` 제거** — 같은 GitHub 저장소를 폴더 안에 한 번 더 clone 한 중첩 저장소(13MB).
+  `.gitmodules` 매핑이 없어 서브모듈도 아니었다. 마지막 fetch 가 8/20 이라 46커밋
+  뒤처져 있었고, 안에 있던 미커밋 변경은 이후 `server/public/app.js` 에 다시 반영된
+  내용임을 줄 단위로 대조해 확인했다. **이로써 이 폴더의 git 저장소는 하나가 되었다**
+- **`OLD/` 아카이브 제거** (924KB) — 루트 `public`·`src` 를 옮겨둔 것. 참조 없음
+- **`server/mock_api.php`, `server/mock_agency.php` 제거** — 테스트용 모의 API. 참조 없음
+- **`server/public/` 잔재 17개 제거** (1.1MB) — `app.js.bak`·`.orig`·`.rej` 등 백업 14개,
+  `style.css.backup`, `patch_editable.py`, `.DS_Store`
+- **`텔레그램 ID 권한 자료.xlsx` → `private/`** — 부계정 권한 자료라 저장소에 두지 않는다
+- **`.dockerignore` 2줄 → 67줄** — 아카이브·중첩저장소·개인메모·백업·저장소메타·문서 제외
+
+지운 파일은 전부 `_to_delete/` 로 옮겨두었다 (약 190MB). 확인 후 폴더째 버리면 된다.
+배포 동작 변화는 없다 — `server/public` 23개 파일과 `server/src` 는 그대로다.
+
 ---
 
 ## 2. 수정한 파일
@@ -76,6 +96,7 @@ agency_parent_name  VARCHAR(190) NULL  에이전시 이름      ← 저장 시�
 | `server/src/router.php` | 알림 읽기 권역 필터, requests 칼럼 채우기 |
 | `server/src/db.php` | `notifications.zone`, `requests` 칼럼 4개 |
 | `docs/룸첵-작동원리.html` | 작동 원리 설명서 (도표 7개) |
+| `.dockerignore` | 2줄 → 67줄. 배포 이미지에 들어갈 것만 남긴다 |
 
 ---
 
@@ -108,6 +129,24 @@ agency_parent_name  VARCHAR(190) NULL  에이전시 이름      ← 저장 시�
 **실 API 응답 필드명은 문서와 관리 화면 스크린샷 기준**이며, 실물로 확인하지 못했다.
 Mac 터미널에서 로컬 실행하면 실 API 로 확인 가능하다.
 
+### 이 문서의 이전 기록 정정 (2026-08-25)
+6절에 **"백업 파일이 git 에서만 빠지고 배포 이미지에는 들어간다"** 고 적혀 있었으나
+**사실이 아니었다.** 원격 저장소를 clone 해 확인한 결과 `server/public/` 에 백업 파일은
+0개였다. 이미 `.gitignore` 로 빠져 있었고, GitHub Actions 는 checkout 한 코드로 빌드하므로
+이미지에 들어간 적이 없다. **웹으로 소스가 새어나가는 상황은 없었다.**
+
+다만 Mac 에서 로컬로 `docker build .` 할 때는 실제로 들어가므로 `.dockerignore` 보강은
+유효하다. 그리고 `server-laravel` 178MB 는 저장소에 실제로 있었으므로 **이쪽이 진짜
+낭비였다.**
+
+### 작업 환경 — git 잠금 파일 (2026-08-25)
+Cowork 원격 세션에서 이 폴더에 git 명령을 실행하면 `.git/index.lock` 과 `HEAD.lock` 이
+남아 다음 명령을 막는다. 세션이 마운트된 폴더에서 **파일을 지울 권한이 없어** git 이
+자기 잠금 파일을 정리하지 못하기 때문이다. `_to_delete/gitlocks_*` 가 그 잔재다.
+
+**Mac 터미널에서 직접 실행할 때는 생기지 않는다.** 이 폴더의 git 작업은 Mac 터미널에서
+하는 편이 안정적이다.
+
 ---
 
 ## 4. 현재 확정된 계산 공식
@@ -133,6 +172,15 @@ Playwright + PHP 8.4 로 Cloud Run 과 같은 구조에서 검증. **JS 오류 0
 - 모바일 360/390/402/430px 두 줄 라벨 없음, 가로 넘침 0px
 - 전 페이지 HTTP 200 (admin 403 은 부계정 권한 차단으로 정상)
 
+### 저장소 정리 검증 (2026-08-25)
+- `server/public` 23개 파일이 원격 저장소 목록과 일치. 배포 필수 파일 11종 존재 확인
+- `server/` 는 자기완결 구조 확인 — `index.php` → `__DIR__.'/../src/router.php'`,
+  `server/` 밖을 참조하는 코드 없음 (`../../` 참조 0건)
+- `live` 최신 커밋 `1be0b13` 이 `origin/main` 의 조상임을 확인 (이미 GitHub 에 있음)
+- `live` 미커밋 변경 384줄 중 288줄이 본체에 이미 존재. 나머지는 표시 방식 차이
+- 루트 `public/app.js` 미커밋 변경 7건 중 6건이 배포본에 이미 반영 (3건은 주석까지 동일).
+  남은 1건은 이후 `hgnum` 그룹 헤더 설계로 교체된 것
+
 ---
 
 ## 6. 다음에 할 일
@@ -142,9 +190,16 @@ Playwright + PHP 8.4 로 Cloud Run 과 같은 구조에서 검증. **JS 오류 0
 2. **금액 가림을 서버로 이동** — 서버가 에이전트에게 보낼 때 `ws` 의 `price` 를 제거
 3. **부분 답변 알림 개수** — 브라우저가 `_doneCount` 를 함께 보내도록 한 줄 추가
 4. 담당자 → 에이전시 자동 채움 (에이전시 개수·캐시 기간·동명이인 처리 결정 필요)
-5. `.dockerignore` 에 백업 파일 패턴 추가 — 지금은 git 에서만 빠지고 **배포 이미지에는 들어간다**
-   (`server/public/` 은 웹 루트라 `app.js.backup` 등이 주소로 받아진다)
-6. 잔재 필드 정리
+5. 잔재 필드 정리 — `quoteAsk` · `quoteOnly` · `row.subOptions` · `req.checkerAddedHotels`
+6. **루트 `public/` 과 `src/` 를 어떻게 할지 결정** — 배포되지 않는데 저장소에 남아 있다.
+   `OLD/` 로 옮겼어야 할 것이 되돌아온 상태로 보인다. 지울지 되살릴지 판단 필요
+7. **`Dockerfile` 의 평문 비밀값 처리** — `TELEGRAM_BOT_TOKEN` · `TELEGRAM_WEBHOOK_SECRET` ·
+   `CRON_KEY` · `ADMIN_PASSWORD` 가 `ENV` 로 박혀 있다. 저장소가 공개면 그대로 노출된다.
+   `.dockerignore` 로는 해결되지 않고 값 자체를 재발급해야 한다 (커밋 이력에 남아 있음).
+   **사용자 판단 대기 중 — 2026-08-25 시점에서 보류하기로 함**
+
+### 완료 (2026-08-25)
+- ~~`.dockerignore` 에 백업 파일 패턴 추가~~ → 1절 "저장소 · 배포 이미지 정리" 참조
 
 ---
 
@@ -160,3 +215,7 @@ Playwright + PHP 8.4 로 Cloud Run 과 같은 구조에서 검증. **JS 오류 0
 - `requests` 의 `agency_name` / `agency_parent_name` 은 **저장 시점 스냅샷** — 갱신하지 않는다
 - Cloud Run DocumentRoot 는 `server/public` (루트 `public/` 이 아니다)
 - `server/.env` 는 커밋 금지
+- **배포에 실제로 쓰이는 것은 `server/` 하나뿐이다** — `server/public`(웹 루트) +
+  `server/src`(PHP). 루트 `public/`·`src/` 는 배포되지 않는다. 기능을 고칠 때
+  **루트 쪽을 고치면 배포에 반영되지 않는다** (2026-08-25 실제로 그런 미커밋 변경이 있었다)
+- `.dockerignore` 를 줄일 때는 `server/` 와 `Dockerfile` 이 제외되지 않는지 확인한다

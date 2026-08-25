@@ -1,9 +1,9 @@
 # PROJECT_STATUS.md — 현재 진행 상황
 
-**최종 갱신**: 2026-08-25 16:42 (저장소 정리 + 상태 저장 규칙)
+**최종 갱신**: 2026-08-26 00:24 (부계정 소속명 세션·요청 스냅샷 저장)
 
-> ⚠️ **커밋 5개가 아직 push 되지 않았다.** 배포에 반영되지 않은 상태다.
-> Mac 터미널에서 `cd ~/nirvana_project/"hotel roomcheck" && git push origin main`
+> ~~이전 기록: 커밋 5개가 push되지 않음~~ → 2026-08-26 확인 결과 `main`과
+> `origin/main`이 동기화되었고, 아래 부계정 개선 커밋 2개도 원격에 반영되어 있다.
 **배포 URL**: https://hotel-roomcheck-356950571433.asia-southeast1.run.app/
 
 > 새 세션은 `CLAUDE.md`(변하지 않는 개발 원칙)를 먼저 읽고, 이 문서의
@@ -53,6 +53,15 @@ agency_parent_name  VARCHAR(190) NULL  에이전시 이름      ← 저장 시�
 - 부계정 로그인 API의 `parent_agent_name`을 `agency` 세션에 함께 보관
 - 로그인한 부계정은 화면 우측 상단에 `parent_agent_name · 사용자명`으로 표시
 
+### 부계정 로그인 세션 (2026-08-26)
+- 니르바나 로그인 응답의 `idx` · `name` · `parent_idx` · `parent_agent_name`을 세션에 보관
+- 보조 필드 `kind` · `login_id` · `nickname`도 기존처럼 세션에 함께 보관
+- `api/me`의 `user.agency`로 프론트에 전달하며 비밀번호는 세션·응답·DB 어디에도 저장하지 않음
+- 에이전트가 직접 요청을 등록하면 서버가 브라우저 입력값보다 로그인 세션을 우선하여
+  `agency_idx` · `agency_name` · `agency_parent_idx` · `agency_parent_name`에 스냅샷 저장
+- 직원이 대신 등록할 때만 화면에서 선택한 에이전시 값을 사용
+- 변경 전 로그인한 세션에는 새 필드가 없으므로 적용 확인 시 로그아웃 후 다시 로그인해야 함
+
 ### 화면
 - 모바일 분기점 400px → 440px. 아이폰 에어(402px)가 데스크톱 설정을 받던 문제
 - 좌우로 버려지는 폭 64px → 32px, 글씨 확대 (입력 15px / 라벨 11.5px)
@@ -97,14 +106,14 @@ agency_parent_name  VARCHAR(190) NULL  에이전시 이름      ← 저장 시�
 
 | 파일 | 내용 |
 |------|------|
-| `server/public/app.js` | 위 프론트 기능 전부 |
+| `server/public/app.js` | 위 프론트 기능 + 소속명 헤더 표시·요청 에이전시 스냅샷 생성 |
 | `server/public/i18n.js` | 라벨·안내 문구 (ko/en/th) |
 | `server/public/style.css` | 모바일 분기점·글씨, `.hfind` 목록 |
 | `server/public/login.html`, `profile.html` | 비밀번호 안내 |
 | `server/src/lib.php` | 권역 계산, `currentUser()` SELECT 보강 |
 | `server/src/events.php` | 알림 권역·중복 |
-| `server/src/router.php` | 알림 읽기 권역 필터, requests 칼럼 채우기 |
-| `server/src/agency.php` | 부계정 로그인 세션에 `parent_agent_name` 보관 |
+| `server/src/router.php` | 알림 읽기 권역 필터, requests 칼럼을 부계정 세션 기준으로 저장 |
+| `server/src/agency.php` | 부계정 로그인 세션에 `name`·`parent_agent_name` 보관 |
 | `server/src/db.php` | `notifications.zone`, `requests` 칼럼 4개 |
 | `docs/룸첵-작동원리.html` | 작동 원리 설명서 (도표 7개) |
 | `.dockerignore` | 2줄 → 67줄. 배포 이미지에 들어갈 것만 남긴다 |
@@ -118,6 +127,8 @@ agency_parent_name  VARCHAR(190) NULL  에이전시 이름      ← 저장 시�
 ### 확인이 필요한 것 (사용자)
 - **확인자에게 에이전트 요청이 뜨는지** — 권역 수정이 실제로 통했는지
 - **에이전트로 로그인했을 때 다른 회사 요청이 보이는지**
+- **실 부계정 재로그인 후 헤더에 `parent_agent_name`이 표시되는지**
+- **새 에이전트 요청의 에이전시 칼럼 4개가 실제 운영 DB에 정확히 저장되는지**
 - **`DB_DSN` 이 MySQL 로 설정돼 있는지** — 빠져 있으면 배포마다 데이터 초기화
   ```
   gcloud run services describe hotel-roomcheck --region=asia-southeast1 \
@@ -160,6 +171,11 @@ Cowork 원격 세션에서 이 폴더에 git 명령을 실행하면 `.git/index.
 **Mac 터미널에서 직접 실행할 때는 생기지 않는다.** 이 폴더의 git 작업은 Mac 터미널에서
 하는 편이 안정적이다.
 
+### 이 문서의 push 기록 정정 (2026-08-26)
+이전 기록에는 커밋 5개가 미push라고 되어 있었으나, `git status` 확인 결과
+`main...origin/main`으로 동기화되어 있다. 부계정 개선 커밋 `8c4751f`, `b62188e`도
+현재 `origin/main`에 포함되어 있다.
+
 ---
 
 ## 4. 현재 확정된 계산 공식
@@ -185,6 +201,13 @@ Playwright + PHP 8.4 로 Cloud Run 과 같은 구조에서 검증. **JS 오류 0
 - 모바일 360/390/402/430px 두 줄 라벨 없음, 가로 넘침 0px
 - 전 페이지 HTTP 200 (admin 403 은 부계정 권한 차단으로 정상)
 
+### 부계정 세션·요청 저장 변경 검증 (2026-08-26)
+- `php -l server/src/agency.php` 통과
+- `php -l server/src/router.php` 통과
+- `node --check server/public/app.js` 통과
+- IDE 린트 오류 0건
+- 실 니르바나 API 로그인과 운영 DB INSERT는 아직 검증하지 못함
+
 ### 저장소 정리 검증 (2026-08-25)
 - `server/public` 23개 파일이 원격 저장소 목록과 일치. 배포 필수 파일 11종 존재 확인
 - `server/` 는 자기완결 구조 확인 — `index.php` → `__DIR__.'/../src/router.php'`,
@@ -204,14 +227,19 @@ a84dd16  docs: "현재 상태 저장해" = PROJECT_STATUS.md 갱신 규칙 추�
 ```
 워킹트리는 깨끗하다. **push 후 배포 결과 확인이 남아 있다.**
 
+### 추가 커밋 (2026-08-26, 원격 반영 확인)
+```
+8c4751f  feat: 부계정 로그인 API에 parent_agent_name 추가 및 세션 저장 방식 개선
+b62188e  feat: 부계정 로그인 및 요청 처리 개선
+```
+`git status` 기준 기능 코드와 `origin/main`은 동기화되어 있다.
+
 ---
 
 ## 6. 다음에 할 일
 
-0. **먼저 `git push origin main`** — 커밋 5개가 밀려 있다. push 하면 Actions 가
-   자동 배포한다 (3~5분). 배포 후 사이트 정상 동작과 이미지 용량 감소를 확인한다.
-   Cowork 원격 세션에서는 push 가 막혀 있으므로 **Mac 터미널에서 실행**한다
-   (3절 "작업 환경" 참조)
+0. **실 부계정으로 로그아웃→재로그인 후 운영 검증** — 우측 상단 소속명 표시와
+   새 요청의 에이전시 칼럼 4개를 DB에서 확인한다
 1. **에이전트 목록 거르기를 회사 기준으로 바꾸고 서버로 이동** — 위 "구조 문제" 첫 항목.
    운영 확인 결과에 따라 방향이 갈린다
 2. **금액 가림을 서버로 이동** — 서버가 에이전트에게 보낼 때 `ws` 의 `price` 를 제거
@@ -229,6 +257,7 @@ a84dd16  docs: "현재 상태 저장해" = PROJECT_STATUS.md 갱신 규칙 추�
 - ~~`.dockerignore` 에 백업 파일 패턴 추가~~ → 1절 "저장소 · 배포 이미지 정리" 참조
 - ~~저장소 2개(본체 + `live`) 정리~~ → 하나로 통합
 - ~~`_to_delete/` 정리 대상 분류~~ → 약 190MB. 사용자가 확인 후 버리면 된다
+- ~~미push 커밋 5개 push~~ → 2026-08-26 `main...origin/main` 동기화 확인
 
 ---
 

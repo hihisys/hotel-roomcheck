@@ -1,0 +1,41 @@
+# ── 개인 작업 메모 ─────────────────────────────
+# 지난 작업 기록·개인 메모. 저장소에 올리지 않는다.
+# CLAUDE.md 와 PROJECT_STATUS.md 는 최상위에 두어 함께 공유한다.
+private/
+
+# ── 데이터베이스 ───────────────────────────────
+# 로컬 개발용 SQLite. 운영은 Cloud SQL(MySQL)을 쓴다.
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+
+# ── 환경설정 (비밀값) ──────────────────────────
+.env
+.env.local
+server/.env
+
+# ── 백업·임시 파일 ─────────────────────────────
+*.bak
+*.bak[0-9]
+*.bak_*
+*.orig
+*.rej
+*.old
+*.new
+*.swp
+*.swo
+*~
+app.js.*
+!app.js
+
+# ── OS · 편집기 ────────────────────────────────
+.DS_Store
+.DS_Store?
+Thumbs.db
+.idea/
+.vscode/
+
+# ── 기타 ───────────────────────────────────────
+_to_delete/
+node_modules/

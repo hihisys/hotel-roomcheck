@@ -156,8 +156,9 @@ function _pick(o,...keys){for(const k of keys){const v=o&&o[k];
 function normHotel(h){
   const kr=_pick(h,'name_kr'), en=_pick(h,'name','name_full');
   const code=_pick(h,'area','area_code');
-  const rooms=Array.isArray(h.room_types)?h.room_types.map(r=>
-    typeof r==='string'?r:_pick(r,'name','room_type_name','room_nm','title')).filter(Boolean):[];
+  /* 목록 응답에 room_types 가 실려 온다 — 상세와 같은 규칙으로 파싱한다.
+     비어 있으면 호텔을 고를 때 상세 API 에서 받아온다 (fetchRooms). */
+  const rooms=parseRooms(h.room_types||h.rooms);
   return {
     idx:_pick(h,'idx','id','hotel_idx'),
     name:kr||en,                                   /* 앱의 기준 이름은 한글 */
@@ -209,6 +210,28 @@ function usableRoom(x){
   const yn=(k,d)=>{const v=_pick(x,k);return v===''?d:v.toUpperCase();};
   return yn('active','Y')==='Y' && yn('del','N')!=='Y' && yn('view','Y')!=='N';
 }
+/* 룸타입 배열 파싱 — 목록 응답과 상세 응답 어느 쪽에서 와도 같은 규칙으로 다룬다.
+   ① active='Y' · del≠'Y' · view≠'N' 인 것만 (삭제·비활성 룸타입 제외)
+   ② 한글명(name_kr) 우선, 없으면 영문명
+   ③ 한글·영문이 둘 다 오면 RT_EN / RT_KO 에 서로 매핑 (언어 전환·교차 검색용)
+   ④ sort 값 순서, 같으면 원래 순서
+   ⑤ 중복 제거                                                              */
+function parseRooms(raw){
+  return (Array.isArray(raw) ? raw : [])
+    .filter(usableRoom)
+    .map((x,i)=>{
+      if(typeof x==='object'&&x){
+        const rk=_pick(x,'name_kr'), re=_pick(x,'name','name_full');
+        if(rk&&re&&rk!==re){RT_EN[rk]=re;RT_KO[re]=rk;}
+      }
+      return {n:pickRoomName(x),s:Number((x&&x.sort)||0),i:i};
+    })
+    .filter(x=>x.n)
+    .sort((a,b)=>(a.s-b.s)||(a.i-b.i))
+    .map(x=>x.n)
+    .filter((n,i,arr)=>arr.indexOf(n)===i);
+}
+
 function fetchRooms(name){
   const idx=HOTEL_IDX[name];
   if(!idx||ROOMS_CACHE[name]||_roomsPending[name]||!SRV.on)return;
@@ -217,20 +240,7 @@ function fetchRooms(name){
     .then(r=>r.ok?r.json():null)
     .then(j=>{
       const d=(j&&(j.hotel||j.data))||{};
-      const rt=d.room_types||d.rooms||[];
-      const rooms=(Array.isArray(rt)?rt:[])
-        .filter(usableRoom)
-        .map((x,i)=>{
-          /* 한글·영문이 둘 다 오면 서로 매핑해 둔다 — 언어를 바꿔도 이름이 따라온다 */
-          if(typeof x==='object'&&x){
-            const rk=_pick(x,'name_kr'), re=_pick(x,'name','name_full');
-            if(rk&&re&&rk!==re){RT_EN[rk]=re;RT_KO[re]=rk;}
-          }
-          return {n:pickRoomName(x),s:Number((x&&x.sort)||0),i:i};})
-        .filter(x=>x.n)
-        .sort((a,b)=>(a.s-b.s)||(a.i-b.i))          /* sort 값 우선, 같으면 원래 순서 */
-        .map(x=>x.n)
-        .filter((n,i,arr)=>arr.indexOf(n)===i);      /* 중복 제거 */
+      const rooms=parseRooms(d.room_types||d.rooms);
       if(rooms.length){ROOMS_CACHE[name]=rooms;renderApp();}
     }).catch(()=>{}).finally(()=>{delete _roomsPending[name];});
 }
@@ -282,13 +292,6 @@ function roomSearch(q,hotel){
   const keys=r=>[r,RT_EN[r],RT_KO[r],dRoom(r)].filter(Boolean);
   const hit=all.filter(r=>keys(r).some(k=>_hnorm(k).includes(nq)));
   return hit.length?hit:all.slice();   /* 걸러서 없으면 전체 */
-}
-function roomSearch(q,hotel){
-  const all=roomsFor(hotel||'')||[];
-  const nq=_hnorm(q);
-  if(!nq)return all.slice();
-  const hit=all.filter(r=>_hnorm(dRoom(r)).includes(nq)||_hnorm(r).includes(nq));
-  return hit.length?hit:all.slice();
 }
 /* ── 입력칸 아래 목록 (호텔 · 룸타입 공통) ──────────────────────────────
    ▾ 를 누르거나 칸을 누르면 '이미 고른 값과 상관없이' 등록된 전체를 보여주고,
@@ -349,12 +352,15 @@ function attachFinder(input,opts){
     }
     showAll=true;cur=-1;draw();
   };
-  /* 안 고르고 나갔을 때 원래 값으로 복구 */
+  /* 목록에서 안 고르고 나갔을 때의 처리.
+     이 칸들은 모두 '선택 또는 직접 입력'이라, 뭔가 쳤으면 친 대로 살린다.
+     실수로 눌러서 비워진 채 나간 경우(아무것도 안 침 / 다 지움)만 원래 값으로 되돌린다. */
   const revert=()=>{
     if(stash===null)return;
     const st=stash;stash=null;
+    if(typed&&String(input.value).trim()!==''){typed=false;return;}  /* 직접 입력 존중 */
     input.value=st.label;
-    /* 글자를 쳤다면 입력 도중 모델이 이미 덮였으므로 원래 값으로 되돌려 준다.
+    /* 다 지웠다 나갔으면 입력 도중 덮인 모델을 되돌린다.
        실제로 달라진 게 없으면 다시 그리지 않는다 — 다른 칸으로 옮겨간 포커스를 뺏지 않기 위해 */
     const now=opts.get?opts.get():null;
     if(typed&&opts.onPick&&now!==st.value)setTimeout(()=>opts.onPick(st.value),0);
@@ -567,7 +573,77 @@ function bindLang(){
       if(j.url)window.open(j.url,'_blank');else toast('봇 설정이 아직 완료되지 않았습니다');}catch(e){}};
 }
 /* ================= 서버 동기화 ================= */
-let AGENTS=[];
+let AGENTS=[];                     /* 이 앱에 로그인한 적 있는 계정 (로컬 users) */
+/* ── 에이전시(에이전트) · 담당자 ──────────────────────────────────────────
+   니르바나 본 시스템이 원본이다. 우리는 저장하지 않고 필요할 때 읽어 온다.
+     GET api/agencies        → 에이전시 목록      (외부 POST /api2/agencies)
+     GET api/agencies/{idx}  → 상세 + managers    (외부 POST /api2/agencies/{idx})
+   담당자는 이직할 수 있으므로 사람↔회사를 우리 DB에 묶어 두지 않는다.
+   대신 요청을 저장하는 순간 이름을 문자열로 박아 두어 과거 기록이 흔들리지 않게 한다. */
+let AGENCIES=[];                   /* [{idx,name,phone,email}] — API 목록 */
+let AGENCY_SRC='local';            /* 'api' 로 바뀌면 서버 목록을 쓰는 중 */
+const MGRS_CACHE={};               /* 에이전시 idx → [{name,nick,tel,email}] */
+const _mgrsPending={};
+const AGENCY_IDX={};               /* 에이전시 이름 → idx */
+
+function normAgency(a){
+  const nm=_pick(a,'name','agency_name','ag_name','title');
+  return {idx:_pick(a,'idx','id','ag_idx'),name:nm,
+    phone:_pick(a,'phone','tel','tel_number'),
+    email:_pick(a,'email'),
+    level:_pick(a,'level'),parents:_pick(a,'parents','parent_idx')};
+}
+/* 담당자 한 건 정규화. 화면 표기는 실제 관리 화면과 같게 "이름 (닉네임)" 형태.
+   AG_DEL_YN='Y' (삭제 표시)는 제외한다. */
+function normMgr(m){
+  if(typeof m==='string')return {name:m.trim(),nick:'',tel:'',email:''};
+  return {name:_pick(m,'mname','name','manager_name','callname'),
+    nick:_pick(m,'callname','nickname','nick'),
+    tel:_pick(m,'tel_number','phone','tel'),
+    email:_pick(m,'email'),
+    del:(_pick(m,'AG_DEL_YN','ag_del_yn','del_yn','del')||'N').toUpperCase()};
+}
+const mgrLabel=m=>m.nick&&m.nick!==m.name?(m.name+' ('+m.nick+')'):m.name;
+
+async function loadAgenciesFromAPI(){
+  if(!SRV.on)return;
+  try{
+    const r=await fetch('api/agencies?active=Y',{cache:'no-store'});
+    if(!r.ok)return;                                   /* 503 not_configured 등 → 폴백 유지 */
+    const j=await r.json();
+    const raw=j.agencies||j.data||[];
+    const list=raw.map(normAgency).filter(a=>a.name);
+    if(!list.length)return;
+    list.sort((a,b)=>String(a.name).localeCompare(String(b.name),'ko'));
+    AGENCIES=list;AGENCY_SRC='api';
+    list.forEach(a=>{if(a.idx)AGENCY_IDX[a.name]=a.idx;});
+    renderApp();
+  }catch(e){}                                          /* 네트워크 오류 → 폴백 유지 */
+}
+/* 에이전시 상세에서 담당자 목록을 받아 캐시한다. 같은 에이전시는 한 번만 부른다. */
+function fetchMgrs(idx){
+  if(!idx||MGRS_CACHE[idx]||_mgrsPending[idx]||!SRV.on)return;
+  _mgrsPending[idx]=true;
+  fetch('api/agencies/'+encodeURIComponent(idx),{cache:'no-store'})
+    .then(r=>r.ok?r.json():null)
+    .then(j=>{
+      const d=(j&&(j.agency||j.data))||{};
+      const raw=d.managers||d.manager||[];
+      const arr=(Array.isArray(raw)?raw:[]).map(normMgr)
+        .filter(m=>m.name&&m.del!=='Y')
+        .filter((m,i,a)=>a.findIndex(x=>x.name===m.name&&x.nick===m.nick)===i);
+      MGRS_CACHE[idx]=arr;                             /* 빈 배열도 캐시 — 다시 부르지 않게 */
+      renderApp();
+    }).catch(()=>{}).finally(()=>{delete _mgrsPending[idx];});
+}
+/* 화면에서 쓸 담당자 목록. 아직 안 받아왔으면 받아오고, 그동안은 입력 이력을 보여 준다. */
+function mgrsFor(agentName){
+  const idx=AGENCY_IDX[agentName];
+  if(!idx)return [];
+  if(MGRS_CACHE[idx])return MGRS_CACHE[idx];
+  fetchMgrs(idx);
+  return [];
+}
 let SRV={on:false,rev:-1,me:null,nicks:{},shadow:{},shadowP:'',shadowF:'',timer:null,pushing:false};
 let NOTIF={unread:0,items:[]};
 const meName=()=>((SRV.on&&SRV.me&&SRV.me.name)||'');
@@ -585,6 +661,7 @@ async function srvInit(){
     SRV.on=true;SRV.me=j.user;
     try{const _ar=await fetch('api/agents',{cache:'no-store'});if(_ar.ok)AGENTS=(await _ar.json()).agents||[];}catch(e){}
     loadHotelsFromAPI();   /* 호텔·지역·룸타입을 서버 목록으로 교체 (실패 시 기본 목록 유지) */
+    loadAgenciesFromAPI(); /* 에이전시(에이전트) 목록 — 담당자는 고를 때 상세에서 받아온다 */
     DB.langs=DB.langs||{};
     if(j.user.lang&&(LANG_ALLOWED[ui.role]||[]).includes(j.user.lang))DB.langs[ui.role]=j.user.lang;
     await srvPull();
@@ -781,7 +858,27 @@ function checkerHTML(){
 }
 
 /* ================= ① 요청자(에이전트) 폼 ================= */
-function agentSelOpts(cur){var opts='<option value="">'+escT(T('ph_sel_input'))+'</option>';var names=AGENTS.map(function(a){return a.name;});AGENTS.forEach(function(a){var lbl=(a.nickname&&a.nickname!==a.name)?(a.nickname+' ('+a.name+')'):a.name;opts+='<option value="'+esc(a.name)+'"'+(a.name===cur?' selected':'')+'>'+escT(lbl)+'</option>';});if(cur&&names.indexOf(cur)<0)opts+='<option value="'+esc(cur)+'" selected>'+escT(cur)+'</option>';return opts;}
+/* 에이전트(에이전시) 선택 목록.
+   API 에이전시 목록이 있으면 그것을 쓰고(원본), 없으면 예전처럼 로컬 계정 목록으로 폴백한다.
+   저장된 값이 어느 목록에도 없으면(이직·폐업 등) 그 값도 항목으로 남겨 과거 기록이 비지 않게 한다. */
+function agentSelOpts(cur){
+  var opts='<option value="">'+escT(T('ph_sel_input'))+'</option>';
+  var names=[];
+  if(AGENCY_SRC==='api'&&AGENCIES.length){
+    AGENCIES.forEach(function(a){
+      names.push(a.name);
+      opts+='<option value="'+esc(a.name)+'"'+(a.name===cur?' selected':'')+'>'+escT(a.name)+'</option>';
+    });
+  }else{
+    AGENTS.forEach(function(a){
+      var lbl=(a.nickname&&a.nickname!==a.name)?(a.nickname+' ('+a.name+')'):a.name;
+      names.push(a.name);
+      opts+='<option value="'+esc(a.name)+'"'+(a.name===cur?' selected':'')+'>'+escT(lbl)+'</option>';
+    });
+  }
+  if(cur&&names.indexOf(cur)<0)opts+='<option value="'+esc(cur)+'" selected>'+escT(cur)+'</option>';
+  return opts;
+}
 function formHTML(){
   const d=draft;
   const dateArea = d.mode==='parallel'
@@ -921,7 +1018,7 @@ function formHTML(){
     +(ui.role==='sreq'
       ? '<div class="line l3">'
         +'<div><div class="label">'+T('agent_select')+'</div><select id="agent">'+agentSelOpts(d.agent)+'</select></div>'
-        +'<div><div class="label">'+T('agent_mgr')+'</div><input id="agentMgr" list="dlAm" value="'+esc(d.agentManager||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"><datalist id="dlAm">'+((DB.hist&&DB.hist.am)||[]).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist></div>'
+        +'<div><div class="label">'+T('agent_mgr')+'</div><input id="agentMgr" value="'+esc(d.agentManager||'')+'" placeholder="'+esc(T('ph_sel_input'))+'"></div>'
         +'<div><div class="label">'+T('mgr_nirvana')+'</div><input id="regName" list="dlSt" value="'+esc(d.registrant||'심은선')+'" placeholder="'+esc(T('ph_input'))+'"><datalist id="dlSt">'+((DB.hist&&DB.hist.st)||[]).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist></div></div>'
       : '')
     +dateArea
@@ -1147,8 +1244,29 @@ window.saveAgentCheckInputs=function(reqId){
 function bindForm(){
   const d=draft;
   document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{d.mode=b.dataset.v;renderApp();});
-  const ag=document.getElementById('agent');if(ag)ag.onchange=e=>{d.agent=e.target.value;};
-  const am=document.getElementById('agentMgr');if(am)am.oninput=e=>{d.agentManager=e.target.value;};
+  /* 에이전트를 바꾸면 담당자는 더 이상 맞지 않으므로 비우고, 그 에이전시 담당자를 받아온다 */
+  const ag=document.getElementById('agent');if(ag)ag.onchange=e=>{
+    d.agent=e.target.value;d.agentManager='';
+    const _ix=AGENCY_IDX[d.agent];if(_ix)fetchMgrs(_ix);
+    renderApp();};
+  const am=document.getElementById('agentMgr');
+  if(am){
+    am.oninput=e=>{d.agentManager=e.target.value;};
+    /* 목록은 그 에이전시의 담당자(API). 아직 못 받았거나 API 가 없으면 입력 이력으로 채운다.
+       목록에 없는 사람도 직접 칠 수 있다 — 아직 부계정이 없는 담당자를 위해 열어 둔다. */
+    attachFinder(am,{
+      list:q=>{
+        const api=mgrsFor(d.agent).map(m=>({label:mgrLabel(m),value:m.name,sub:m.tel||''}));
+        const src=api.length?api
+          :(((DB.hist&&DB.hist.am)||[]).map(n=>({label:n,value:n,sub:''})));
+        const nq=_hnorm(q);
+        if(nq.length<HFIND_MIN)return src;
+        const hit=src.filter(x=>_hnorm(x.label).includes(nq)||_hnorm(x.value).includes(nq));
+        return hit.length?hit:src;
+      },
+      get:()=>d.agentManager,
+      onPick:v=>{d.agentManager=v;renderApp();}});
+  }
   const rg=document.getElementById('regName');if(rg)rg.oninput=e=>{d.registrant=e.target.value;};
   const nt=document.getElementById('notes');if(nt)nt.oninput=e=>{d.notes=e.target.value;};
   const nh=document.getElementById('notesHead');if(nh)nh.onclick=()=>{ui.notesOpen=!ui.notesOpen;renderApp();};

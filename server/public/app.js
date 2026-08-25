@@ -552,7 +552,9 @@ function renderHdrRight(){
   if(chips)items+='<div class="mitem mlang"><span style="margin-right:6px;font-size:15px">🌐</span>'+chips+'</div>';
   if(SRV.on)items+='<button class="mitem mout" id="logoutBtn">'+T('logout')+'</button>';
   const chipKey={agent:'chip_agent',sreq:'chip_sreq',schk:'chip_schk'}[ui.role]||'chip_agent';
-  const nameChip='<span class="pagechip pc-'+ui.role+'" style="cursor:default">'+esc(meNick()||T(chipKey))+'</span>';
+  const parentAgentName=SRV.on&&SRV.me&&SRV.me.agency?String(SRV.me.agency.parent_agent_name||'').trim():'';
+  const loginName=meNick()||T(chipKey);
+  const nameChip='<span class="pagechip pc-'+ui.role+'" style="cursor:default">'+esc(parentAgentName?(parentAgentName+' · '+loginName):loginName)+'</span>';
   box.innerHTML='<div class="hdrchips">'+nameChip+bell
     +(items?'<button class="chip'+(ui.menuOpen?' on':'')+'" id="menuBtn">☰</button>':'')+'</div>'
     +(items&&ui.menuOpen?'<div class="menupanel">'+items+'</div>':'');
@@ -2402,8 +2404,10 @@ function agencyStamp(d){
   const me=(SRV.on&&SRV.me)||null, ag=me&&me.agency;
   if(ag&&ag.idx){                         /* 에이전시 부계정으로 로그인한 상태 */
     out.agencyIdx=ag.idx;
-    out.agencyName=me.name||ag.nickname||'';
+    out.agencyName=ag.name||me.name||ag.nickname||'';
     if(ag.parent_idx)out.agencyParentIdx=ag.parent_idx;
+    if(ag.parent_agent_name)out.agencyParentName=ag.parent_agent_name;
+    return out;                            /* 직접 등록은 로그인 세션 값이 기준 */
   }
   const picked=(d.agent||'').trim();      /* 화면에서 고른 에이전트(회사) */
   if(picked){

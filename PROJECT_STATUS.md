@@ -48,9 +48,10 @@ agency_parent_idx   BIGINT NULL        소속 에이전시 idx
 agency_parent_name  VARCHAR(190) NULL  에이전시 이름      ← 저장 시점 스냅샷
 ```
 - **새 요청에만 채운다.** 기존 요청은 비워 둔다 (사용자 결정)
-- 브라우저가 보낸 값 우선, 없으면 로그인 세션에서 채움
+- 부계정 직접 등록은 로그인 세션의 4개 값으로 저장하고, 직원의 대신 등록만 브라우저 선택값 사용
 - `currentUser()` SELECT 에 `agency_parent_idx` / `agency_kind` 를 추가해야 했다 (빠져 있었음)
 - 부계정 로그인 API의 `parent_agent_name`을 `agency` 세션에 함께 보관
+- 로그인한 부계정은 화면 우측 상단에 `parent_agent_name · 사용자명`으로 표시
 
 ### 화면
 - 모바일 분기점 400px → 440px. 아이폰 에어(402px)가 데스크톱 설정을 받던 문제

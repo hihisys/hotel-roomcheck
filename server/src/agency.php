@@ -100,6 +100,7 @@ function agencyLoginRoute(PDO $pdo, array $in): void {
     'nickname' => (string)($d['nickname'] ?? ''),
   ];
   $name = trim((string)($d['name'] ?? '')) ?: $agency['login_id'];
+  $agency['name'] = $name;
 
   // 로컬 사용자 자동 생성/갱신 (role=agent, 승인 상태) — 비밀번호는 저장하지 않음
   $st = $pdo->prepare("SELECT * FROM users WHERE agency_idx=?");
@@ -122,7 +123,7 @@ function agencyLoginRoute(PDO $pdo, array $in): void {
 
   session_regenerate_id(true);
   $_SESSION['uid'] = (int)$u['id'];
-  $_SESSION['agency'] = $agency;              // idx / parent_idx / parent_agent_name / kind 세션 보관
+  $_SESSION['agency'] = $agency;              // 부계정·소속 에이전시 식별값과 이름을 세션에 보관
   $u['name'] = $name;
   jsonOut(['ok' => true, 'user' => publicUser($u)]);
 }

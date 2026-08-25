@@ -185,17 +185,23 @@ function route(string $path, string $method): void {
         metaSet($pdo, $seqKey, $seq);
         if (empty($req['no']) || $req['no'] != $seq) { $req['no'] = $seq; $fixes[] = ['id' => $id, 'no' => $seq]; }
         /* 에이전시 정보를 요청 행에 남긴다 (2026-08-25) — 새 요청에만 채운다.
-           ① 브라우저가 보낸 값 우선 (요청자가 대신 등록한 경우: 화면에서 고른 에이전시)
-           ② 없으면 로그인 세션에서 (에이전트가 직접 등록한 경우)
+           에이전시 부계정의 직접 등록은 로그인 세션이 기준이다. 브라우저가 값을 바꿔도
+           다른 부계정·회사로 저장되지 않는다. 직원의 대신 등록만 화면 선택값을 쓴다.
            이름은 저장 시점 스냅샷이라 이후 이직·개명이 있어도 그대로 남는다. */
-        $agIdx  = isset($req['agencyIdx'])       && $req['agencyIdx'] !== ''       ? (int)$req['agencyIdx'] : null;
-        $agName = isset($req['agencyName'])      ? trim((string)$req['agencyName'])      : '';
-        $paIdx  = isset($req['agencyParentIdx']) && $req['agencyParentIdx'] !== '' ? (int)$req['agencyParentIdx'] : null;
-        $paName = isset($req['agencyParentName'])? trim((string)$req['agencyParentName']): '';
-        if ($paName === '') $paName = trim((string)($req['agent'] ?? ''));   /* 화면에서 고른 에이전트 이름 */
-        if ($agIdx === null && !empty($u['agency_idx']))        $agIdx = (int)$u['agency_idx'];
-        if ($agName === '' && !empty($u['agency_idx']))         $agName = (string)$u['name'];
-        if ($paIdx === null && !empty($u['agency_parent_idx'])) $paIdx = (int)$u['agency_parent_idx'];
+        $sessionAgency = $_SESSION['agency'] ?? null;
+        if (is_array($sessionAgency) && !empty($sessionAgency['idx'])) {
+          $agIdx  = (int)$sessionAgency['idx'];
+          $agName = trim((string)($sessionAgency['name'] ?? $u['name'] ?? ''));
+          $paIdx  = isset($sessionAgency['parent_idx']) && $sessionAgency['parent_idx'] !== null
+            ? (int)$sessionAgency['parent_idx'] : null;
+          $paName = trim((string)($sessionAgency['parent_agent_name'] ?? ''));
+        } else {
+          $agIdx  = isset($req['agencyIdx'])       && $req['agencyIdx'] !== ''       ? (int)$req['agencyIdx'] : null;
+          $agName = isset($req['agencyName'])      ? trim((string)$req['agencyName'])      : '';
+          $paIdx  = isset($req['agencyParentIdx']) && $req['agencyParentIdx'] !== '' ? (int)$req['agencyParentIdx'] : null;
+          $paName = isset($req['agencyParentName'])? trim((string)$req['agencyParentName']): '';
+          if ($paName === '') $paName = trim((string)($req['agent'] ?? '')); /* 화면에서 고른 에이전트 이름 */
+        }
         $pdo->prepare("INSERT INTO requests (id,no,payload,deleted,created_by,updated_at,updated_by,
               agency_idx,agency_name,agency_parent_idx,agency_parent_name) VALUES (?,?,?,0,?,?,?,?,?,?,?)")
             ->execute([$id, (int)$req['no'], json_encode($req, JSON_UNESCAPED_UNICODE), $u['id'], nowMs(), $u['id'],

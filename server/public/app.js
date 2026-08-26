@@ -186,8 +186,9 @@ async function loadHotelsFromAPI(){
       if(h.nameEn&&h.nameEn!==h.name){HOTEL_EN[h.name]=h.nameEn;
         HOTEL_KO[h.nameEn]=h.name;}   /* 영문 표기 + 역매핑 등록 (영문으로 입력해도 인식) */
       /* 호텔 전화번호를 주소록에 심는다 — 브라우저마다 따로 저장되던 문제가 사라진다 */
-      if(h.phone){DB.phones[h.name]=DB.phones[h.name]||[];
-        if(!DB.phones[h.name].includes(h.phone))DB.phones[h.name].unshift(h.phone);}
+      if(h.phone){const list=DB.phones[h.name]=DB.phones[h.name]||[];
+        /* telnumber 에 번호가 여러 개면 갈라서 각각 넣는다. 원래 순서를 앞쪽에 유지한다 */
+        splitPhones(h.phone).slice().reverse().forEach(n=>{if(!list.includes(n))list.unshift(n);});}
     });
     const regs=[...new Set(list.map(h=>h.region).filter(Boolean))];
     if(regs.length)REGIONS=['전체',...regs];
@@ -754,16 +755,38 @@ function applyChrome(){
   const sub={agent:'sub_agent',sreq:'sub_sreq',schk:'sub_schk'}[ui.role];const sb=document.querySelector('.brandsub');if(sb&&sub)sb.textContent=T(sub);
   document.title='너바나 · '+T(chip);
 }
+/* ── 전화번호 분리 (2026-08-25) ──────────────────────────────────
+   니르바나 호텔 API 의 telnumber 는 "076-584150 , 076-584-199" 처럼
+   번호 여러 개가 한 문자열로 온다. 그대로 두면 화면에 두 개가 붙어 나오고
+   tel: 링크가 두 번호를 이어붙인 값(076584150076584199)이 되어 전화가 걸리지 않는다.
+   저장·표시·통화 모두 이 세 함수를 거친다. */
+function splitPhones(raw){
+  if(!raw)return [];
+  return String(raw).split(/[,;\/|·\n\r]+/)
+    .map(t=>t.trim())
+    .filter(t=>t&&(t.match(/\d/g)||[]).length>=5)   /* 숫자 5자리 미만은 번호로 보지 않는다 */
+    .filter((t,i,a)=>a.indexOf(t)===i);
+}
+/* 호텔 주소록에서 번호 목록을 꺼낸다.
+   예전에 한 문자열로 저장돼 있던 것도 여기서 갈라 주므로 기존 데이터를 고칠 필요가 없다. */
+function phoneList(hotel){
+  DB.phones=DB.phones||{};
+  const out=[];
+  ((hotel&&DB.phones[hotel])||[]).forEach(v=>splitPhones(v).forEach(n=>{if(!out.includes(n))out.push(n);}));
+  return out;
+}
+/* tel: 링크용 — 번호 하나만 남기고 숫자와 + 만 남긴다 */
+function telHref(v){return (splitPhones(v)[0]||'').replace(/[^+0-9]/g,'');}
 function phoneHTML(req,row){
   if(!(ui.role==='schk'||ui.role==='sreq'))return '';
-  DB.phones=DB.phones||{};
-  const nums=(row.hotel&&DB.phones[row.hotel])||[];
-  const sel=row.phone&&nums.includes(row.phone)?row.phone:(row.phone||nums[0]||'');
+  const nums=phoneList(row.hotel);                    /* 한 문자열로 온 번호를 갈라서 목록으로 */
+  const cur=splitPhones(row.phone)[0]||'';            /* 예전에 합쳐 저장된 값도 첫 번호만 */
+  const sel=cur&&nums.includes(cur)?cur:(cur||nums[0]||'');
   /* 별도 "전화" 버튼 대신 번호 앞의 📞 아이콘 자체를 통화 링크로 쓴다 */
   let os=nums.map(n=>opt(n,esc(n),n===sel)).join('');
   if(sel&&!nums.includes(sel))os='<option value="'+esc(sel)+'" selected>'+esc(sel)+'</option>'+os;
   os+='<option value="__add">'+T('ph_add_opt')+'</option>';
-  let h=sel?'<a class="phcall" href="tel:'+sel.replace(/[^+0-9]/g,'')+'" title="'+esc(T('ph_call'))+'">📞</a>':'';
+  let h=sel?'<a class="phcall" href="tel:'+telHref(sel)+'" title="'+esc(T('ph_call'))+'">📞</a>':'';
   h+='<select class="phSel" data-prid="'+row.id+'" style="width:auto;flex:0 1 auto;padding:7px 5px;font-size:12px;font-family:var(--mono)">'
     +((nums.length||sel)?'':'<option value="" selected>'+T('ph_none')+'</option>')+os+'</select>';
   if(ui.phAdd.has(row.id))h+='<input class="phNew" data-prid="'+row.id+'" placeholder="'+esc(T('ph_new'))+'" style="width:150px;flex:0 0 auto;padding:7px 8px;font-size:12px;font-family:var(--mono)">';
@@ -774,14 +797,14 @@ function phoneHTML(req,row){
 /* 추가 호텔용 전화/담당자 UI — 호텔1의 phoneHTML과 동일한 구성 */
 function chkPhoneHTML(req,chk,chkId){
   if(!(ui.role==='schk'||ui.role==='sreq'))return '';
-  DB.phones=DB.phones||{};
-  const nums=(chk.hotel&&DB.phones[chk.hotel])||[];
-  const sel=chk.phone&&nums.includes(chk.phone)?chk.phone:(chk.phone||nums[0]||'');
+  const nums=phoneList(chk.hotel);                    /* 호텔1과 동일 처리 */
+  const cur=splitPhones(chk.phone)[0]||'';
+  const sel=cur&&nums.includes(cur)?cur:(cur||nums[0]||'');
   /* 호텔1과 동일: 별도 "전화" 버튼 없이 📞 아이콘이 통화 링크 */
   let os=nums.map(n=>opt(n,esc(n),n===sel)).join('');
   if(sel&&!nums.includes(sel))os='<option value="'+esc(sel)+'" selected>'+esc(sel)+'</option>'+os;
   os+='<option value="__add">'+T('ph_add_opt')+'</option>';
-  let h=sel?'<a class="phcall" href="tel:'+sel.replace(/[^+0-9]/g,'')+'" title="'+esc(T('ph_call'))+'">📞</a>':'';
+  let h=sel?'<a class="phcall" href="tel:'+telHref(sel)+'" title="'+esc(T('ph_call'))+'">📞</a>':'';
   h+='<select class="chkPhSel" data-chkid="'+chkId+'" style="width:auto;flex:0 1 auto;padding:7px 5px;font-size:12px;font-family:var(--mono)">'
     +((nums.length||sel)?'':'<option value="" selected>'+T('ph_none')+'</option>')+os+'</select>';
   if(ui.phAdd.has(chkId))h+='<input class="chkPhNew" data-chkid="'+chkId+'" placeholder="'+esc(T('ph_new'))+'" style="width:150px;flex:0 0 auto;padding:7px 8px;font-size:12px;font-family:var(--mono)">';

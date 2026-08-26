@@ -129,11 +129,20 @@ agency_parent_name  VARCHAR(190) NULL  에이전시 이름      ← 저장 시�
 - **에이전트로 로그인했을 때 다른 회사 요청이 보이는지**
 - **실 부계정 재로그인 후 헤더에 `parent_agent_name`이 표시되는지**
 - **새 에이전트 요청의 에이전시 칼럼 4개가 실제 운영 DB에 정확히 저장되는지**
-- **`DB_DSN` 이 MySQL 로 설정돼 있는지** — 빠져 있으면 배포마다 데이터 초기화
-  ```
-  gcloud run services describe hotel-roomcheck --region=asia-southeast1 \
-    --format="value(spec.template.spec.containers[0].env)"
-  ```
+
+### 확인 끝난 것
+
+**`DB_DSN` 은 MySQL 로 설정돼 있다 (2026-08-26 확인).** 오래 열려 있던 항목이다.
+
+```
+DB_DSN = mysql:unix_socket=/cloudsql/hotel-roomcheck:asia-southeast1:rc-sql
+         ;dbname=roomcheck;charset=utf8mb4
+DB_USER = rcuser
+DB_PASS = (Cloud Run 환경변수에 설정됨)
+```
+
+운영 데이터는 Cloud SQL(MySQL)에 있다. **배포마다 초기화되는 상황이 아니다.**
+`server/src/db.php` 의 SQLite 는 `DB_DSN` 이 없을 때만 쓰는 폴백이고 운영에서는 쓰이지 않는다.
 
 ### 구조 문제 (미수정)
 - **에이전트 목록 거르기가 사람 이름과 회사 이름을 맞춰보는 방식이다.** 담당자가 이직하면

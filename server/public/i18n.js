@@ -154,6 +154,9 @@ ko:{pick_all:"전체 보기",sub_agent:"에이전트 콘솔",sub_sreq:"요청자
   t_rescopied:"결과 URL이 복사되었습니다",
   t_registered:"룸체크 요청이 등록되었습니다 · ",t_direct_reg:"리스트에 바로 등록되었습니다 · ",
   t_img_saved:"이미지를 저장했습니다",t_img_need_net:"이미지 저장은 인터넷 연결 시 가능합니다",
+  t_img_making:"이미지 만드는 중…",t_img_fail:"이미지를 만들지 못했습니다",
+  iv_title:"이미지 미리보기",iv_save:"이 이미지 저장",iv_cancel:"취소",
+  iv_hint:"저장이 안 되면 이미지를 길게 눌러 «사진에 추가»를 고르세요",
   t_imported:"공유된 룸체크 {no}을(를) 불러왔습니다"
 },
 en:{pick_all:"Show all",sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"Checker Console",m_offday:"Days Off",
@@ -285,6 +288,9 @@ en:{pick_all:"Show all",sub_agent:"Agent Console",sub_sreq:"Requester Console",s
   t_rescopied:"Result URL copied",
   t_registered:"Room check request registered · ",t_direct_reg:"Added directly to the list · ",
   t_img_saved:"Image saved",t_img_need_net:"Saving images requires an internet connection",
+  t_img_making:"Creating image…",t_img_fail:"Could not create the image",
+  iv_title:"Image preview",iv_save:"Save this image",iv_cancel:"Cancel",
+  iv_hint:"If saving does not work, press and hold the image and choose Add to Photos",
   t_imported:"Shared room check {no} imported"
 },
 th:{pick_all:"ดูทั้งหมด",sub_agent:"Agent Console",sub_sreq:"Requester Console",sub_schk:"คอนโซลผู้ตรวจสอบ",m_offday:"วันหยุด",
@@ -416,6 +422,9 @@ th:{pick_all:"ดูทั้งหมด",sub_agent:"Agent Console",sub_sreq:"R
   t_rescopied:"คัดลอก URL ผลลัพธ์แล้ว",
   t_registered:"ลงทะเบียนคำขอแล้ว · ",t_direct_reg:"เพิ่มลงรายการโดยตรงแล้ว · ",
   t_img_saved:"บันทึกรูปแล้ว",t_img_need_net:"ต้องเชื่อมต่ออินเทอร์เน็ตเพื่อบันทึกรูป",
+  t_img_making:"กำลังสร้างรูป…",t_img_fail:"สร้างรูปไม่สำเร็จ",
+  iv_title:"ดูตัวอย่างรูป",iv_save:"บันทึกรูปนี้",iv_cancel:"ยกเลิก",
+  iv_hint:"ถ้าบันทึกไม่ได้ ให้กดค้างที่รูปแล้วเลือก «เพิ่มลงในรูปภาพ»",
   t_imported:"นำเข้าคำขอที่แชร์ {no} แล้ว"
 }};
 /* 영어 요일 헤더 (달력) */

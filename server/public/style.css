@@ -194,6 +194,30 @@
 .cd.inr{background:var(--avBg);color:var(--brand);font-weight:800;border-radius:0}
 .cd.endr{background:var(--brand);color:#fff;font-weight:800}
 .calfoot{display:flex;justify-content:flex-end;margin-top:10px}
+  /* 이미지 미리보기 → 저장 확인 (2026-08-25)
+     달력 오버레이(#calov)와 같은 구조를 쓴다. 상태색(--av/--rq/--so)은 쓰지 않는다. */
+  #imgov{position:fixed;inset:0;background:rgba(20,30,40,.55);z-index:120;
+    display:flex;align-items:center;justify-content:center;padding:14px}
+  .imgbox{background:#fff;border-radius:16px;padding:12px;width:100%;max-width:420px;
+    max-height:90vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.28)}
+  .imghead{display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+    font-weight:800;font-size:14px;color:var(--ink);margin-bottom:8px}
+  .imghead .imgname{font-size:11px;font-weight:600;color:var(--muted);font-family:var(--mono);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}
+  .imgscroll{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;
+    background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:6px}
+  .imgpv{display:block;width:100%;height:auto;border-radius:6px}
+  .imghint{margin:8px 2px 0;font-size:11.5px;line-height:1.45;color:var(--muted)}
+  .imgbtns{display:flex;gap:8px;margin-top:10px}
+  .imgbtns button{flex:1;padding:12px 10px;border-radius:10px;font-size:14px;font-weight:800;
+    cursor:pointer;font-family:var(--sans)}
+  .imgbtns .imgcancel{background:var(--surface);border:1px solid var(--line);color:var(--sub)}
+  .imgbtns .imgsave{background:var(--brand);border:1px solid var(--brand);color:#fff}
+  .imgbtns .imgsave:active{background:var(--brandDark)}
+  @media (max-width:440px){
+    .imgbox{max-width:100%;padding:10px}
+    .imgbtns button{padding:13px 8px}
+  }
 /* 갤럭시 폴드(커버 화면 등 좁은 폭) 최적화 */
 /* 폰 (2026-08-25) — 분기점을 440px 로 넓혔다. 전에는 400px 이라
    아이폰 에어(402px) 같은 기기가 데스크톱 설정을 받아 좌우가 비고

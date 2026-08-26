@@ -1937,10 +1937,46 @@ function bindAgentList(){
     if(inp.classList.contains('agentCheckDetailNote'))inp.oninput=e=>{inpData.detailNote=e.target.value;};
   });
 }
+/* ── 이미지 미리보기 → 저장 확인 (2026-08-25) ─────────────────────
+   전에는 버튼을 누르는 순간 파일이 바로 내려받아졌다. 무엇이 저장됐는지
+   열어 보기 전에는 알 수 없었고, 아이폰 사파리는 다운로드가 막혀 있어
+   눌러도 아무 일도 일어나지 않는 것처럼 보였다.
+   이제 만들어진 이미지를 먼저 보여 주고, 저장할지 사용자가 고른다.
+   아이폰에서는 «이미지를 길게 눌러 사진에 추가» 안내를 함께 띄운다. */
+function closeImgPv(){const el=document.getElementById('imgov');if(el)el.remove();}
+const _isIOS=()=>/iP(hone|ad|od)/.test(navigator.userAgent)
+  ||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);   /* 아이패드 iPadOS 13+ */
+function imgPreview(dataUrl,name){
+  closeImgPv();
+  const ov=document.createElement('div');ov.id='imgov';
+  const canDl=typeof document.createElement('a').download!=='undefined'&&!_isIOS();
+  ov.innerHTML='<div class="imgbox">'
+    +'<div class="imghead"><span>'+esc(T('iv_title'))+'</span>'
+      +'<span class="imgname">'+esc(name)+'</span></div>'
+    +'<div class="imgscroll"><img class="imgpv" alt="'+esc(T('iv_title'))+'" src="'+dataUrl+'"></div>'
+    +(canDl?'':'<p class="imghint">'+esc(T('iv_hint'))+'</p>')
+    +'<div class="imgbtns">'
+      +'<button class="imgcancel" id="ivCancel">'+esc(T('iv_cancel'))+'</button>'
+      +'<button class="imgsave" id="ivSave">'+esc(T('iv_save'))+'</button>'
+    +'</div></div>';
+  document.body.appendChild(ov);
+  ov.onclick=e=>{if(e.target.id==='imgov')closeImgPv();};      /* 바깥을 누르면 닫힌다 */
+  const cx=document.getElementById('ivCancel');if(cx)cx.onclick=closeImgPv;
+  const sv=document.getElementById('ivSave');
+  if(sv)sv.onclick=()=>{
+    if(!canDl){toast(T('iv_hint'));return;}                    /* 창은 열어 둔다 — 길게 눌러 저장하도록 */
+    const a=document.createElement('a');a.download=name;a.href=dataUrl;
+    document.body.appendChild(a);a.click();a.remove();
+    toast(T('t_img_saved'));closeImgPv();
+  };
+}
 function saveImg(id,name){const node=document.getElementById(id);
   if(!node)return;
   if(typeof html2canvas==='undefined'){toast(T('t_img_need_net'));return;}
-  html2canvas(node,{scale:2,backgroundColor:'#ffffff'}).then(cv=>{const a=document.createElement('a');a.download=name;a.href=cv.toDataURL('image/png');a.click();toast(T('t_img_saved'));});}
+  toast(T('t_img_making'));
+  html2canvas(node,{scale:2,backgroundColor:'#ffffff'})
+    .then(cv=>imgPreview(cv.toDataURL('image/png'),name))
+    .catch(()=>toast(T('t_img_fail')));}
 /* 견적 산출 내역 — "이 금액이 어떻게 나왔는지"를 한 표로 펼친다.
    전체 이미지에 함께 실려, 받는 사람이 근거를 되짚을 수 있다. */
 function quoteBreakdownHTML(req,q){
@@ -1988,9 +2024,10 @@ function saveFullImg(req){
   tmp.innerHTML=html;
   tmp.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));
   document.body.appendChild(tmp);
+  toast(T('t_img_making'));
   html2canvas(tmp,{scale:2,backgroundColor:'#ffffff'})
-    .then(cv=>{const a=document.createElement('a');a.download='룸체크견적_'+reqNo(req)+'.png';a.href=cv.toDataURL('image/png');a.click();toast(T('t_img_saved'));tmp.remove();})
-    .catch(()=>{tmp.remove();});
+    .then(cv=>{imgPreview(cv.toDataURL('image/png'),'룸체크견적_'+reqNo(req)+'.png');tmp.remove();})
+    .catch(()=>{tmp.remove();toast(T('t_img_fail'));});
 }
 
 /* ================= ③ 직원 리스트 & 워크시트 ================= */

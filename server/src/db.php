@@ -113,6 +113,10 @@ function migrate(PDO $pdo): void {
   ensureColumn($pdo, 'users', 'agency_idx', 'BIGINT NULL');
   ensureColumn($pdo, 'users', 'agency_parent_idx', 'BIGINT NULL');
   ensureColumn($pdo, 'users', 'agency_kind', 'VARCHAR(20) NULL');
+  /* 소속 에이전시 이름 (2026-08-26)
+     전에는 parent_idx(번호)만 저장해서 관리자 화면에 회사명을 띄울 수 없었다.
+     이름은 로그인 시점 스냅샷이다 — 니르바나 쪽에서 회사명이 바뀌면 다음 로그인에 갱신된다. */
+  ensureColumn($pdo, 'users', 'agency_parent_name', 'VARCHAR(190) NULL');
   ensureColumn($pdo, 'users', 'agency_login_id', 'VARCHAR(120) NULL');
   ensureColumn($pdo, 'users', 'phone', 'VARCHAR(40) NULL'); // 회원정보 연락처 (2026-07-17)
   /* 회원정보 추가 필드 (2026-07-17): 닉네임·은행 계좌 */

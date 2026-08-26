@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>너바나 · 관리자</title>
-<link rel="stylesheet" href="style.css?v=20260826c" />
+<link rel="stylesheet" href="style.css?v=20260826d" />
 <style>
 :root{--brand:#54406E;--brandDark:#3F3054;--paper:#EEEAF3;--line:#DCD4E6}
 .urow{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-top:10px;background:#fff}
@@ -188,7 +188,17 @@ function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 function row(u,withDecide){
   const dt=new Date(u.created_at);
   const when=dt.getFullYear()+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+String(dt.getDate()).padStart(2,'0');
-  const roleTag=(ROLE_KO[u.role]||u.role)+(u.super?' <span class="rolechip">최고관리자</span>':(u.role==='admin'?' <span class="rolechip">관리자</span>':''));
+  /* 에이전시 계정은 「에이전트」 대신 소속 회사명을 보여 준다 (2026-08-26).
+     회사명은 부계정이 로그인할 때 저장된다 — 아직 한 번도 로그인하지 않은 계정은
+     회사명이 없으므로 예전처럼 「에이전트」로 남는다. */
+  const orgName=(u.role==='agent'&&u.agency_parent_name)?String(u.agency_parent_name).trim():'';
+  const roleTag=(orgName||ROLE_KO[u.role]||u.role)+(u.super?' <span class="rolechip">최고관리자</span>':(u.role==='admin'?' <span class="rolechip">관리자</span>':''));
+  /* 부계정에는 이메일이 없어 agency-12@agency.local 같은 주소를 만들어 쓴다.
+     그 합성 주소는 화면에 띄우지 않는다 — 실제로 쓸 수 있는 주소가 아니라 오해를 부른다.
+     대신 로그인에 쓰는 아이디를 아래 줄에 적는다. */
+  const synthetic=/@agency\.local$/i.test(String(u.email||''));
+  const emailLine=synthetic?'':esc(u.email);
+  const idLine=u.agency_login_id?' · 아이디 '+esc(u.agency_login_id):'';
   let btns='';
   if(withDecide){
     btns='<button class="bt-ok" data-a="approve" data-id="'+u.id+'">✓ 승인</button><button class="bt-no" data-a="reject" data-id="'+u.id+'">거절</button><button class="bt-del" data-a="delete" data-id="'+u.id+'">삭제</button>';
@@ -207,8 +217,8 @@ function row(u,withDecide){
     else if(!u.super){btns+='<button class="bt-ok" data-a="tglink" data-id="'+u.id+'">📲 텔레그램 연결</button>';if(u.tg)btns+='<button class="bt-no" data-a="tgreset" data-id="'+u.id+'">📲 텔레그램 연결 해제</button>';}
   }
   return '<div class="urow"><div class="u1"><div><div class="nm">'+esc(u.name)+' <span class="small">· '+roleTag+'</span></div>'
-    +'<div class="em">'+esc(u.email)+'</div>'
-    +'<div class="meta">언어 '+(LANG_KO[u.lang]||u.lang)+' · 가입 '+when+(u.tg?' · 📲 텔레그램 연결됨':'')+'</div></div>'
+    +(emailLine?'<div class="em">'+emailLine+'</div>':'')
+    +'<div class="meta">언어 '+(LANG_KO[u.lang]||u.lang)+' · 가입 '+when+idLine+(u.tg?' · 📲 텔레그램 연결됨':'')+'</div></div>'
     +'<span class="badge st-'+u.status+'">'+(ST_KO[u.status]||u.status)+'</span></div>'
     +(btns?'<div class="ubtns">'+btns+'</div>':'')
     +'</div>';

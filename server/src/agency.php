@@ -109,16 +109,17 @@ function agencyLoginRoute(PDO $pdo, array $in): void {
   if (!$u) {
     $email = "agency-$idx@agency.local";      // 이메일 로그인 불가한 합성 주소
     $pdo->prepare("INSERT INTO users (name,email,pass_hash,role,status,lang,created_at,
-        agency_idx,agency_parent_idx,agency_kind,agency_login_id)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+        agency_idx,agency_parent_idx,agency_parent_name,agency_kind,agency_login_id)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
       ->execute([$name, $email, '!agency-external-auth', 'agent', 'approved', 'ko', nowMs(),
-        $idx, $agency['parent_idx'], $agency['kind'], $agency['login_id']]);
+        $idx, $agency['parent_idx'], $agency['parent_agent_name'], $agency['kind'], $agency['login_id']]);
     $st->execute([$idx]);
     $u = $st->fetch();
   } else {
     if ($u['status'] === 'rejected') jsonOut(['error' => 'rejected'], 403);  // 관리자가 중지한 계정
-    $pdo->prepare("UPDATE users SET name=?, agency_parent_idx=?, agency_kind=?, agency_login_id=? WHERE id=?")
-        ->execute([$name, $agency['parent_idx'], $agency['kind'], $agency['login_id'], $u['id']]);
+    /* 회사명은 매 로그인마다 최신으로 갱신한다 (니르바나 쪽에서 바뀔 수 있다) */
+    $pdo->prepare("UPDATE users SET name=?, agency_parent_idx=?, agency_parent_name=?, agency_kind=?, agency_login_id=? WHERE id=?")
+        ->execute([$name, $agency['parent_idx'], $agency['parent_agent_name'], $agency['kind'], $agency['login_id'], $u['id']]);
   }
 
   session_regenerate_id(true);

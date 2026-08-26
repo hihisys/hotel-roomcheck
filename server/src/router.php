@@ -346,7 +346,10 @@ function route(string $path, string $method): void {
   /* ---------- 관리자 ---------- */
   if ($path === 'admin/users' && $method === 'GET') {
     requireAdmin();
-    $rows = $pdo->query("SELECT id,name,email,role,status,lang,telegram_chat_id,off_days,created_at FROM users ORDER BY status='pending' DESC, id DESC")->fetchAll();
+    /* agency_parent_name = 소속 에이전시 이름, agency_login_id = 니르바나 부계정 아이디 (2026-08-26)
+       관리자 목록에서 「에이전트」 대신 회사명을 보여 주고, 합성 이메일 대신 실제 아이디를 쓰기 위함 */
+    $rows = $pdo->query("SELECT id,name,email,role,status,lang,telegram_chat_id,off_days,created_at,
+        agency_parent_name,agency_login_id FROM users ORDER BY status='pending' DESC, id DESC")->fetchAll();
     $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
     foreach ($rows as &$r) {
       $r['tg'] = !empty($r['telegram_chat_id']);

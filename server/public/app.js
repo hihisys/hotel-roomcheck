@@ -524,6 +524,35 @@ function encodeReq(req){
   const ws={};Object.keys(req.ws||{}).forEach(k=>{const c=req.ws[k];if(valid.has(k)&&c&&(c.status||c.price))ws[k]=c;});
   return btoa(unescape(encodeURIComponent(JSON.stringify({v:2,req:{...req,ws}}))));}
 const reqURL=req=>location.href.split('#')[0]+'#q='+encodeReq(req);
+/* ── 짧은 공유 링크 (2026-08-26) ──────────────────────────────────
+   예전 링크는 요청 전체를 base64 로 URL 에 담아 2,000자가 넘었다 — 카톡에 못 붙인다.
+   이제 복사하는 순간의 내용을 서버에 맡기고 짧은 코드만 주소에 담는다.
+     .../check.html#s=20260826-A0001E-K3F9        (약 83자)
+   저장한 내용은 스냅샷이다. 나중에 요청이 바뀌어도 링크가 보여 주는 내용은 그대로다
+   — 견적을 보낸 뒤 금액이 바뀌면 분쟁이 되므로 고정이 맞다.
+   서버가 없거나 실패하면 예전 긴 링크로 물러난다 (기능이 끊기지 않게). */
+async function shortURL(req){
+  if(!SRV.on)return reqURL(req);
+  try{
+    const valid=new Set();req.rows.forEach((r,i)=>rDates(req,r,i).dates.forEach(iso=>valid.add(r.id+'|'+iso)));
+    const ws={};Object.keys(req.ws||{}).forEach(k=>{const c=req.ws[k];if(valid.has(k)&&c&&(c.status||c.price))ws[k]=c;});
+    const r=await fetch('api/share',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({req:{...req,ws}})});
+    const j=await r.json();
+    if(j&&j.ok&&j.code)return location.href.split('#')[0]+'#s='+j.code;
+  }catch(e){}
+  return reqURL(req);                       /* 서버 실패 → 예전 방식 유지 */
+}
+/* 주소의 #s=코드 로 저장된 내용을 받아온다. 예전 #q= 링크도 계속 열린다. */
+async function loadShare(){
+  const m=(location.hash||'').match(/^#s=([0-9]{8}-[A-Z0-9]{1,16}-[A-Z0-9]{4})$/);
+  if(!m)return null;
+  try{
+    const r=await fetch('api/share?code='+encodeURIComponent(m[1]),{cache:'no-store'});
+    const j=await r.json();
+    return (j&&j.ok&&j.req)?j.req:null;
+  }catch(e){return null;}
+}
 function loadHash(){try{const m=(location.hash||'').match(/^#q=(.*)$/);if(!m)return null;
   const o=JSON.parse(decodeURIComponent(escape(atob(m[1]))));return (o&&o.v===2&&o.req)?o.req:null;}catch(e){return null;}}
 function copyText(t,msg){(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject())
@@ -2727,7 +2756,12 @@ function bindQuoteBuilder(req){
   on('qbCopy','onclick',()=>copyText(quoteText(req),T('t_qtcopied')));
   on('qbImg','onclick',()=>saveImg('qcard'+req.id,'견적.png'));
   on('fullImg','onclick',()=>saveFullImg(req));
-  on('fullUrl','onclick',()=>copyText(reqURL(req),T('t_fullurl')));
+  on('fullUrl','onclick',async()=>{
+    const b=el('fullUrl');const was=b?b.textContent:'';
+    if(b){b.textContent=T('t_link_making');b.disabled=true;}
+    try{copyText(await shortURL(req),T('t_fullurl'));}
+    finally{if(b){b.textContent=was;b.disabled=false;}}
+  });
 }
 
 /* ================= 달력 (범위 선택) ================= */
@@ -2826,7 +2860,7 @@ let _tt;function toast(m){const t=document.getElementById('toast');t.textContent
     if((ui.role==='agent'||ui.role==='sreq')&&meNick())draft.registrant=meNick();
   }
   sweep();
-  const imp=loadHash();
+  const imp=(await loadShare())||loadHash();
   if(imp){
     if(!imp.no){var _ik=imp.direct?'seqD':'seqA';DB[_ik]=(DB[_ik]||0)+1;imp.no=DB[_ik];}
     upsert(imp);

@@ -80,6 +80,22 @@ function migrate(PDO $pdo): void {
     params $TXT NULL,
     created_at BIGINT NOT NULL
   )");
+  /* 공유 링크 (2026-08-26)
+     「링크 복사」가 요청 전체를 base64 로 URL 에 밀어 넣어 2,000자가 넘었다 — 카톡에 못 붙인다.
+     복사하는 순간의 내용을 여기 저장하고 짧은 코드만 주소에 담는다.
+     payload 는 그때의 스냅샷이라 나중에 요청이 바뀌어도 링크 내용은 그대로다
+     (견적을 보낸 뒤 금액이 바뀌면 분쟁이 되므로 고정이 맞다).
+     code 형식: 20260826-A0001E-K3F9 (날짜 · 요청번호 · 랜덤 4자)
+       날짜·번호는 링크만 봐도 무슨 요청인지 알라고, 뒤 4자는 번호를 바꿔 남의 요청을
+       열어보지 못하게 하려고 붙인다. */
+  $pdo->exec("CREATE TABLE IF NOT EXISTS shares (
+    code VARCHAR(48) PRIMARY KEY,            -- 20260826-A0001E-K3F9
+    req_no VARCHAR(12) NULL,                 -- 사람이 알아볼 요청번호
+    payload $TXT NOT NULL,                   -- 복사 시점 요청 JSON (스냅샷, 변경하지 않는다)
+    created_by BIGINT NULL,
+    created_at BIGINT NOT NULL
+  )");
+
   /* 요청을 넣은 에이전시 (2026-08-25)
      니르바나 부계정/에이전시를 요청 행에 직접 남긴다. payload(JSON) 안을 뒤지지 않고
      조회·집계할 수 있고, 이름은 저장 시점 스냅샷이라 담당자가 이직하거나 회사명이

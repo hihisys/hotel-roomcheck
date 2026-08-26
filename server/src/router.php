@@ -261,6 +261,51 @@ function route(string $path, string $method): void {
     }
     jsonOut(['ok' => true]);
   }
+  /* ---------- 공유 링크 (2026-08-26) ----------
+     「링크 복사」가 요청 전체를 URL 에 밀어 넣어 2,000자가 넘던 것을 짧은 코드로 바꾼다.
+     저장하는 것은 복사 시점의 스냅샷이다 — 나중에 요청이 바뀌어도 링크는 그대로다. */
+  if ($path === 'share' && $method === 'POST') {
+    $u = requireApproved();
+    $req = $in['req'] ?? null;
+    if (!is_array($req) || !isset($req['id'])) jsonOut(['error' => 'bad_request'], 400);
+
+    /* 요청번호는 사람이 읽으라고 넣는다. 코드에는 기호를 빼고 담는다 (A-0001E → A0001E) */
+    $reqNo = reqNoStr($req);
+    $noPart = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $reqNo));
+    $day = (new DateTimeImmutable('now', new DateTimeZone('Asia/Bangkok')))->format('Ymd');
+
+    /* 뒤 4자 — 번호를 바꿔 남의 요청을 열어보지 못하게. 헷갈리는 0·O·1·I 는 뺀다 */
+    $alpha = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    $json = json_encode($req, JSON_UNESCAPED_UNICODE);
+    $code = '';
+    for ($try = 0; $try < 8; $try++) {
+      $tail = '';
+      for ($i = 0; $i < 4; $i++) $tail .= $alpha[random_int(0, strlen($alpha) - 1)];
+      $cand = $day . '-' . $noPart . '-' . $tail;
+      $hit = $pdo->prepare("SELECT 1 FROM shares WHERE code=?");
+      $hit->execute([$cand]);
+      if (!$hit->fetchColumn()) { $code = $cand; break; }
+    }
+    if ($code === '') jsonOut(['error' => 'code_collision'], 500);
+
+    $pdo->prepare("INSERT INTO shares (code,req_no,payload,created_by,created_at) VALUES (?,?,?,?,?)")
+        ->execute([$code, $reqNo, $json, $u['id'], nowMs()]);
+    jsonOut(['ok' => true, 'code' => $code, 'reqNo' => $reqNo]);
+  }
+  /* 링크를 받은 사람은 로그인하지 않았을 수 있다 — 읽기는 인증을 요구하지 않는다.
+     코드 뒤 4자를 모르면 열 수 없다는 것이 이 링크의 자물쇠다. */
+  if ($path === 'share' && $method === 'GET') {
+    $code = trim((string)($_GET['code'] ?? ''));
+    if ($code === '' || !preg_match('/^[0-9]{8}-[A-Z0-9]{1,16}-[A-Z0-9]{4}$/', $code))
+      jsonOut(['error' => 'bad_code'], 400);
+    $st = $pdo->prepare("SELECT payload,req_no,created_at FROM shares WHERE code=?");
+    $st->execute([$code]);
+    $row = $st->fetch();
+    if (!$row) jsonOut(['error' => 'not_found'], 404);
+    jsonOut(['ok' => true, 'req' => json_decode($row['payload'], true),
+             'reqNo' => $row['req_no'], 'createdAt' => (int)$row['created_at']]);
+  }
+
   if ($path === 'notif-read' && $method === 'POST') {
     $u = requireApproved();
     $pdo->prepare("UPDATE users SET notif_read_at=? WHERE id=?")->execute([nowMs(), $u['id']]);

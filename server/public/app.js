@@ -2043,13 +2043,69 @@ function imgPreview(dataUrl,name){
     toast(T('t_img_saved'));closeImgPv();
   };
 }
+/* ── 이미지로 뽑기 전 색 평탄화 (2026-08-26) ────────────────────────
+   html2canvas 는 옛 색 표기(rgb·hex·rgba)만 읽는다. 크롬은 color-mix() 를
+   color(srgb ...) 로 계산해 내놓는데, 그게 하나라도 걸리면
+   "unsupported color function color" 로 죽어 이미지가 통째로 안 만들어진다.
+   이 프로젝트에서 벌써 세 번 밟았다 (.qc-dbar 8/1, .ntitem 8/1, .qbd-* 8/26).
+   그래서 CSS 를 하나씩 고치는 대신, 뽑기 직전에 사본의 색을 전부
+   rgb/rgba 로 바꿔 둔다. 앞으로 color-mix 를 새로 써도 이미지가 깨지지 않는다.
+
+   변환은 캔버스에 맡긴다 — fillStyle 에 넣었다 꺼내면 어떤 표기든 #rrggbb
+   또는 rgba() 로 돌아온다 (oklab·lch 같은 것도 함께 처리된다). */
+const _colorNorm=(()=>{let cx=null;
+  return v=>{
+    if(!v||!/(^|[\s,(])(color|color-mix|oklab|oklch|lab|lch|hwb)\(/.test(v))return null;
+    try{
+      if(!cx)cx=document.createElement('canvas').getContext('2d');
+      const one=t=>{cx.fillStyle='#000';cx.fillStyle=t;const o=cx.fillStyle;
+        return (typeof o==='string'&&!/^(color|color-mix|oklab|oklch|lab|lch|hwb)\(/.test(o))?o:'rgba(0,0,0,0)';};
+      /* 값 전체가 색 하나면 통째로, 아니면(box-shadow 등) 색 토큰만 골라 바꾼다 */
+      if(/^(color|color-mix|oklab|oklch|lab|lch|hwb)\([^()]*\)$/.test(v.trim()))return one(v.trim());
+      return v.replace(/(?:color|color-mix|oklab|oklch|lab|lch|hwb)\([^()]*\)/g,one);
+    }catch(e){return null;}
+  };})();
+/* [자바스크립트 이름, CSS 이름] — CSS 쪽 이름이 있어야 !important 로 덮을 수 있다.
+   .qdanger 처럼 !important 로 선언된 색은 보통 인라인 스타일로는 안 밀린다. */
+const _CPROPS=[['color','color'],['backgroundColor','background-color'],
+  ['borderTopColor','border-top-color'],['borderRightColor','border-right-color'],
+  ['borderBottomColor','border-bottom-color'],['borderLeftColor','border-left-color'],
+  ['outlineColor','outline-color'],['textDecorationColor','text-decoration-color'],
+  ['caretColor','caret-color'],['columnRuleColor','column-rule-color'],
+  ['boxShadow','box-shadow'],['backgroundImage','background-image'],
+  ['fill','fill'],['stroke','stroke']];
+function flattenColors(root){
+  if(!root)return;
+  const all=[root].concat(Array.prototype.slice.call(root.querySelectorAll('*')));
+  all.forEach(n=>{
+    if(n.nodeType!==1)return;
+    let cs;try{cs=getComputedStyle(n);}catch(e){return;}
+    _CPROPS.forEach(pair=>{
+      const fixed=_colorNorm(cs[pair[0]]);
+      if(fixed)try{n.style.setProperty(pair[1],fixed,'important');}catch(e){}
+    });
+  });
+}
+/* 화면의 카드를 건드리지 않도록 사본을 화면 밖에 만들어 거기서 뽑는다 */
+function offscreenCopy(source,width){
+  const tmp=document.createElement('div');
+  tmp.style.cssText='position:fixed;left:-10000px;top:0;width:'+Math.round(width||370)+'px;background:#fff';
+  if(typeof source==='string')tmp.innerHTML=source;
+  else tmp.appendChild(source.cloneNode(true));
+  tmp.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));
+  document.body.appendChild(tmp);
+  flattenColors(tmp);
+  return tmp;
+}
 function saveImg(id,name){const node=document.getElementById(id);
   if(!node)return;
   if(typeof html2canvas==='undefined'){toast(T('t_img_need_net'));return;}
   toast(T('t_img_making'));
-  html2canvas(node,{scale:2,backgroundColor:'#ffffff'})
-    .then(cv=>imgPreview(cv.toDataURL('image/png'),name))
-    .catch(()=>toast(T('t_img_fail')));}
+  const w=node.getBoundingClientRect().width||370;
+  const tmp=offscreenCopy(node,w);
+  html2canvas(tmp,{scale:2,backgroundColor:'#ffffff'})
+    .then(cv=>{imgPreview(cv.toDataURL('image/png'),name);tmp.remove();})
+    .catch(e=>{tmp.remove();toast(T('t_img_fail'));try{console.error('[이미지]',e);}catch(_){}});}
 /* 견적 산출 내역 — "이 금액이 어떻게 나왔는지"를 한 표로 펼친다.
    전체 이미지에 함께 실려, 받는 사람이 근거를 되짚을 수 있다. */
 function quoteBreakdownHTML(req,q){
@@ -2092,15 +2148,13 @@ function saveFullImg(req){
   FORCE_KO=true;let html='';
   /* 전체 이미지: 룸체크 결과 + 견적서 + 산출 내역을 모두 펼쳐 담는다 */
   try{html=resultCardHTML(req)+quoteCardHTML(req)+quoteBreakdownHTML(req);}finally{FORCE_KO=false;}
-  const tmp=document.createElement('div');
-  tmp.style.cssText='position:fixed;left:-10000px;top:0;width:370px;background:#fff;padding:8px';
-  tmp.innerHTML=html;
-  tmp.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));
-  document.body.appendChild(tmp);
+  const tmp=offscreenCopy(html,370);
+  tmp.style.padding='8px';
+  flattenColors(tmp);                       /* padding 을 준 뒤 한 번 더 (안전) */
   toast(T('t_img_making'));
   html2canvas(tmp,{scale:2,backgroundColor:'#ffffff'})
     .then(cv=>{imgPreview(cv.toDataURL('image/png'),quoteFileName(req,true));tmp.remove();})
-    .catch(()=>{tmp.remove();toast(T('t_img_fail'));});
+    .catch(e=>{tmp.remove();toast(T('t_img_fail'));try{console.error('[이미지]',e);}catch(_){}});
 }
 
 /* ================= ③ 직원 리스트 & 워크시트 ================= */

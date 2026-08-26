@@ -116,6 +116,12 @@
   .qcopy{background:var(--brand);color:#fff}
   .qimg{background:var(--ink);color:#fff}
   .qgray{background:var(--paper);color:var(--sub);border:1px solid var(--line) !important}
+  /* 발송이 끝난 버튼 (2026-08-25) — 다시 누를 수는 있지만 "이미 보냈다"가 먼저 읽히게 한다.
+     상태색(--av/--rq/--so)은 상태에만 쓴다는 규칙(CLAUDE.md 9절)에 따라 회색 계열로 간다.
+     에이전트 전송 버튼(.qgray)이 쓰던 방식과 같다. */
+  .qcopy.sent{background:var(--paper);color:var(--sub);border:1px solid var(--line)!important;box-shadow:none}
+  .sentline{margin:6px 2px 0;font-size:11.5px;color:var(--muted);font-weight:700;
+    font-family:var(--mono);line-height:1.5}
   .qmgr{background:#2F7A55;color:#fff}
   .optitem{border:1px solid var(--line);border-radius:10px;padding:9px;margin-top:7px;background:var(--surface)}
   .optitem .toprow{display:flex;align-items:center;gap:6px}
@@ -742,6 +748,11 @@ input[type=number]::selection{background:var(--brand);color:#fff}
   border:1.5px solid var(--brand)!important;border-radius:11px;padding:12px;
   font-size:13.5px;font-weight:800;cursor:pointer}
 .qbtns .qghost:hover{background:color-mix(in srgb,var(--brand) 7%,var(--surface))}
+/* 큰 발송 버튼(.qprimary)·보조 발송 버튼(.qghost)의 "보냄" 상태 */
+.qbtns .qprimary.sent,.qbtns .qghost.sent{background:var(--paper);color:var(--sub);
+  border:1.5px solid var(--line)!important;box-shadow:none}
+.qbtns .qprimary.sent:active,.qbtns .qghost.sent:active{background:var(--line)}
+.qbtns .qghost.sent:hover,.qbtns .qprimary.sent:hover{background:var(--line)}
 .qbtns .qquiet{flex:1;background:none;border:none!important;color:var(--muted);
   padding:10px 4px;font-size:12.5px;font-weight:700;cursor:pointer}
 .qbtns .qquiet:hover{color:var(--ink)}

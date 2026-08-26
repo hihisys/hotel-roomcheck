@@ -755,6 +755,17 @@ function applyChrome(){
   const sub={agent:'sub_agent',sreq:'sub_sreq',schk:'sub_schk'}[ui.role];const sb=document.querySelector('.brandsub');if(sb&&sub)sb.textContent=T(sub);
   document.title='너바나 · '+T(chip);
 }
+/* ── 발송 여부 표시 (2026-08-25) ────────────────────────────────
+   답변·견적을 보냈는지 버튼만 봐서는 알 수 없어서 같은 요청을 두 번 보내는 일이 있었다.
+   보낸 뒤에는 버튼 색과 문구가 바뀌고, 아래에 보낸 시각과 보낸 사람을 적는다.
+   상태색(--av/--rq/--so)은 상태에만 쓴다는 규칙에 따라 버튼은 회색 계열로만 바꾼다. */
+function sentLines(req){
+  const one=(k,at,who)=>at?T(k)+' '+dotDateTime(at)+(who?' · '+escT(nickOf(who)):''):'';
+  const a=one('sent_ans',req.answeredAt,req.manager);
+  const q=req.quoteSent?one('sent_quote',req.quoteSentAt,req.quoteBy):'';
+  const parts=[a,q].filter(Boolean);
+  return parts.length?'<p class="sentline">'+parts.join(' &nbsp;|&nbsp; ')+'</p>':'';
+}
 /* ── 전화번호 분리 (2026-08-25) ──────────────────────────────────
    니르바나 호텔 API 의 telnumber 는 "076-584150 , 076-584-199" 처럼
    번호 여러 개가 한 문자열로 온다. 그대로 두면 화면에 두 개가 붙어 나오고
@@ -2200,16 +2211,18 @@ function staffWorkInner(req){
     +(ui.role==='schk'
       ? (req.quoteRequested&&!req.quoteSent?'<p class="small" style="margin:8px 2px 2px">'+T('ws_qreq_note')+'</p>':'')
         +(totalCount(req)>1&&!allDone(req)?'<p class="small" style="margin:8px 2px 2px;color:var(--so)">'+TF('ws_partial_warn',{n:totalCount(req)-doneCount(req)})+'</p>':'')
-        +'<div class="qbtns"><button class="qcopy" id="sendA">'+(totalCount(req)>1&&!allDone(req)&&doneCount(req)>0
+        +'<div class="qbtns"><button class="qcopy'+(req.status==='answered'?' sent':'')+'" id="sendA">'+(totalCount(req)>1&&!allDone(req)&&doneCount(req)>0
           ?TF('btn_send_partial',{n:doneCount(req),t:totalCount(req)})
           :(req.status==='requested'?T('btn_send_ans'):T('btn_send_upd')))+'</button></div>'
+        +sentLines(req)
       : (((req.direct&&req.status==='answered')?'<div class="qbtns"><button class="'+(req.forwardedAt?'qgray':'qcopy')+'" id="fwdAgent">'+(req.forwardedAt?'✅ 에이전트에 전송됨':'📤 에이전트에게 전송')+'</button></div>'+(req.forwardedAt?'<p class="small" style="margin:4px 2px;color:var(--muted)">전송 '+dotDateTime(req.forwardedAt)+'</p>':'<p class="small" style="margin:4px 2px;color:var(--rq)">확인 후 에이전트에게 전송하면 에이전트가 결과를 볼 수 있습니다.</p>'):''))        /* A안: 매번 누르는 "답변 보내기"만 크게. 되돌리기(다시 룸체크)는 그 옆에 두되
            빨간 점선으로 성격을 갈라 놓는다 — 입력을 초기화하는 동작이라 오누름이 위험하다.
            자주 안 쓰는 계약 완료·지난 리스트는 "⋯ 더보기" 안으로 접는다. */
-        +'<div class="qbtns" style="margin-top:12px"><button class="qprimary" id="sendA">'+(req.status==='requested'?T('btn_send_ans'):T('btn_send_upd'))+'</button>'
+        +'<div class="qbtns" style="margin-top:12px"><button class="qprimary'+(req.status==='answered'?' sent':'')+'" id="sendA">'+(req.status==='requested'?T('btn_send_ans'):T('btn_send_upd'))+'</button>'
         +'<button class="qdanger" data-recheck="'+req.id+'">'+T('btn_recheck')+'</button></div>'
         +'<div class="qbtns"><button class="qghost" id="qTog">'+(ui.qOpen?T('mkq_close'):T('mkq'))+'</button>'
-        +'<button class="qghost" id="sendQ">'+T('btn_sendq')+'</button></div>'
+        +'<button class="qghost'+(req.quoteSent?' sent':'')+'" id="sendQ">'+(req.quoteSent?T('btn_sendq_done'):T('btn_sendq'))+'</button></div>'
+        +sentLines(req)
         +(ui.qOpen?quoteBuilderHTML(req):'')
         +'<button class="moreTog'+(ui.moreOpen?' open':'')+'" id="moreTog">'+(ui.moreOpen?'▾ '+T('more_close'):'⋯ '+T('more_open'))+'</button>'
         +(ui.moreOpen?'<div class="moreopen"><div class="qbtns" style="margin-top:0">'

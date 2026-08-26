@@ -94,8 +94,8 @@
   .qc-leg{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:10px 11px 11px;background:#FCFCFB;box-shadow:0 1px 3px rgba(20,32,43,.05)}
   .qc-leg .qc-dbar{margin-top:0}
   .qc-leg .qc-d{font-family:var(--mono);font-size:13.5px;color:var(--muted);font-weight:700}
-  .qc-leg .qc-h{font-size:15.5px;font-weight:800;margin-top:2px}
-  .qc-rowline{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:2px}
+  .qc-leg .qc-h{font-size:15.5px;font-weight:800;margin-top:2px;word-break:keep-all;min-width:0}
+  .qc-rowline{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:2px;flex-wrap:wrap}
   .qc-leg .qc-r{font-size:13px;color:var(--sub)}
   .qc-leg .qc-req{font-size:13px;color:var(--brand);font-weight:700;white-space:nowrap}
   .qc-price{font-size:12.5px;color:var(--sub);margin-top:3px;font-family:var(--mono)}
@@ -381,17 +381,22 @@ input[type=number]::selection{background:var(--brand);color:#fff}
 .lstitem.ls-pastitem .badge{background:var(--paper);color:var(--muted);border:1px solid var(--line)}
 
 /* 견적서 숙박기간 강조 바 */
-.qc-dbar{display:flex;align-items:center;gap:7px;background:#F1F4F2;border-left:4px solid var(--brand);border-radius:8px;padding:9px 11px;margin-top:4px}
+ /* 날짜줄 (2026-08-26) — 3박/2박 배지가 박스 밖으로 나가던 문제.
+    날짜가 nowrap 이고 배지가 flex:0 0 auto 라 좁은 폭에서 둘의 합이 박스를 넘었다
+    (360px 에서 58px, 390px 에서 32px 삐져나감). 날짜가 줄바꿈되게 풀고,
+    그래도 모자라면 배지가 아랫줄로 내려가도록 wrap 을 켠다. 밖으로는 나가지 않는다. */
+.qc-dbar{display:flex;align-items:center;flex-wrap:wrap;gap:7px;row-gap:5px;background:#F1F4F2;border-left:4px solid var(--brand);border-radius:8px;padding:9px 11px;margin-top:4px}
 .qc-dbar{background:#E9F2F2} /* 2026-08-01: color-mix 제거 — html2canvas(이미지 저장) 미지원 색상함수 파싱 오류 수정 */
 .qc-dnum{flex:0 0 auto;width:19px;height:19px;border-radius:50%;background:var(--brand);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
-.qc-dt{font-weight:800;font-size:13.5px;color:var(--ink);letter-spacing:.2px;white-space:nowrap}
+.qc-dt{font-weight:800;font-size:13.5px;color:var(--ink);letter-spacing:.2px;
+  flex:1 1 0;min-width:0;white-space:normal;word-break:keep-all}
 /* 견적서 날짜: 두 줄 대형 + IN/OUT 라벨 (2026-08-02) */
 .qc-dgrp{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
 .qc-drow2{display:flex;align-items:baseline;gap:8px}
 .qc-dlab{flex:0 0 auto;width:26px;font-size:10.5px;font-weight:800;color:var(--brand);opacity:.75;letter-spacing:.5px}
 .qc-dval{font-size:16px;font-weight:800;color:var(--ink);letter-spacing:.2px;white-space:nowrap}
 .qc-arw{color:var(--brand)}
-.qc-dn{margin-left:8px;flex:0 0 auto;background:var(--brand);color:#fff;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:800;white-space:nowrap;align-self:center}
+.qc-dn{margin-left:auto;flex:0 0 auto;background:var(--brand);color:#fff;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:800;white-space:nowrap;align-self:center}
 @media (max-width:440px){.qc-dt{font-size:12.5px}.qc-dval{font-size:15px}.qc-dn{padding:3.5px 10px;font-size:11.5px}}
 @media (max-width:340px){.qc-dt{font-size:11.5px;letter-spacing:0}.qc-dval{font-size:13.5px}.qc-dlab{width:22px;font-size:10px}}
 
@@ -857,19 +862,25 @@ button.qdelq{width:100%;margin-top:10px;padding:9px;border-radius:10px;backgroun
 .qbd-tb{width:100%;border-collapse:collapse;font-size:11.5px}
 .qbd-tb td{padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--ink)}
 .qbd-tb tr:last-child td{border-bottom:none}
+/* 견적 산출 내역 — 여기 색은 color-mix 를 쓰지 않는다 (2026-08-26)
+   이 표는 「룸체크 결과 + 견적 → 이미지」에 통째로 실린다. 크롬은 color-mix 를
+   color(srgb ...) 로 계산해 내놓는데 html2canvas 가 그 형식을 못 읽고
+   "unsupported color function color" 로 죽는다 — 이미지가 아예 안 만들어졌다.
+   같은 이유로 .qc-dbar(2026-08-01)·.ntitem.ntnew 도 고정색으로 바꿔 두었다.
+   값은 크롬이 계산한 결과를 그대로 옮긴 것이라 보이는 색은 전과 같다. */
 .qbd-h td{font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;
   letter-spacing:.3px;background:var(--paper)}
 .qbd-l{white-space:nowrap;font-weight:700}
 .qbd-n{white-space:nowrap;font-family:var(--mono);font-size:10.5px;color:var(--sub)}
 .qbd-a{text-align:right;white-space:nowrap;font-family:var(--mono);font-weight:800}
 .qbd-d{font-size:9.5px;color:var(--muted);font-weight:600;margin-top:2px}
-.qbd-s td{font-weight:800;background:color-mix(in srgb,var(--brand) 4%,var(--surface))}
+.qbd-s td{font-weight:800;background:#F2F6F5}   /* 2026-08-26: color-mix 제거 — 아래 주석 참조 */
 .qbd-tot td{font-weight:800;color:var(--brand);font-size:12.5px;
-  background:color-mix(in srgb,var(--brand) 8%,var(--surface))}
+  background:#E9F1EF}
 .qbd-k{font-size:9px;font-weight:800;border-radius:4px;padding:1px 4px}
-.qbd-base{background:color-mix(in srgb,#0B6E6B 12%,transparent);color:#0B6E6B}
+.qbd-base{background:rgba(11,110,107,.12);color:#0B6E6B}
 .qbd-add{background:var(--paper);color:var(--sub);border:1px solid var(--line)}
-.qbd-rec{background:color-mix(in srgb,#6B4E9E 12%,transparent);color:#6B4E9E}
+.qbd-rec{background:rgba(107,78,158,.12);color:#6B4E9E}
 
 /* ── 호텔 이름 빨리 찾기 목록 ─────────────────────────── */
 .hfind{position:fixed;z-index:60;left:0;top:0;

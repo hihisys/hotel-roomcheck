@@ -1977,6 +1977,39 @@ function bindAgentList(){
     if(inp.classList.contains('agentCheckDetailNote'))inp.oninput=e=>{inpData.detailNote=e.target.value;};
   });
 }
+/* ── 견적 이미지 파일 이름 (2026-08-26) ──────────────────────────
+   전에는 「견적.png」 하나로만 내려받아, 폴더에 쌓이면 견적 (1)·(2)… 가 되어
+   어느 건인지 열어 봐야 알 수 있었다. 이름만 보고 알 수 있게 바꾼다.
+
+     마이 카오락 비치 리조트 3박+로빈슨 카오락 2박 08.30~09.04 견적서 08.26.png
+     └ 호텔명 전체 · 박수 ─┘              └ 투숙 기간 ┘        └ 발행일 ┘
+
+   내부 공유용 이미지는 끝에 (내부) 를 붙여 고객용과 섞이지 않게 한다.
+   파일명에 쓸 수 없는 글자(\ / : * ? " < > |)는 빼고, 너무 길면 잘라 낸다. */
+const _md=iso=>{const d=_utc(iso);return String(d.getUTCMonth()+1).padStart(2,'0')+'.'+String(d.getUTCDate()).padStart(2,'0');};
+const _mdT=t=>{const d=new Date(t);return String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');};
+function quoteFileName(req,internal){
+  try{
+    const rows=(req.rows||[]).filter(r=>r&&(r.hotel||'').trim());
+    if(!rows.length)return internal?'룸체크견적_'+reqNo(req)+'.png':'견적.png';
+    /* 호텔명은 앱의 기준 이름(한글)을 쓴다 — 화면 언어가 바뀌어도 파일명은 그대로다 */
+    const legs=(req.rows||[]).map((row,i)=>{
+      if(!(row.hotel||'').trim())return null;
+      return row.hotel.trim()+' '+rDates(req,row,i).nights+'박';
+    }).filter(Boolean).join('+');
+    const first=rDates(req,req.rows[0],0).checkIn;
+    const last=finalOut(req);
+    const issued=_mdT(req.quoteSentAt||Date.now());
+    /* 기간·발행일은 어떤 경우에도 남긴다. 길면 호텔 목록 쪽을 줄인다
+       — 잘라내다 날짜가 사라지면 파일명을 붙인 뜻이 없어진다 */
+    const tail=' '+_md(first)+'~'+_md(last)+' 견적서 '+issued+(internal?' (내부)':'');
+    const clean=t=>t.replace(/[\\\/:*?"<>|\u0000-\u001f]/g,'').replace(/\s+/g,' ').trim();
+    let head=clean(legs);
+    const MAX=110;
+    if((head+tail).length>MAX)head=head.slice(0,Math.max(8,MAX-tail.length-1)).trim()+'…';
+    return clean(head+tail)+'.png';
+  }catch(e){ return internal?'룸체크견적_'+reqNo(req)+'.png':'견적.png'; }
+}
 /* ── 이미지 미리보기 → 저장 확인 (2026-08-25) ─────────────────────
    전에는 버튼을 누르는 순간 파일이 바로 내려받아졌다. 무엇이 저장됐는지
    열어 보기 전에는 알 수 없었고, 아이폰 사파리는 다운로드가 막혀 있어
@@ -2066,7 +2099,7 @@ function saveFullImg(req){
   document.body.appendChild(tmp);
   toast(T('t_img_making'));
   html2canvas(tmp,{scale:2,backgroundColor:'#ffffff'})
-    .then(cv=>{imgPreview(cv.toDataURL('image/png'),'룸체크견적_'+reqNo(req)+'.png');tmp.remove();})
+    .then(cv=>{imgPreview(cv.toDataURL('image/png'),quoteFileName(req,true));tmp.remove();})
     .catch(()=>{tmp.remove();toast(T('t_img_fail'));});
 }
 
@@ -2754,7 +2787,7 @@ function bindQuoteBuilder(req){
   /* ④ 비고 · 발송 */
   const qr=el('qRemark');if(qr){qr.oninput=e=>{Q.remark=e.target.value;saveDB();};qr.onchange=()=>renderApp();}
   on('qbCopy','onclick',()=>copyText(quoteText(req),T('t_qtcopied')));
-  on('qbImg','onclick',()=>saveImg('qcard'+req.id,'견적.png'));
+  on('qbImg','onclick',()=>saveImg('qcard'+req.id,quoteFileName(req,false)));
   on('fullImg','onclick',()=>saveFullImg(req));
   on('fullUrl','onclick',async()=>{
     const b=el('fullUrl');const was=b?b.textContent:'';

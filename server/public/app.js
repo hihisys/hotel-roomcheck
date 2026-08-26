@@ -2097,15 +2097,41 @@ function offscreenCopy(source,width){
   flattenColors(tmp);
   return tmp;
 }
+/* 캔버스 한 장에 담을 수 있는 크기는 기기마다 다르다. 특히 아이폰 사파리는
+   한 변 4096px · 넓이 약 1,670만 px 로 막혀 있어, 호텔이 여러 개인 요청의
+   「룸체크 결과 + 견적」이 그 한계를 넘으면 이미지가 통째로 안 만들어졌다.
+   화질을 조금 낮춰서라도 한 장으로 뽑는다 (2배 → 필요하면 최소 0.5배). */
+function safeScale(w,h){
+  const MAXSIDE=4096, MAXAREA=16777216;
+  w=Math.max(1,w); h=Math.max(1,h);
+  const s=Math.min(2, MAXSIDE/w, MAXSIDE/h, Math.sqrt(MAXAREA/(w*h)));
+  return Math.max(0.5, Math.min(2, s));
+}
+/* 이미지 만들기 한 곳으로 모은다 — 실패하면 이유를 화면에 그대로 보여 준다.
+   전에는 "이미지를 만들지 못했습니다" 한 줄뿐이라 원인을 알 수 없었다. */
+function renderToImage(tmp,name){
+  const r=tmp.getBoundingClientRect();
+  const sc=safeScale(r.width,r.height);
+  toast(T('t_img_making'));
+  return html2canvas(tmp,{scale:sc,backgroundColor:'#ffffff'})
+    .then(cv=>{
+      if(!cv||!cv.width||!cv.height)throw new Error('빈 그림 '+Math.round(r.width)+'x'+Math.round(r.height));
+      const url=cv.toDataURL('image/png');
+      if(!url||url.length<200)throw new Error('그림 데이터 없음 '+cv.width+'x'+cv.height);
+      imgPreview(url,name);
+    })
+    .catch(e=>{
+      const msg=(e&&e.message)?String(e.message):String(e);
+      toast(T('t_img_fail')+' — '+msg.slice(0,90),7000);
+      try{console.error('[이미지] 실패',{폭:Math.round(r.width),높이:Math.round(r.height),배율:sc,오류:e});}catch(_){}
+    })
+    .then(()=>{try{tmp.remove();}catch(_){}});
+}
 function saveImg(id,name){const node=document.getElementById(id);
   if(!node)return;
   if(typeof html2canvas==='undefined'){toast(T('t_img_need_net'));return;}
-  toast(T('t_img_making'));
   const w=node.getBoundingClientRect().width||370;
-  const tmp=offscreenCopy(node,w);
-  html2canvas(tmp,{scale:2,backgroundColor:'#ffffff'})
-    .then(cv=>{imgPreview(cv.toDataURL('image/png'),name);tmp.remove();})
-    .catch(e=>{tmp.remove();toast(T('t_img_fail'));try{console.error('[이미지]',e);}catch(_){}});}
+  renderToImage(offscreenCopy(node,w),name);}
 /* 견적 산출 내역 — "이 금액이 어떻게 나왔는지"를 한 표로 펼친다.
    전체 이미지에 함께 실려, 받는 사람이 근거를 되짚을 수 있다. */
 function quoteBreakdownHTML(req,q){
@@ -2151,10 +2177,7 @@ function saveFullImg(req){
   const tmp=offscreenCopy(html,370);
   tmp.style.padding='8px';
   flattenColors(tmp);                       /* padding 을 준 뒤 한 번 더 (안전) */
-  toast(T('t_img_making'));
-  html2canvas(tmp,{scale:2,backgroundColor:'#ffffff'})
-    .then(cv=>{imgPreview(cv.toDataURL('image/png'),quoteFileName(req,true));tmp.remove();})
-    .catch(e=>{tmp.remove();toast(T('t_img_fail'));try{console.error('[이미지]',e);}catch(_){}});
+  renderToImage(tmp,quoteFileName(req,true));
 }
 
 /* ================= ③ 직원 리스트 & 워크시트 ================= */
@@ -2936,7 +2959,7 @@ function renderCal(){
 }
 
 /* ================= 토스트 & 초기화 ================= */
-let _tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(_tt);_tt=setTimeout(()=>t.style.opacity='0',2000);}
+let _tt;function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(_tt);_tt=setTimeout(()=>t.style.opacity='0',ms||2000);}
 (async function init(){
   applyChrome();
   if(!await srvInit())return;

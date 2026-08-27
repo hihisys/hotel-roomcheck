@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>너바나 · 관리자</title>
-<link rel="stylesheet" href="style.css?v=20260827a" />
+<link rel="stylesheet" href="style.css?v=20260827b" />
 <style>
 :root{--brand:#54406E;--brandDark:#3F3054;--paper:#EEEAF3;--line:#DCD4E6}
 .urow{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-top:10px;background:#fff}
@@ -98,6 +98,10 @@
 /* 비밀번호 재발급 (2026-08-27) */
 .pwbox{display:none;gap:6px;margin-top:8px}
 .pwbox.on{display:flex}
+.rgrow{display:flex;align-items:center;gap:8px;margin-top:7px}
+.rglab{font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.3px;flex:0 0 auto}
+.rgsel{flex:1;min-width:0;padding:7px 9px;border:1px solid var(--line);border-radius:9px;
+  background:var(--surface);font-size:12.5px;font-weight:700;color:var(--ink);font-family:var(--sans)}
 .pwbox input{flex:1;min-width:0;padding:9px 10px;border:1px solid var(--line);border-radius:9px;
   font-size:13.5px;font-family:var(--mono);background:#fff}
 .pwbox button{flex:0 0 auto;border:none;border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:800;cursor:pointer}
@@ -185,6 +189,15 @@
       관리자는 처음 한 번만 초기 비밀번호를 정해 전달합니다. 잊었을 때는 아래 목록에서 재발급하세요.</div>
     <div class="label">역할</div>
     <select id="nrole"><option value="sreq">직원 요청자</option><option value="schk">직원 확인자</option></select>
+    <div class="label" style="margin-top:12px">관할 지역</div>
+    <select id="nregion">
+      <option value="krabi">카오락 + 푸켓</option>
+      <option value="bangkok">방콕 + 파타야</option>
+      <option value="">제한 없음 (전 지역)</option>
+    </select>
+    <p class="small" style="margin:6px 0 0;line-height:1.55">카오락 + 푸켓 = 카오락 · 푸켓 · 크라비 · 사무이 · <b>방콕</b><br>
+      방콕 + 파타야 = <b>방콕</b> · 파타야<br>
+      방콕은 양쪽 모두에 보입니다. 표에 없는 지역은 카오락 + 푸켓 담당이 맡습니다.</p>
     <div class="label" style="margin-top:12px">언어</div><select id="nlang"><option value="ko">한국어</option><option value="en">영어</option><option value="th">태국어</option></select>
     <div class="label" style="margin-top:12px">이름</div><input id="nname" placeholder="직원 이름">
     <div class="label" style="margin-top:12px">아이디 (이메일 또는 영문 아이디)</div><input id="nid" placeholder="staff01 또는 staff@nirvana.com" autocomplete="off">
@@ -261,6 +274,9 @@ const LANG_KO={ko:'한국어',en:'영어',th:'태국어'};
 let IS_SUPER=false; // 로그인한 사람이 최고관리자(hihisys)인지
 let _tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(_tt);_tt=setTimeout(()=>t.style.opacity='0',2000);}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+/* 관할지역을 정할 수 있는 역할 — 에이전트(부계정)는 지역 제한이 없다 (2026-08-27) */
+const RGROLE=r=>r==='sreq'||r==='schk'||r==='admin';
+const RGOPT=(v,lab,cur)=>'<option value="'+v+'"'+((cur||'')===v?' selected':'')+'>'+lab+'</option>';
 function row(u,withDecide){
   const dt=new Date(u.created_at);
   const when=dt.getFullYear()+'.'+String(dt.getMonth()+1).padStart(2,'0')+'.'+String(dt.getDate()).padStart(2,'0');
@@ -295,7 +311,16 @@ function row(u,withDecide){
   }
   return '<div class="urow"><div class="u1"><div><div class="nm">'+esc(u.name)+' <span class="small">· '+roleTag+'</span></div>'
     +(emailLine?'<div class="em">'+emailLine+'</div>':'')
-    +'<div class="meta">언어 '+(LANG_KO[u.lang]||u.lang)+' · 가입 '+when+idLine+(u.tg?' · 📲 텔레그램 연결됨':'')+'</div></div>'
+    +'<div class="meta">언어 '+(LANG_KO[u.lang]||u.lang)+' · 가입 '+when+idLine+(u.tg?' · 📲 텔레그램 연결됨':'')+'</div>'
+    /* 관할지역은 골라서 바로 저장한다 — 버튼을 한 번 더 누르게 하지 않는다 (2026-08-27) */
+    +(RGROLE(u.role)
+      ?'<div class="rgrow"><span class="rglab">관할</span>'
+        +'<select class="rgsel" data-rg="'+u.id+'">'
+          +RGOPT('krabi','카오락 + 푸켓',u.region)
+          +RGOPT('bangkok','방콕 + 파타야',u.region)
+          +RGOPT('','제한 없음 (전 지역)',u.region)
+        +'</select></div>':'')
+    +'</div>'
     +'<span class="badge st-'+u.status+'">'+(ST_KO[u.status]||u.status)+'</span></div>'
     +(btns?'<div class="ubtns">'+btns+'</div>':'')
     /* 비밀번호 재발급 — 저장된 것은 해시라 원래 값을 볼 수 없다.
@@ -662,6 +687,18 @@ function bindActions(){
     load();
   });
   /* 비밀번호 재발급 (2026-08-27) */
+  /* 관할지역 — 고르는 즉시 저장 (2026-08-27) */
+  document.querySelectorAll('[data-rg]').forEach(sel=>sel.onchange=async()=>{
+    const id=Number(sel.dataset.rg), rg=sel.value;
+    try{
+      const r=await fetch('api/admin/setregion',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id:id,region:rg})});
+      const jj=await r.json();
+      if(jj.ok){toast('관할 지역을 바꿨습니다: '+(sel.options[sel.selectedIndex].textContent));load();return;}
+      toast(jj.error==='external_account'?'니르바나에서 관리하는 계정입니다':'바꾸지 못했습니다');
+      load();
+    }catch(e){toast('서버에 연결할 수 없습니다');}
+  });
   document.querySelectorAll('[data-pw]').forEach(b=>b.onclick=()=>{
     const box=document.getElementById('pwb-'+b.dataset.pw);
     if(!box)return;
@@ -700,7 +737,9 @@ document.getElementById('ncreate').onclick=async()=>{
   if(!name||!id||pw.length<6){toast('이름·아이디·비밀번호(6자 이상)를 확인해주세요');return;}
   try{
     const r=await fetch('api/admin/create-user',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name,email:id,password:pw,role:nrole,lang:(document.getElementById('nlang')||{}).value||''})});
+      body:JSON.stringify({name,email:id,password:pw,role:nrole,
+        lang:(document.getElementById('nlang')||{}).value||'',
+        region:(document.getElementById('nregion')||{}).value||''})});
     const j=await r.json();
     if(j.ok){toast('계정을 발행했습니다: '+id);
       document.getElementById('nname').value='';document.getElementById('nid').value='';document.getElementById('npw').value='';

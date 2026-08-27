@@ -96,29 +96,43 @@ function isPendingForChecker(array $p): bool {
 function isPendingForRequester(array $p): bool {
   return !empty($p['quoteRequested']) && empty($p['quoteSent']);
 }
-/* ── 관할권역 (2026-08-24) ──────────────────────────────────────────────
+/* ── 관할권역 (2026-08-24, 2026-08-27 개정) ────────────────────────────
    직원의 region 은 단일 지역이 아니라 권역이다 (profile.html 참조).
-     krabi   = 카오락 + 푸켓 + 크라비
-     bangkok = 방콕 + 파타야
-   호텔의 지역(rows[].region)에서 권역을 뽑아 낸다. 표에 없는 지역
-   (사무이·치앙마이 등)은 푸켓·카오락 담당(krabi)이 맡는다.
+
+     krabi   「카오락 + 푸켓」 = 카오락 · 푸켓 · 크라비 · 사무이 · 방콕
+     bangkok 「방콕 + 파타야」 = 방콕 · 파타야
+
+   ⚠️ 방콕은 두 권역 모두에 속한다 (2026-08-27, 사용자 결정).
+      방콕 호텔이 들어간 요청은 양쪽 담당자에게 모두 보이고 알림도 양쪽에 간다.
+      그래서 한 지역이 권역 하나가 아니라 여럿을 돌려준다 — regionZone() 이
+      문자열 하나를 돌려주던 것을 regionZones() 배열로 바꾼 이유다.
+
+   표에 없는 지역(치앙마이 등)은 「카오락 + 푸켓」 담당이 맡는다 (사용자 결정 4번).
 
    전에는 요청에 region 을 넣는 코드가 없어 $p['region'] 이 늘 비었고,
    그 결과 직원이 '본인이 만든 요청'만 보였다. 이제 payload 를 읽을 때마다
    행에서 직접 계산하므로 예전에 저장된 요청도 그대로 살아난다. */
 const ZONE_DEFAULT = 'krabi';
-function regionZone(?string $region): string {
+function regionZones(?string $region): array {
   $r = strtolower(trim((string)$region));
   $r = str_replace([' ', '-', '_'], '', $r);
   static $map = [
-    'phuket' => 'krabi',   '푸켓'   => 'krabi',
-    'khaolak' => 'krabi',  '카오락' => 'krabi',
-    'krabi' => 'krabi',    '크라비' => 'krabi',
-    'bangkok' => 'bangkok','방콕'   => 'bangkok',
-    'pattaya' => 'bangkok','파타야' => 'bangkok',
+    'phuket'   => ['krabi'],            '푸켓'   => ['krabi'],
+    'khaolak'  => ['krabi'],            '카오락' => ['krabi'],
+    'krabi'    => ['krabi'],            '크라비' => ['krabi'],
+    'samui'    => ['krabi'],            '사무이' => ['krabi'],
+    'kohsamui' => ['krabi'],            '코사무이' => ['krabi'],
+    'bangkok'  => ['krabi', 'bangkok'], '방콕'   => ['krabi', 'bangkok'],
+    'pattaya'  => ['bangkok'],          '파타야' => ['bangkok'],
   ];
-  if ($r === '' || $r === '전체' || $r === 'all') return '';   // 지역 미지정 → 권역 없음
-  return $map[$r] ?? ZONE_DEFAULT;                            // 표에 없으면 krabi 담당
+  if ($r === '' || $r === '전체' || $r === 'all') return [];   // 지역 미지정 → 권역 없음
+  return $map[$r] ?? [ZONE_DEFAULT];                          // 표에 없으면 카오락+푸켓 담당
+}
+/* 예전 이름 — 한 지역이 여러 권역에 속할 수 있게 되면서 배열이 기준이 되었다.
+   남아 있는 호출부를 위해 첫 권역만 돌려준다. 새 코드는 regionZones() 를 쓴다. */
+function regionZone(?string $region): string {
+  $z = regionZones($region);
+  return $z ? $z[0] : '';
 }
 /* 요청 한 건이 걸쳐 있는 권역 전부. 기본 호텔과 추가 호텔을 함께 본다
    (다중호텔 숙박이면 카오락→방콕처럼 두 권역에 걸칠 수 있다). */
@@ -126,12 +140,10 @@ function requestZones(array $p): array {
   $zones = [];
   foreach (($p['rows'] ?? []) as $row) {
     if (!is_array($row)) continue;
-    $z = regionZone($row['region'] ?? null);
-    if ($z !== '') $zones[$z] = true;
+    foreach (regionZones($row['region'] ?? null) as $z) $zones[$z] = true;
     foreach (($row['checkRequests'] ?? []) as $c) {
       if (!is_array($c)) continue;
-      $z = regionZone($c['region'] ?? null);
-      if ($z !== '') $zones[$z] = true;
+      foreach (regionZones($c['region'] ?? null) as $z) $zones[$z] = true;
     }
   }
   if (!$zones) $zones[ZONE_DEFAULT] = true;   /* 어느 행에도 지역이 없으면 기본 담당에게 */
@@ -144,10 +156,14 @@ function zoneVisible(?string $userRegion, array $p): bool {
   return in_array($userRegion, requestZones($p), true);
 }
 
-/* 권한 기반 요청 필터링 (2026-07-22): 현재 사용자가 볼 수 있는 요청만 반환
+/* 권한 기반 요청 필터링 (2026-07-22, 2026-08-27 개정)
    - 최고관리자(super): 전체 요청
-   - 일반 사용자: 본인 관할권역에 걸친 요청 + 본인이 요청한 것 (관할지역 미설정이면 전부)
-   - 에이전트: 모든 요청 (지역 제한 없음) */
+   - 관리자·직원(admin/sreq/schk): 본인 관할권역에 걸친 요청 + 본인이 등록한 것
+                                   (관할지역을 정하지 않았으면 전부)
+   - 에이전트: 모든 요청 (지역 제한 없음)
+
+   2026-08-27 — 전에는 일반 관리자가 sreq/schk 목록에 들어가지 못해
+   '본인이 등록한 것'만 보였다. 관리자도 직원과 같은 규칙을 따르게 고쳤다 (사용자 결정 3번). */
 function allRequests(PDO $pdo, ?array $currentUser = null): array {
   $out = [];
   $isSuperAdmin = $currentUser && $currentUser['role'] === 'admin' &&
@@ -175,15 +191,15 @@ function allRequests(PDO $pdo, ?array $currentUser = null): array {
       continue;
     }
 
-    // 직원(sreq/schk): 본인이 요청한 것은 항상 포함
+    // 관리자·직원: 본인이 등록한 것은 관할지역과 무관하게 항상 포함
     $createdBy = (int)($r['created_by'] ?? 0);
     if ($createdBy > 0 && $createdBy === $userId) {
       $out[] = $p;
       continue;
     }
 
-    // 직원: 본인 관할권역에 걸친 요청만 포함 (관할지역 미설정이면 전부)
-    if (in_array($userRole, ['sreq', 'schk'], true)) {
+    // 관리자·직원: 본인 관할권역에 걸친 요청만 포함 (관할지역 미설정이면 전부)
+    if (in_array($userRole, ['admin', 'sreq', 'schk'], true)) {
       if (zoneVisible($userRegion, $p)) {
         $out[] = $p;
       }

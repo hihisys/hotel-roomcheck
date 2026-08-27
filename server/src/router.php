@@ -398,6 +398,35 @@ function route(string $path, string $method): void {
       jsonOut(['ok' => true]);
     }
   }
+  /* 비밀번호 재발급 (2026-08-27)
+     직원은 자기 비밀번호를 회원정보에서 직접 바꾼다. 그러다 잊으면 아무도 모른다 —
+     저장된 것은 해시라 관리자도 원래 값을 볼 수 없다. 그래서 되돌리는 대신
+     관리자가 임시 비밀번호를 새로 정해 전달하고, 직원이 다시 바꾸게 한다.
+     에이전트(부계정)는 대상이 아니다 — 그쪽 비밀번호는 니르바나에서만 발급한다. */
+  if ($path === 'admin/reset-password' && $method === 'POST') {
+    $me = requireAdmin();
+    $id = (int)($in['id'] ?? 0);
+    $pw = (string)($in['password'] ?? '');
+    if (!$id || strlen($pw) < 6) jsonOut(['error' => 'invalid_input'], 422);
+
+    $st = $pdo->prepare("SELECT id,email,role,agency_idx FROM users WHERE id=?");
+    $st->execute([$id]);
+    $t = $st->fetch();
+    if (!$t) jsonOut(['error' => 'not_found'], 404);
+
+    /* 니르바나가 관리하는 계정은 손대지 않는다 */
+    if ($t['role'] === 'agent' || !empty($t['agency_idx'])) jsonOut(['error' => 'external_account'], 403);
+    if (!in_array($t['role'], ['sreq', 'schk', 'admin'], true)) jsonOut(['error' => 'not_staff'], 403);
+
+    /* 최고관리자 계정은 본인만 바꿀 수 있다 */
+    $superEmail = strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local'));
+    $isSuperTarget = (strtolower((string)$t['email']) === $superEmail);
+    if ($isSuperTarget && (int)$me['id'] !== (int)$t['id']) jsonOut(['error' => 'forbidden_super'], 403);
+
+    $pdo->prepare("UPDATE users SET pass_hash=? WHERE id=?")
+        ->execute([password_hash($pw, PASSWORD_DEFAULT), $id]);
+    jsonOut(['ok' => true]);
+  }
   if ($path === 'admin/setrole' && $method === 'POST') {
     requireAdmin();
     $id = (int)($in['id'] ?? 0);

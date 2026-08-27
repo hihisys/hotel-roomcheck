@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>너바나 · 관리자</title>
-<link rel="stylesheet" href="style.css?v=20260826d" />
+<link rel="stylesheet" href="style.css?v=20260827a" />
 <style>
 :root{--brand:#54406E;--brandDark:#3F3054;--paper:#EEEAF3;--line:#DCD4E6}
 .urow{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-top:10px;background:#fff}
@@ -12,8 +12,11 @@
 .urow .nm{font-weight:800;font-size:14.5px}
 .urow .em{font-size:12px;color:var(--muted);font-family:var(--mono);margin-top:2px}
 .urow .meta{font-size:11.5px;color:var(--sub);margin-top:4px}
-.ubtns{display:flex;gap:7px;margin-top:9px}
-.ubtns button{flex:1;border:none;border-radius:9px;padding:10px;font-size:13px;font-weight:800;cursor:pointer}
+/* 버튼이 6개까지 늘어난다 (2026-08-27 비밀번호 재발급 추가) — 한 줄에 밀어 넣으면
+   폰 폭에서 「관 리 자 승 격」처럼 글자가 세로로 쪼개진다. 넘치면 아랫줄로 내린다. */
+.ubtns{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.ubtns button{flex:1 1 auto;min-width:92px;border:none;border-radius:9px;padding:10px 8px;
+  font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap}
 .bt-ok{background:#2F7A55;color:#fff}.bt-no{background:var(--soBg);color:var(--so)}.bt-del{background:var(--paper);color:var(--muted);border:1px solid var(--line) !important}
 .st-pending{background:var(--rqBg);color:var(--rq)}.st-approved{background:var(--avBg);color:var(--av)}.st-rejected{background:var(--soBg);color:var(--so)}
 #nname,#nid,#npw{margin-top:2px}
@@ -51,6 +54,56 @@
 .amenu2{display:flex;gap:6px;margin:0 0 14px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:4px}
 .amenu2 button{flex:1;border:none;background:none;padding:11px 6px;border-radius:9px;font-size:13.5px;font-weight:800;color:var(--muted);cursor:pointer;white-space:nowrap}
 .amenu2 button.on{background:var(--brand);color:#fff}
+
+/* ===== 에이전트 관리 (2026-08-27) ===== */
+.agnote{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 11px;
+  font-size:11.5px;line-height:1.55;color:var(--sub);font-weight:600}
+.agnote b{color:var(--brand);font-weight:800}
+.agsearch{position:relative;margin-top:12px}
+.agsearch .agsicon{position:absolute;left:11px;top:50%;transform:translateY(-50%);display:flex;pointer-events:none}
+.agsearch input{width:100%;padding:9px 34px 9px 34px;border:1px solid var(--line);border-radius:9px;
+  background:var(--surface);font-size:14.5px;font-family:var(--sans);color:var(--ink);outline:none;-webkit-appearance:none}
+.agsearch input::-webkit-search-cancel-button{display:none}
+.agsearch button{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:22px;height:22px;
+  border:none;border-radius:50%;background:var(--line);color:var(--sub);font-size:11px;font-weight:800;
+  cursor:pointer;line-height:1;display:none;align-items:center;justify-content:center;padding:0}
+.agsearch.has button{display:flex}
+.agpend{display:flex;align-items:center;gap:9px;background:var(--rqBg);border:1px solid #E8D6AF;
+  border-radius:11px;padding:11px 12px;margin-top:11px}
+.agpend .n{font-size:17px;font-weight:800;color:var(--rq)}
+.agpend .t{flex:1;font-size:12.5px;font-weight:700;color:#8A5F06}
+.agpend button{background:var(--brand);color:#fff;border:none;border-radius:9px;padding:8px 13px;
+  font-size:12.5px;font-weight:800;cursor:pointer}
+.agmeta{display:flex;align-items:center;gap:6px;margin-top:14px;font-size:11.5px;font-weight:700;color:var(--muted)}
+.agsort{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;font-weight:700;color:var(--muted)}
+.agorg{border:1px solid var(--line);border-radius:12px;background:#fff;margin-top:10px;overflow:hidden}
+.agorghd{display:flex;align-items:center;gap:9px;padding:12px 12px;cursor:pointer;background:none;border:none;
+  width:100%;text-align:left;font-family:var(--sans)}
+.agorghd .chev{flex:0 0 auto;display:flex;transition:transform .15s}
+.agorg.open .agorghd .chev{transform:rotate(90deg)}
+.agorgnm{font-weight:800;font-size:14.5px;color:var(--ink)}
+.agorgsub{font-size:11.5px;color:var(--sub);margin-top:3px}
+.agorgn{font-size:12px;font-weight:800;color:var(--brand);font-family:var(--mono)}
+.agkids{border-top:1px solid var(--line);background:#F7F5FA;padding:6px 10px 10px;display:none}
+.agorg.open .agkids{display:block}
+.agp{padding:9px 4px;border-bottom:1px solid #E6E0EE}
+.agp:last-child{border-bottom:none}
+.agptop{display:flex;align-items:center;gap:8px}
+.agpnm{font-size:13.5px;font-weight:700}
+.agpid{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+.agpbtns{display:flex;gap:6px;margin-top:8px}
+.agpbtns button{flex:1;border:none;border-radius:8px;padding:8px;font-size:12px;font-weight:800;cursor:pointer}
+.hlq{background:#EFE6B8;border-radius:3px;padding:0 1px}
+.agempty{font-size:12.5px;color:var(--muted);font-weight:700;padding:16px 4px;text-align:center}
+/* 비밀번호 재발급 (2026-08-27) */
+.pwbox{display:none;gap:6px;margin-top:8px}
+.pwbox.on{display:flex}
+.pwbox input{flex:1;min-width:0;padding:9px 10px;border:1px solid var(--line);border-radius:9px;
+  font-size:13.5px;font-family:var(--mono);background:#fff}
+.pwbox button{flex:0 0 auto;border:none;border-radius:9px;padding:9px 12px;font-size:12.5px;font-weight:800;cursor:pointer}
+.bt-pw{background:#EDE9F6;color:#54406E}
+.bt-pwok{background:var(--brand);color:#fff}
+.bt-pwno{background:var(--paper);color:var(--muted);border:1px solid var(--line) !important}
 
 /* ===== 휴무일 관리 (2026-07-21) — 기존 .calhead/.calnav/.calgrid/.cwd/.cd 글로벌 클래스 재사용 */
 .offview{margin-top:4px}
@@ -104,13 +157,34 @@
   </header>
   <div class="amenu2" id="adminMenu">
     <button data-pg="stats" class="on">통계</button>
-    <button data-pg="accounts">직원 계정 발행</button>
-    <button data-pg="off">직원 휴무일</button>
+    <button data-pg="agents">에이전트</button>
+    <button data-pg="accounts">직원 계정</button>
+    <button data-pg="off">휴무일</button>
   </div>
+  <div id="pgAgents" class="apage" style="display:none">
+  <section class="card">
+    <h3 style="margin:0 0 8px;font-size:16px;font-weight:800">에이전트 관리</h3>
+    <div class="agnote">에이전트 아이디·비밀번호는 <b>니르바나에서만 발급</b>합니다.
+      관리자는 만들거나 바꾸지 않고, 이용 여부만 정합니다.</div>
+    <div class="agsearch">
+      <span class="agsicon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5C6B72" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      </span>
+      <input id="agQ" type="search" placeholder="이름 · 회사 · 아이디로 찾기" autocomplete="off">
+      <button id="agClear" type="button" title="지우기">✕</button>
+    </div>
+    <div id="agPend"></div>
+    <div id="agMeta"></div>
+    <div id="agList"></div>
+  </section>
+  </div>
+
   <div id="pgAccounts" class="apage" style="display:none">
   <section class="card"><h3 style="margin:0 0 8px;font-size:16px;font-weight:800">직원 계정 발행</h3>
+    <div class="agnote" style="margin-bottom:12px">직원의 <b>비밀번호는 본인이 회원정보에서 바꿉니다.</b>
+      관리자는 처음 한 번만 초기 비밀번호를 정해 전달합니다. 잊었을 때는 아래 목록에서 재발급하세요.</div>
     <div class="label">역할</div>
-    <div class="seg" id="nrole"><button data-r="sreq" class="on">직원 요청자</button><button data-r="schk">직원 확인자</button></div>
+    <select id="nrole"><option value="sreq">직원 요청자</option><option value="schk">직원 확인자</option></select>
     <div class="label" style="margin-top:12px">언어</div><select id="nlang"><option value="ko">한국어</option><option value="en">영어</option><option value="th">태국어</option></select>
     <div class="label" style="margin-top:12px">이름</div><input id="nname" placeholder="직원 이름">
     <div class="label" style="margin-top:12px">아이디 (이메일 또는 영문 아이디)</div><input id="nid" placeholder="staff01 또는 staff@nirvana.com" autocomplete="off">
@@ -118,7 +192,9 @@
     <button class="cta" id="ncreate">계정 발행</button>
     <p class="small" style="margin:8px 0 0">발행 즉시 승인 상태로 로그인할 수 있습니다. 아이디·비밀번호를 직원에게 전달하세요. 비밀번호는 직원이 회원정보에서 직접 변경할 수 있습니다.</p>
   </section>
-  <section class="card"><h3 style="margin:0 0 4px;font-size:16px;font-weight:800">전체 계정</h3><div class="seg" id="acctTabs" style="margin:8px 0"><button data-t="staff" class="on">직원</button><button data-t="agent">에이전시</button></div><div id="all"></div></section>
+  <section class="card"><h3 style="margin:0 0 4px;font-size:16px;font-weight:800">직원 계정</h3>
+    <p class="small" style="margin:0 0 4px">에이전시 계정은 위 메뉴의 <b style="color:var(--brand)">에이전트</b>에서 관리합니다.</p>
+    <div id="all"></div></section>
   </div>
   <div id="pgStats" class="apage">
   <section class="card"><h3 style="margin:0 0 6px;font-size:16px;font-weight:800">통계</h3>
@@ -209,6 +285,7 @@ function row(u,withDecide){
     btns+='<button class="bt-del" data-a="delete" data-id="'+u.id+'">삭제</button>';
     if(IS_SUPER&&u.status==='approved'&&(u.role==='sreq'||u.role==='schk'))btns+='<button class="bt-promote" data-a="promote" data-id="'+u.id+'">⭐ 관리자 승격</button>';
     if(u.role==='sreq'||u.role==='schk'){btns+='<button class="bt-role" data-a="setrole" data-to="'+(u.role==='sreq'?'schk':'sreq')+'" data-id="'+u.id+'">'+(u.role==='sreq'?'확인자로 변경':'요청자로 변경')+'</button>';
+      btns+='<button class="bt-pw" data-pw="'+u.id+'">🔑 비밀번호 재발급</button>';
       if(u.tg)btns+='<button class="bt-no" data-a="tgreset" data-id="'+u.id+'">📲 텔레그램 연결 해제</button>';
       else btns+='<button class="bt-ok" data-a="tglink" data-id="'+u.id+'">📲 텔레그램 연결</button>';
     }
@@ -221,6 +298,14 @@ function row(u,withDecide){
     +'<div class="meta">언어 '+(LANG_KO[u.lang]||u.lang)+' · 가입 '+when+idLine+(u.tg?' · 📲 텔레그램 연결됨':'')+'</div></div>'
     +'<span class="badge st-'+u.status+'">'+(ST_KO[u.status]||u.status)+'</span></div>'
     +(btns?'<div class="ubtns">'+btns+'</div>':'')
+    /* 비밀번호 재발급 — 저장된 것은 해시라 원래 값을 볼 수 없다.
+       되돌리는 대신 임시 비밀번호를 새로 정해 전달하고, 직원이 다시 바꾸게 한다 (2026-08-27) */
+    +((u.role==='sreq'||u.role==='schk')
+      ?'<div class="pwbox" id="pwb-'+u.id+'">'
+        +'<input type="text" id="pwv-'+u.id+'" placeholder="새 임시 비밀번호 (6자 이상)" autocomplete="off">'
+        +'<button class="bt-pwok" data-pwok="'+u.id+'">설정</button>'
+        +'<button class="bt-pwno" data-pwno="'+u.id+'">취소</button>'
+      +'</div>':'')
     +'</div>';
 }
 /* ===== 휴무일 관리 (2026-07-21): 확인자 도구 — 주간/월별 현황 + 임의 직원 휴일 등록
@@ -426,6 +511,124 @@ function renderStats(){
   const bd=document.getElementById('statBody');if(bd)bd.innerHTML=head+body;
   document.querySelectorAll('#statTab button').forEach(b=>{b.classList.toggle('on',b.dataset.st===statTab);b.onclick=()=>{statTab=b.dataset.st;renderStats();};});
 }
+
+/* ═══════════ 에이전트 관리 (2026-08-27) ═══════════
+   에이전시 회사로 묶고 그 안에 부계정(담당자)을 넣는다 — 소속 관계가 화면 구조 그대로 보인다.
+   회사가 늘어나면 접힌 목록이 길어지므로 위쪽 검색으로 바로 찾게 한다.
+   회사명은 users.agency_parent_name 이다. 그 부계정이 한 번 로그인해야 채워지므로,
+   비어 있는 계정은 「(회사 미지정)」으로 모아 둔다. */
+let AGUSERS=[], AGQ='', AGOPEN=new Set();
+const AGNONE='(회사 미지정)';
+/* 이름순 — 한글 ㄱㄴㄷ 이 먼저, 그다음 영문 A·B·C.
+   app.js 의 nameSort 와 같은 방식이다 (admin.html 은 app.js 를 불러오지 않아 따로 둔다) */
+const agSort=(a,b)=>String(a||'').localeCompare(String(b||''),'ko',{numeric:true,sensitivity:'base'});
+const agNorm=t=>String(t||'').toLowerCase().replace(/\s+/g,'');
+function agHL(text,q){
+  const t=String(text||'');
+  if(!q)return esc(t);
+  const i=agNorm(t).indexOf(agNorm(q));
+  if(i<0)return esc(t);
+  /* 공백을 지운 위치라 원문 위치와 다를 수 있다 — 원문에서 다시 찾아 표시한다 */
+  const j=t.toLowerCase().indexOf(q.toLowerCase());
+  if(j<0)return esc(t);
+  return esc(t.slice(0,j))+'<span class="hlq">'+esc(t.slice(j,j+q.length))+'</span>'+esc(t.slice(j+q.length));
+}
+function agOrgOf(u){return String(u.agency_parent_name||'').trim()||AGNONE;}
+function agMatch(u,q){
+  if(!q)return true;
+  const n=agNorm(q);
+  return agNorm(u.name).includes(n)||agNorm(agOrgOf(u)).includes(n)||agNorm(u.agency_login_id).includes(n);
+}
+function agOrgMatch(org,q){return !q||agNorm(org).includes(agNorm(q));}
+function agPerson(u,q){
+  const st=u.status==='approved'?'이용 중':(u.status==='pending'?'대기':'중지됨');
+  const cls=u.status==='approved'?'st-approved':(u.status==='pending'?'st-pending':'st-rejected');
+  let btns='';
+  if(u.status==='approved')btns+='<button class="bt-no" data-a="reject" data-id="'+u.id+'">이용 중지</button>';
+  else btns+='<button class="bt-ok" data-a="approve" data-id="'+u.id+'">✓ 승인</button>';
+  btns+='<button class="bt-del" data-a="delete" data-id="'+u.id+'">삭제</button>';
+  return '<div class="agp">'
+    +'<div class="agptop"><div style="flex:1;min-width:0">'
+      +'<div class="agpnm">'+agHL(u.name,q)+'</div>'
+      +(u.agency_login_id?'<div class="agpid">'+agHL(u.agency_login_id,q)+'</div>':'')
+    +'</div><span class="badge '+cls+'">'+st+'</span></div>'
+    +'<div class="agpbtns">'+btns+'</div>'
+  +'</div>';
+}
+function renderAgents(){
+  const q=AGQ.trim();
+  const all=AGUSERS.filter(u=>u.role==='agent');
+  const pend=all.filter(u=>u.status==='pending');
+
+  /* 신규 대기 띠 — 검색 중에는 숨긴다 (지금 보고 있는 것과 섞이면 헷갈린다) */
+  const pe=document.getElementById('agPend');
+  pe.innerHTML=(!q&&pend.length)
+    ?'<div class="agpend"><span class="n">'+pend.length+'</span>'
+      +'<span class="t">신규 등록 대기</span>'
+      +'<button type="button" id="agPendGo">보기</button></div>'
+    :'';
+
+  /* 회사별로 묶는다 */
+  const groups={};
+  all.forEach(u=>{const g=agOrgOf(u);(groups[g]=groups[g]||[]).push(u);});
+  const orgs=Object.keys(groups).sort((a,b)=>{
+    if(a===AGNONE)return 1; if(b===AGNONE)return -1;   /* 미지정은 늘 맨 아래 */
+    return agSort(a,b);
+  });
+
+  const me=document.getElementById('agMeta');
+  const li=document.getElementById('agList');
+  let shown=0, orgShown=0, html='';
+
+  orgs.forEach(org=>{
+    const people=groups[org].slice().sort((a,b)=>agSort(a.name,b.name));
+    const orgHit=agOrgMatch(org,q);
+    /* 회사 이름이 걸리면 그 회사 사람 전부, 아니면 이름·아이디가 걸린 사람만 */
+    const kids=q?(orgHit?people:people.filter(u=>agMatch(u,q))):people;
+    if(q&&!kids.length)return;
+    orgShown++; shown+=kids.length;
+    const open=q?true:AGOPEN.has(org);        /* 검색 중에는 전부 펴서 보여 준다 */
+    const sub=q?('담당자 '+people.length+'명 중 '+kids.length+'명 일치'):('담당자 '+people.length+'명');
+    html+='<div class="agorg'+(open?' open':'')+'" data-org="'+esc(org)+'">'
+      +'<button class="agorghd" type="button" data-orgtog="'+esc(org)+'">'
+        +'<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#54406E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>'
+        +'<span style="flex:1;min-width:0"><span class="agorgnm">'+agHL(org,q)+'</span>'
+          +'<span class="agorgsub" style="display:block">'+sub+'</span></span>'
+        +'<span class="agorgn">'+kids.length+'</span>'
+      +'</button>'
+      +'<div class="agkids">'+kids.map(u=>agPerson(u,q)).join('')+'</div>'
+    +'</div>';
+  });
+
+  me.innerHTML=q
+    ?'<div class="agmeta"><span style="color:var(--brand);font-weight:800">'+shown+'명</span>'
+      +'<span>·</span><span>회사 '+orgShown+'곳</span><span style="flex:1"></span>'
+      +'<span style="font-size:11px">찾으면 회사가 자동으로 펴집니다</span></div>'
+    :'<div class="agmeta">에이전시 '+orgs.length+' · 담당자 '+all.length+'</div>'
+     +'<div class="agsort">'
+      +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5C6B72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M7 20l-3-3M7 4l3 3"></path><path d="M13 6h8M13 12h6M13 18h4"></path></svg>'
+      +'<span>이름순 — 한글 ㄱㄴㄷ 먼저, 그다음 영문 A·B·C</span></div>';
+  li.innerHTML=html||'<div class="agempty">'+(q?'찾는 계정이 없습니다':'에이전트 계정이 없습니다')+'</div>';
+
+  document.querySelectorAll('[data-orgtog]').forEach(b=>b.onclick=()=>{
+    const o=b.dataset.orgtog;
+    AGOPEN.has(o)?AGOPEN.delete(o):AGOPEN.add(o);
+    renderAgents();
+  });
+  const pg=document.getElementById('agPendGo');
+  if(pg)pg.onclick=()=>{const el=document.getElementById('agQ');if(el){el.value='';}AGQ='';
+    AGOPEN=new Set(pend.map(agOrgOf));renderAgents();
+    const first=document.querySelector('.agorg.open');if(first)first.scrollIntoView({behavior:'smooth',block:'center'});};
+  bindActions();
+}
+(function(){
+  const q=document.getElementById('agQ'), c=document.getElementById('agClear');
+  if(!q)return;
+  const paint=()=>{q.parentElement.classList.toggle('has',!!q.value)};
+  q.oninput=()=>{AGQ=q.value;paint();renderAgents();};
+  if(c)c.onclick=()=>{q.value='';AGQ='';paint();renderAgents();q.focus();};
+})();
+
 async function load(){
   let r;
   try{const me=await(await fetch('api/me',{cache:'no-store'})).json();IS_SUPER=!!(me.user&&me.user.super);
@@ -434,8 +637,17 @@ async function load(){
   if(r.status===401||r.status===403){location.href='login.html';return;}
   const j=await r.json();
   const pend=j.users.filter(u=>u.status==='pending');
-  (function(){window.__atab=window.__atab||'staff';var stf=j.users.filter(function(u){return u.role!=='agent';});var ags=j.users.filter(function(u){return u.role==='agent';});var cur=window.__atab==='agent'?ags:stf;document.querySelectorAll('#acctTabs button').forEach(function(b){b.classList.toggle('on',b.dataset.t===window.__atab);b.onclick=function(){window.__atab=b.dataset.t;load();};});document.getElementById('all').innerHTML=cur.length?cur.map(function(u){return row(u,false);}).join(''):'<p class="small" style="margin:6px 0">계정 없음</p>';})();
+  /* 직원 계정 목록 — 에이전시 계정은 「에이전트」 화면에서 다룬다 (2026-08-27) */
+  const staff=j.users.filter(u=>u.role!=='agent');
+  document.getElementById('all').innerHTML=staff.length
+    ?staff.map(u=>row(u,false)).join('')
+    :'<p class="small" style="margin:6px 0">계정 없음</p>';
+  AGUSERS=j.users;
+  renderAgents();
   renderOffRoster(j.users);
+  bindActions();
+}
+function bindActions(){
   document.querySelectorAll('[data-a]').forEach(b=>b.onclick=async()=>{
     if(b.dataset.a==='delete'&&!confirm('이 계정을 삭제할까요?'))return;
     if(b.dataset.a==='promote'&&!confirm('이 계정을 관리자로 승격할까요? 승격 시 에이전트·직원 승인/취소 권한을 갖습니다.'))return;
@@ -449,11 +661,38 @@ async function load(){
     toast(j2.ok?({approve:'승인했습니다',reject:'거절/중지 처리했습니다',delete:'삭제했습니다',promote:'관리자로 승격했습니다',demote:'관리자를 해제했습니다'}[b.dataset.a]):(j2.error==='forbidden'?'권한이 없습니다 (최고관리자만 가능)':(j2.error==='protected'?'최고관리자 계정은 변경할 수 없습니다':'처리하지 못했습니다')));
     load();
   });
+  /* 비밀번호 재발급 (2026-08-27) */
+  document.querySelectorAll('[data-pw]').forEach(b=>b.onclick=()=>{
+    const box=document.getElementById('pwb-'+b.dataset.pw);
+    if(!box)return;
+    document.querySelectorAll('.pwbox.on').forEach(x=>{if(x!==box)x.classList.remove('on');});
+    box.classList.toggle('on');
+    if(box.classList.contains('on')){const i=document.getElementById('pwv-'+b.dataset.pw);if(i){i.value='';i.focus();}}
+  });
+  document.querySelectorAll('[data-pwno]').forEach(b=>b.onclick=()=>{
+    const box=document.getElementById('pwb-'+b.dataset.pwno);if(box)box.classList.remove('on');
+  });
+  document.querySelectorAll('[data-pwok]').forEach(b=>b.onclick=async()=>{
+    const id=Number(b.dataset.pwok);
+    const inp=document.getElementById('pwv-'+id);
+    const pw=inp?inp.value.trim():'';
+    if(pw.length<6){toast('비밀번호는 6자 이상이어야 합니다');if(inp)inp.focus();return;}
+    if(!confirm('이 직원의 비밀번호를 새로 정할까요? 예전 비밀번호는 쓸 수 없게 됩니다.'))return;
+    try{
+      const r=await fetch('api/admin/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({id:id,password:pw})});
+      const jj=await r.json();
+      if(jj.ok){toast('새 비밀번호를 정했습니다. 직원에게 전달하세요 — 직원이 회원정보에서 다시 바꿉니다');load();return;}
+      toast(jj.error==='external_account'?'니르바나에서 관리하는 계정입니다'
+        :(jj.error==='forbidden_super'?'최고관리자 계정은 본인만 바꿀 수 있습니다':'변경하지 못했습니다'));
+    }catch(e){toast('서버에 연결할 수 없습니다');}
+  });
 }
 /* 직원 계정 발행 (2026-07-17) */
-let nrole='sreq';
-document.querySelectorAll('#nrole button').forEach(b=>b.onclick=()=>{nrole=b.dataset.r;
-  document.querySelectorAll('#nrole button').forEach(x=>x.classList.toggle('on',x===b));});
+/* 역할은 드롭다운이다 (2026-08-27) — 버튼 두 개였을 때는 역할이 늘면 줄이 감겼다 */
+const nroleEl=document.getElementById('nrole');
+let nrole=(nroleEl&&nroleEl.value)||'sreq';
+if(nroleEl)nroleEl.onchange=()=>{nrole=nroleEl.value;};
 document.getElementById('ncreate').onclick=async()=>{
   const name=document.getElementById('nname').value.trim();
   const id=document.getElementById('nid').value.trim();
@@ -473,7 +712,7 @@ document.getElementById('menuBtn').onclick=(e)=>{e.stopPropagation();document.ge
 document.addEventListener('click',()=>document.getElementById('menuPanel').classList.remove('on'));
 document.getElementById('refresh').onclick=()=>{load();loadStats();};
 document.getElementById('logout').onclick=()=>fetch('api/logout',{method:'POST'}).finally(()=>location.href='login.html');
-function showAdminPage(p){const map={stats:'pgStats',accounts:'pgAccounts',off:'pgOff'};
+function showAdminPage(p){const map={stats:'pgStats',agents:'pgAgents',accounts:'pgAccounts',off:'pgOff'};
   Object.keys(map).forEach(k=>{const el=document.getElementById(map[k]);if(el)el.style.display=(k===p)?'':'none';});
   document.querySelectorAll('#adminMenu button').forEach(b=>b.classList.toggle('on',b.dataset.pg===p));}
 document.querySelectorAll('#adminMenu button').forEach(b=>b.onclick=()=>showAdminPage(b.dataset.pg));

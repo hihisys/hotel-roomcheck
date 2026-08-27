@@ -88,12 +88,12 @@ function route(string $path, string $method): void {
       if (mb_strlen($bank) > 255) jsonOut(['error' => 'invalid_bank_account'], 422);
       $pdo->prepare("UPDATE users SET bank_account=? WHERE id=?")->execute([$bank ?: null, $u['id']]);
     }
-    /* 관할지역 수정 (2026-07-22): 직원(sreq/schk)과 관리자(admin)가 저장 가능, krabi 또는 bangkok */
-    if (isset($in['region']) && in_array($u['role'], ['sreq', 'schk', 'admin'], true)) {
-      $region = $in['region'] ?: null;
-      if ($region && !in_array($region, ['krabi', 'bangkok'], true)) $region = null;
-      $pdo->prepare("UPDATE users SET region=? WHERE id=?")->execute([$region, $u['id']]);
-    }
+    /* 관할지역은 본인이 바꾸지 못한다 (2026-08-27, 사용자 결정)
+       누가 어느 지역을 맡는지는 조직이 정하는 일이다. 본인이 바꿀 수 있으면
+       관리자가 배정해 둔 것이 조용히 뒤집힌다. 화면에서 입력칸을 없애는 것만으로는
+       부족하다 — 직접 요청을 보내면 그만이므로 서버에서 막는다.
+       변경은 관리자만: POST api/admin/setregion */
+    /* (in['region'] 은 무시한다) */
     if (isset($in['name']) && $u['role'] === 'admin') {  // 관리자만 본인 이름(한글이름) 수정 가능 (2026-07-18)
       $nm = trim((string)$in['name']);
       if ($nm === '' || mb_strlen($nm) > 80) jsonOut(['error' => 'invalid_name'], 422);

@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>너바나 · 회원정보</title>
-<link rel="stylesheet" href="style.css?v=20260827b" />
+<link rel="stylesheet" href="style.css?v=20260827c" />
 <style>
 .wrap{max-width:470px}
 .field{margin-top:12px}
@@ -13,6 +13,10 @@
 .msg.err{background:var(--soBg);color:var(--so);display:block}
 .msg.ok{background:var(--avBg);color:var(--av);display:block}
 .note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6}
+/* 관할지역은 보여 주기만 한다 — 정하는 것은 관리자다 (2026-08-27) */
+.rofield{background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:10px 11px;
+  font-size:14.5px;font-weight:700;color:var(--sub)}
+.rohint{font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.55}
 .backbtn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer}
 .sechead2{font-size:14.5px;font-weight:800;margin:2px 0 4px}
 </style>
@@ -43,7 +47,9 @@
     <div class="field" id="fEmail"><div class="label" data-i="email">이메일</div><input id="email" type="email" autocomplete="email"></div>
     <div class="field"><div class="label" data-i="phone">연락처 (전화번호)</div><input id="phone" autocomplete="tel" placeholder="+66 ..."></div>
     <div class="field"><div class="label" data-i="bank">은행 계좌</div><input id="bank" placeholder="은행명 + 계좌번호 (선택사항)"></div>
-    <div class="field" id="regionField" style="display:none"><div class="label" data-i="region">관할지역</div><select id="region"><option value="">선택 안 함</option><option value="krabi">카오락 + 푸켓</option><option value="bangkok">방콕 + 파타야</option></select></div>
+    <div class="field" id="regionField" style="display:none"><div class="label" data-i="region">관할지역</div>
+      <div class="rofield" id="regionText">—</div>
+      <div class="rohint" id="regionHint" data-i="region_fixed">관할지역은 관리자가 정합니다. 바꾸려면 관리자에게 문의하세요.</div></div>
     <button class="cta" id="save" data-i="save">저장</button>
     <div class="msg" id="msg1"></div>
   </section>
@@ -75,6 +81,7 @@
 const LD={
 ko:{back:"← 돌아가기",lede:"회원정보를 확인하고 수정합니다.",title:"회원정보",name:"이름",acct:"계정",nickname:"닉네임",email:"이메일",phone:"연락처 (전화번호)",bank:"은행 계좌",region:"관할지역",save:"저장",
  ph_name:"이름 (한글이름)",ph_nickname:"표시용 닉네임 (선택사항)",ph_bank:"은행명 + 계좌번호 (선택사항)",region_none:"선택 안 함",region_krabi:"카오락 + 푸켓",region_bangkok:"방콕 + 파타야",
+ region_fixed:"관할지역은 관리자가 정합니다. 바꾸려면 관리자에게 문의하세요.",
  pw_title:"비밀번호 변경",cur_pw:"현재 비밀번호",new_pw:"새 비밀번호 (6자 이상)",pw_btn:"비밀번호 변경",
  ext_note:"아이디·비밀번호는 니르바나에서 관리합니다. 비밀번호를 바꾸거나 잊으셨다면 니르바나 담당자에게 재발급을 요청해 주세요.",
  saved:"저장되었습니다.",pw_saved:"비밀번호가 변경되었습니다.",bad_password:"현재 비밀번호가 올바르지 않습니다.",weak_password:"새 비밀번호는 6자 이상이어야 합니다.",
@@ -83,6 +90,7 @@ ko:{back:"← 돌아가기",lede:"회원정보를 확인하고 수정합니다."
  tg_title:"📲 텔레그램 연결",tg_desc:"Telegram을 통해 알림을 받을 수 있습니다.",tg_link:"텔레그램 연결 링크 생성",tg_connected:"✓ 텔레그램이 연결되었습니다.",tg_disconnect:"연결 해제",tg_not_connected:"아직 연결되지 않았습니다.",tg_link_copied:"텔레그램 링크를 복사했습니다.",tg_link_desc:"아래 링크를 Telegram에서 열어서 연결하세요:",tg_link_failed:"링크 생성에 실패했습니다",tg_confirm_disconnect:"텔레그램 연결을 해제할까요?",tg_disconnect_failed:"해제하지 못했습니다"},
 en:{back:"← Back",lede:"View and update your account info.",title:"My Info",name:"Name",acct:"Account",nickname:"Nickname",email:"Email",phone:"Phone",bank:"Bank Account",region:"Region",save:"Save",
  ph_name:"Name (Korean name)",ph_nickname:"Display nickname (optional)",ph_bank:"Bank name + Account number (optional)",region_none:"Not selected",region_krabi:"Krabi + Phuket",region_bangkok:"Bangkok + Pattaya",
+ region_fixed:"Your region is set by an administrator. Contact them to change it.",
  pw_title:"Change Password",cur_pw:"Current password",new_pw:"New password (6+ chars)",pw_btn:"Change password",
  ext_note:"Your login ID and password are managed by Nirvana. To change or reset your password, please ask your Nirvana representative to reissue it.",
  saved:"Saved.",pw_saved:"Password changed.",bad_password:"Current password is incorrect.",weak_password:"New password must be 6+ characters.",
@@ -91,6 +99,7 @@ en:{back:"← Back",lede:"View and update your account info.",title:"My Info",na
  tg_title:"📲 Connect Telegram",tg_desc:"Get notifications via Telegram.",tg_link:"Create connection link",tg_connected:"✓ Telegram connected.",tg_disconnect:"Disconnect",tg_not_connected:"Not connected yet.",tg_link_copied:"Telegram link copied.",tg_link_desc:"Open the link in Telegram to connect:",tg_link_failed:"Failed to generate link",tg_confirm_disconnect:"Disconnect Telegram?",tg_disconnect_failed:"Failed to disconnect"},
 th:{back:"← กลับ",lede:"ดูและแก้ไขข้อมูลบัญชีของคุณ",title:"ข้อมูลของฉัน",name:"ชื่อ",acct:"บัญชี",nickname:"ชื่อเล่น",email:"อีเมล",phone:"เบอร์โทร",bank:"บัญชีธนาคาร",region:"ภูมิภาค",save:"บันทึก",
  ph_name:"ชื่อ (ชื่อเกาหลี)",ph_nickname:"ชื่อเล่น (ไม่บังคับ)",ph_bank:"ชื่อธนาคาร + หมายเลขบัญชี (ไม่บังคับ)",region_none:"ไม่เลือก",region_krabi:"กระบี่ + ภูเก็ต",region_bangkok:"กรุงเทพ + พัทยา",
+ region_fixed:"ภูมิภาคกำหนดโดยผู้ดูแล หากต้องการเปลี่ยน กรุณาติดต่อผู้ดูแล",
  pw_title:"เปลี่ยนรหัสผ่าน",cur_pw:"รหัสผ่านปัจจุบัน",new_pw:"รหัสผ่านใหม่ (6 ตัวขึ้นไป)",pw_btn:"เปลี่ยนรหัสผ่าน",
  ext_note:"ชื่อผู้ใช้และรหัสผ่านจัดการโดย Nirvana หากต้องการเปลี่ยนหรือลืมรหัสผ่าน กรุณาขอให้ผู้ดูแลของ Nirvana ออกรหัสใหม่",
  saved:"บันทึกแล้ว",pw_saved:"เปลี่ยนรหัสผ่านแล้ว",bad_password:"รหัสผ่านปัจจุบันไม่ถูกต้อง",weak_password:"รหัสผ่านใหม่ต้อง 6 ตัวขึ้นไป",
@@ -107,13 +116,7 @@ function tr(){
   if($('nameInput'))$('nameInput').placeholder=d.ph_name;
   if($('nickname'))$('nickname').placeholder=d.ph_nickname;
   if($('bank'))$('bank').placeholder=d.ph_bank;
-  // select option 업데이트
-  const regionSelect=$('region');
-  if(regionSelect){
-    const currentValue=regionSelect.value;
-    regionSelect.innerHTML='<option value="">'+d.region_none+'</option><option value="krabi">'+d.region_krabi+'</option><option value="bangkok">'+d.region_bangkok+'</option>';
-    regionSelect.value=currentValue;
-  }
+  paintRegion();
   // 텔레그램 섹션 텍스트 업데이트
   const tgTitle=document.querySelector('#tgCard .sechead2');
   if(tgTitle)tgTitle.textContent=d.tg_title||tgTitle.textContent;
@@ -175,10 +178,10 @@ document.querySelectorAll('.langbtn').forEach(btn=>{
     $('phone').value=ME.phone||'';
     $('nickname').value=ME.nickname||'';
     $('bank').value=ME.bank_account||'';
-    // 직원(sreq/schk)과 관리자는 지역 선택 가능 (에이전트만 표시 안 함)
+    /* 관할지역은 보여 주기만 한다 — 정하는 것은 관리자다 (2026-08-27) */
     if(ME.role==='sreq'||ME.role==='schk'||ME.role==='admin'){
       $('regionField').style.display='';
-      if(ME.region) $('region').value=ME.region;
+      paintRegion();
     }else{
       $('regionField').style.display='none';
     }
@@ -204,12 +207,21 @@ document.querySelectorAll('.langbtn').forEach(btn=>{
     tr();
   }catch(e){location.href='login.html';}
 })();
+/* 관할지역 표시 — 화면 언어에 맞춰 이름만 바꿔 준다 (2026-08-27) */
+function paintRegion(){
+  const el=document.getElementById('regionText');
+  if(!el||typeof ME==='undefined'||!ME)return;
+  const d=LD[L]||LD.ko||{};
+  const nm={'krabi':d.region_krabi||'카오락 + 푸켓','bangkok':d.region_bangkok||'방콕 + 파타야'};
+  el.textContent=nm[ME.region]||(d.region_none||'선택 안 함');
+  const h=document.getElementById('regionHint');
+  if(h&&d.region_fixed)h.textContent=d.region_fixed;
+}
 $('save').onclick=async()=>{
   const body={phone:$('phone').value.trim(),nickname:$('nickname').value.trim(),bank_account:$('bank').value.trim()};
   if(ME.role==='admin'){const nm=$('nameInput').value.trim();if(nm)body.name=nm;} // 관리자 이름 수정
   if(!ME.ext){const em=$('email').value.trim();if(em&&em!==ME.email)body.email=em;}
-  // 직원·관리자: 지역 정보도 함께 저장
-  if(ME.role==='sreq'||ME.role==='schk'||ME.role==='admin'){body.region=$('region').value;}
+  /* 관할지역은 보내지 않는다 — 관리자만 바꾼다 (2026-08-27) */
   try{
     const r=await fetch('api/me',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json();

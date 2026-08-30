@@ -235,8 +235,14 @@ function allRequests(PDO $pdo, ?array $currentUser = null): array {
   $userId = (int)($currentUser['id'] ?? 0);
   $userRole = $currentUser['role'] ?? '';
 
+  /* 사용자를 넘기지 않은 호출은 시스템 내부용(통계·다이제스트)이라 전체를 돌려준다.
+     2026-08-30 — 권한 필터를 넣으면서 $currentUser 가 null 이면 어느 갈래에도
+     걸리지 않아 항상 빈 배열이 됐다. 그래서 관리자 통계가 늘 0 으로 보였고
+     텔레그램 다이제스트도 집계가 비었다. 필터가 필요한 호출은 $currentUser 를 넘긴다. */
+  $systemCall = ($currentUser === null);
+
   // 최고관리자는 모든 요청 조회 가능, 에이전트도 지역 제한 없음
-  if ($isSuperAdmin || $userRole === 'agent') {
+  if ($systemCall || $isSuperAdmin || $userRole === 'agent') {
     $query = "SELECT payload FROM requests WHERE deleted=0";
   } else {
     // 일반 직원: 본인 지역 또는 본인이 요청한 것
@@ -248,8 +254,8 @@ function allRequests(PDO $pdo, ?array $currentUser = null): array {
     $p = json_decode($r['payload'], true);
     if (!$p) continue;
 
-    // 최고관리자나 에이전트: 모든 요청 포함
-    if ($isSuperAdmin || $userRole === 'agent') {
+    // 시스템 호출·최고관리자·에이전트: 모든 요청 포함
+    if ($systemCall || $isSuperAdmin || $userRole === 'agent') {
       $out[] = $p;
       continue;
     }

@@ -543,10 +543,10 @@ function route(string $path, string $method): void {
   }
   /* 관리자 통계 (2026-07-18): 요청 payload 집계. 확정 = 확인자 답변 완료 건 */
   if ($path === 'admin/stats' && $method === 'GET') {
-    requireAdmin();
+    $u = requireAdmin();   /* 2026-08-30: 사용자를 넘기지 않아 통계가 늘 0 이었다 */
     $byAgent = []; $byAgentMgr = []; $byRequester = []; $byChecker = [];
     $tot = ['requests' => 0, 'confirmed' => 0, 'quoteSent' => 0, 'contracted' => 0];
-    foreach (allRequests($pdo) as $p) {
+    foreach (allRequests($pdo, $u) as $p) {
       $answered = (($p['status'] ?? '') === 'answered');
       $confirmed = $answered && !empty($p['answerComplete']); // 확인자 답변 완료 = 확정
       $quoteSent = !empty($p['quoteSent']);

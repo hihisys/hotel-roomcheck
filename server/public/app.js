@@ -3009,6 +3009,30 @@ function renderCal(){
 
 /* ================= 토스트 & 초기화 ================= */
 let _tt;function toast(m,ms){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(_tt);_tt=setTimeout(()=>t.style.opacity='0',ms||2000);}
+/* 텔레그램 「요청 바로 열기」 딥링크 (2026-08-07 도입 → 저장소 통합 때 유실 → 2026-08-30 복원)
+   #req=A-0001Q 로 들어오면 그 요청을 자동으로 선택하고 화면을 그 위치로 옮긴다.
+   인앱 알림을 눌렀을 때와 같은 동작이다. 처리했으면 true 를 돌려준다. */
+function openReqFromHash(){
+  const m=(location.hash||'').match(/^#req=([ADad]-[0-9A-Za-z]+)$/);
+  if(!m)return false;
+  const no=m[1].toUpperCase();
+  history.replaceState(null,'',location.pathname+location.search);
+  const r=(DB.requests||[]).find(x=>{try{return reqNo(x)===no;}catch(e){return false;}});
+  if(!r){
+    /* renderApp() 이 화면을 다시 그리면서 토스트가 지워진다 — 그린 뒤에 띄운다 */
+    setTimeout(function(){toast(T('req_notfound'),3500);},100);
+    return true;
+  }
+  if(ui.role==='schk'){
+    ui.listTab=(r.status==='answered'&&r.answerComplete)?(isFullbookReq(r)?'full':'done'):'act';
+    ui.ssel=r.id;
+  }else{
+    ui.listTab=r.contractedAt?'con':(r.archivedAt?'past':'act');
+    ui.sel=r.id;ui.ssel=r.id;
+  }
+  setTimeout(function(){var t=document.querySelector('[data-sel="'+r.id+'"],[data-ssel="'+r.id+'"]');if(t)t.scrollIntoView({behavior:'smooth',block:'start'});},300);
+  return true;
+}
 (async function init(){
   applyChrome();
   if(!await srvInit())return;
@@ -3027,5 +3051,9 @@ let _tt;function toast(m,ms){const t=document.getElementById('toast');t.textCont
     history.replaceState(null,'',location.pathname+location.search);
     toast(TF('t_imported',{no:reqNo(imp)}));
   }
+  openReqFromHash();
   renderApp();
+  /* 앱을 이미 열어 둔 상태에서 다른 알림 링크를 누르면 주소의 #req= 만 바뀌고
+     페이지는 다시 읽히지 않는다. 그 경우에도 해당 요청이 열리게 한다. */
+  window.addEventListener('hashchange',function(){ if(openReqFromHash()) renderApp(); });
 })();

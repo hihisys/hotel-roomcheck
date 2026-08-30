@@ -26,7 +26,7 @@ function tgSend(string $chatId, string $text): bool {
    $zones 를 주면 그 권역 담당자에게만 보낸다 (관할 미설정 직원은 항상 받는다).
    2026-08-30 — 전에는 권역을 전혀 보지 않아 카오락 요청이 방콕+파타야 담당에게도
    갔다. 인앱 알림에는 zone 이 들어 있는데 텔레그램만 빠져 있었다. */
-function tgSendRole(PDO $pdo, string $role, callable $textForLang, ?int $excludeUser = null, ?array $zones = null): void {
+function tgSendRole(PDO $pdo, string $role, callable $textForLang, ?int $excludeUser = null, ?array $zones = null, ?string $reqNo = null): void {
   /* 2026-08-30 — 관리자(admin)도 확인자와 같은 알림을 받는다 (사용자 결정).
      니르바나 관리자들이 실제로 룸체크를 처리하는데 역할이 admin 이라
      텔레그램이 한 건도 가지 않고 있었다. 관할권역이 비면 전 지역을 받는다. */
@@ -37,8 +37,21 @@ function tgSendRole(PDO $pdo, string $role, callable $textForLang, ?int $exclude
     if ($excludeUser && (int)$u['id'] === $excludeUser) continue;
     if (isOffDayToday($u['off_days'] ?? null)) continue; // skip on off-day
     if ($zones !== null && !zoneMatch($u['region'] ?? null, $zones)) continue; // 관할권역 밖
-    tgSend($u['telegram_chat_id'], $textForLang($u['lang'] ?: 'ko'));
+    $lang = $u['lang'] ?: 'ko';
+    tgSend($u['telegram_chat_id'], $textForLang($lang) . tgOpenLink($role, $lang, $reqNo));
   }
+}
+/* 「요청 바로 열기」 링크 (2026-08-07 도입 → 저장소 통합 때 유실 → 2026-08-30 복원)
+   알림만 보고 어느 요청인지 찾아 들어가야 해서 불편하다는 이야기가 나왔다.
+   클릭하면 역할별 페이지의 #req=번호 로 들어가 해당 요청이 자동으로 열린다.
+   SITE_URL 이 없으면 링크를 붙이지 않는다 (로컬 개발). */
+function tgOpenLink(string $role, string $lang, ?string $reqNo): string {
+  if (!$reqNo) return '';
+  $site = rtrim((string)env('SITE_URL', ''), '/');
+  if ($site === '') return '';
+  $page = ($role === 'schk') ? 'check.html' : 'request.html';
+  $lbl = ['ko' => '🔗 요청 바로 열기', 'en' => '🔗 Open request', 'th' => '🔗 เปิดคำขอ'][$lang] ?? '🔗 Open request';
+  return "\n" . '<a href="' . $site . '/' . $page . '#req=' . rawurlencode($reqNo) . '">' . $lbl . '</a>';
 }
 /* 텔레그램 서버측 문구 (ko/en/th) */
 function tgT(string $lang, string $key, array $p = []): string {

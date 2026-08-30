@@ -134,6 +134,7 @@ ko:{pick_all:"전체 보기",sub_agent:"에이전트 콘솔",sub_sreq:"요청자
   /* 토스트 */
   notif_title:"알림",notif_empty:"새 알림이 없습니다",
   auth_lost:"서버와 연결이 끊겼습니다. 화면 내용이 최신이 아닐 수 있습니다.",relogin_btn:"다시 로그인",
+  req_notfound:"해당 요청을 찾을 수 없습니다",
   nt_new_request:"🔔 새 룸체크 요청",nt_answered:"✅ 답변 도착",nt_partial:"🟡 부분 답변",
   nt_quote_requested:"💬 견적 요청 옴",nt_quote_sent:"🧾 견적서 도착",
   logout:"로그아웃",myinfo:"👤 회원정보",tg_connect:"📲 텔레그램 연결",tg_connected:"✓ 텔레그램 연결됨",
@@ -271,6 +272,7 @@ en:{pick_all:"Show all",sub_agent:"Agent Console",sub_sreq:"Requester Console",s
   ppl:"pax",per1:"Quote · per person",basis:"pax total",
   notif_title:"Notifications",notif_empty:"No new notifications",
   auth_lost:"Disconnected from the server. What you see may be out of date.",relogin_btn:"Sign in again",
+  req_notfound:"That request could not be found",
   nt_new_request:"🔔 New room check",nt_answered:"✅ Answer received",nt_partial:"🟡 Partial answer",
   nt_quote_requested:"💬 Quote requested",nt_quote_sent:"🧾 Quote received",
   logout:"Log out",myinfo:"👤 My Info",tg_connect:"📲 Connect Telegram",tg_connected:"✓ Telegram linked",
@@ -408,6 +410,7 @@ th:{pick_all:"ดูทั้งหมด",sub_agent:"Agent Console",sub_sreq:"R
   ppl:"คน",per1:"ราคา · ต่อคน",basis:"คน รวม",
   notif_title:"การแจ้งเตือน",notif_empty:"ไม่มีการแจ้งเตือนใหม่",
   auth_lost:"การเชื่อมต่อกับเซิร์ฟเวอร์ขาดหาย ข้อมูลบนหน้าจออาจไม่ใช่ล่าสุด",relogin_btn:"เข้าสู่ระบบอีกครั้ง",
+  req_notfound:"ไม่พบคำขอดังกล่าว",
   nt_new_request:"🔔 คำขอเช็คห้องใหม่",nt_answered:"✅ ได้รับคำตอบ",nt_partial:"🟡 คำตอบบางส่วน",
   nt_quote_requested:"💬 ขอใบเสนอราคา",nt_quote_sent:"🧾 ได้รับใบเสนอราคา",
   logout:"ออกจากระบบ",myinfo:"👤 ข้อมูลของฉัน",tg_connect:"📲 เชื่อมต่อ Telegram",tg_connected:"✓ เชื่อมต่อ Telegram แล้ว",

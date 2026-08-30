@@ -1,6 +1,7 @@
 <?php
 /* ===== 텔레그램 전송 (요청자·확인자 전용) ===== */
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/lib.php';   // userZones() / zoneMatch()
 
 function tgApiBase(): ?string {
   $tok = env('TELEGRAM_BOT_TOKEN');
@@ -21,14 +22,18 @@ function tgSend(string $chatId, string $text): bool {
   if ($res === false) { error_log('telegram send failed: ' . $chatId); return false; }
   return true;
 }
-/* 역할 대상 전원에게 전송 (승인 + chat_id 연결된 sreq/schk만) */
-function tgSendRole(PDO $pdo, string $role, callable $textForLang, ?int $excludeUser = null): void {
+/* 역할 대상 전원에게 전송 (승인 + chat_id 연결된 sreq/schk만)
+   $zones 를 주면 그 권역 담당자에게만 보낸다 (관할 미설정 직원은 항상 받는다).
+   2026-08-30 — 전에는 권역을 전혀 보지 않아 카오락 요청이 방콕+파타야 담당에게도
+   갔다. 인앱 알림에는 zone 이 들어 있는데 텔레그램만 빠져 있었다. */
+function tgSendRole(PDO $pdo, string $role, callable $textForLang, ?int $excludeUser = null, ?array $zones = null): void {
   if (!in_array($role, ['sreq', 'schk'], true)) return; // 텔레그램은 요청자·확인자만
-  $st = $pdo->prepare("SELECT id,lang,telegram_chat_id,off_days FROM users WHERE role=? AND status='approved' AND telegram_chat_id IS NOT NULL");
+  $st = $pdo->prepare("SELECT id,lang,region,telegram_chat_id,off_days FROM users WHERE role=? AND status='approved' AND telegram_chat_id IS NOT NULL");
   $st->execute([$role]);
   foreach ($st->fetchAll() as $u) {
     if ($excludeUser && (int)$u['id'] === $excludeUser) continue;
     if (isOffDayToday($u['off_days'] ?? null)) continue; // skip on off-day
+    if ($zones !== null && !zoneMatch($u['region'] ?? null, $zones)) continue; // 관할권역 밖
     tgSend($u['telegram_chat_id'], $textForLang($u['lang'] ?: 'ko'));
   }
 }

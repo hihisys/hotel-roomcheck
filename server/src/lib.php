@@ -151,9 +151,26 @@ function requestZones(array $p): array {
 }
 /* 이 사용자가 이 요청을 볼 수 있는 권역인가.
    관할지역을 정하지 않은 직원은 제한 없이 전부 본다. */
+/* 직원의 region 에는 권역 코드(krabi | bangkok)가 들어간다 (admin.html 의 선택값).
+   예전에는 지역명('푸켓' 등)이 저장된 적이 있어 그 값도 권역으로 바꿔 준다.
+   ⚠️ 'bangkok' 은 권역 코드로 먼저 해석한다 — 지역명 '방콕'은 두 권역에 걸치지만,
+      권역 코드 'bangkok'(방콕+파타야 담당)은 카오락 요청을 받으면 안 된다.
+      regionZones('bangkok') 를 그대로 쓰면 ['krabi','bangkok'] 이 되어
+      방콕 담당에게 카오락 요청까지 가 버린다 (2026-08-30 사용자 지적). */
+function userZones(?string $region): array {
+  $r = strtolower(trim((string)$region));
+  if ($r === '' || $r === '전체' || $r === 'all') return [];   // 제한 없음
+  if (in_array($r, ['krabi', 'bangkok'], true)) return [$r];   // 권역 코드
+  return regionZones($r);                                      // 예전 지역명
+}
+/* 이 사용자의 관할권역이 주어진 권역들과 겹치는가. 관할 미설정이면 전부 해당. */
+function zoneMatch(?string $userRegion, array $zones): bool {
+  $mine = userZones($userRegion);
+  if (!$mine) return true;
+  return (bool)array_intersect($mine, $zones);
+}
 function zoneVisible(?string $userRegion, array $p): bool {
-  if (!$userRegion) return true;
-  return in_array($userRegion, requestZones($p), true);
+  return zoneMatch($userRegion, requestZones($p));
 }
 
 /* 권한 기반 요청 필터링 (2026-07-22, 2026-08-27 개정)

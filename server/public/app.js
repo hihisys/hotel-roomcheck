@@ -1239,8 +1239,12 @@ window.addRecommend=function(reqId,rowId,targetId){
   const req=byId(Number(reqId));if(!req)return;
   const row=req.rows.find(r=>String(r.id)===String(rowId));if(!row)return;
   row.recommends=row.recommends||[];
+  /* 지역은 비워 둔다 (2026-08-30). 전에는 원래 요청의 지역(예: 카오락)을 그대로
+     물려받아 다른 지역 호텔을 추천하려면 먼저 지역부터 바꿔야 했고, 칸이 고정된
+     것처럼 보였다. 「추가 요청」 입력칸도 원래 비어 있으므로 동작을 맞춘다.
+     호텔을 고르면 applyHotelPick() 이 그 호텔의 지역을 자동으로 채운다. */
   row.recommends.push({id:Date.now()+'_'+(Math.random()*1e6|0),targetId:String(targetId),
-    region:row.region||'전체',hotel:'',roomType:'',phone:'',manager:'',
+    region:RG_ALL,hotel:'',roomType:'',phone:'',manager:'',
     by:ui.role,createdAt:Date.now()});
   saveDB();renderApp();
 };

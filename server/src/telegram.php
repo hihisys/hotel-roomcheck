@@ -27,7 +27,10 @@ function tgSend(string $chatId, string $text): bool {
    2026-08-30 — 전에는 권역을 전혀 보지 않아 카오락 요청이 방콕+파타야 담당에게도
    갔다. 인앱 알림에는 zone 이 들어 있는데 텔레그램만 빠져 있었다. */
 function tgSendRole(PDO $pdo, string $role, callable $textForLang, ?int $excludeUser = null, ?array $zones = null): void {
-  if (!in_array($role, ['sreq', 'schk'], true)) return; // 텔레그램은 요청자·확인자만
+  /* 2026-08-30 — 관리자(admin)도 확인자와 같은 알림을 받는다 (사용자 결정).
+     니르바나 관리자들이 실제로 룸체크를 처리하는데 역할이 admin 이라
+     텔레그램이 한 건도 가지 않고 있었다. 관할권역이 비면 전 지역을 받는다. */
+  if (!in_array($role, ['sreq', 'schk', 'admin'], true)) return;
   $st = $pdo->prepare("SELECT id,lang,region,telegram_chat_id,off_days FROM users WHERE role=? AND status='approved' AND telegram_chat_id IS NOT NULL");
   $st->execute([$role]);
   foreach ($st->fetchAll() as $u) {

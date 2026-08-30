@@ -27,7 +27,9 @@ function detectEvents(PDO $pdo, ?array $old, array $new, array $actor): void {
 
   // 1) 새 요청 (직접 등록 제외 → 확인자에게 / 에이전트가 만들면 요청자에게도)
   if ($old === null) {
-    $targets = ['schk'];
+    /* 관리자도 확인자와 동일하게 새 요청 알림을 받는다 (2026-08-30 사용자 결정).
+       역할이 admin 이라는 이유로 인앱 알림·텔레그램이 모두 가지 않고 있었다. */
+    $targets = ['schk', 'admin'];
     if ($role === 'agent') $targets[] = 'sreq';
     // 지역 필터링: 해당 역할 중 본인 지역 + 최고관리자는 모두
     /* 권역별로 한 건씩만 넣는다. 전에는 조건에 맞는 사용자 수만큼 같은 알림이
@@ -41,6 +43,7 @@ function detectEvents(PDO $pdo, ?array $old, array $new, array $actor): void {
     }
     /* 관할권역 담당자에게만 (2026-08-30) — 카오락 요청이 방콕+파타야 담당에게 가지 않는다 */
     tgSendRole($pdo, 'schk', fn($lang) => tgT($lang, 'new_request', array_merge(['no' => $no, 'hotels' => $hotels, 'dates' => reqDates($new)], ['agent' => $new['agent'] ?? ''])), $uid, $reqZones);
+    tgSendRole($pdo, 'admin', fn($lang) => tgT($lang, 'new_request', array_merge(['no' => $no, 'hotels' => $hotels, 'dates' => reqDates($new)], ['agent' => $new['agent'] ?? ''])), $uid, $reqZones);
     if ($role === 'agent') tgSendRole($pdo, 'sreq', fn($lang) => tgT($lang, 'new_request', array_merge(['no' => $no, 'hotels' => $hotels, 'dates' => reqDates($new)], ['agent' => $new['agent'] ?? ''])), $uid, $reqZones);
     return;
   }

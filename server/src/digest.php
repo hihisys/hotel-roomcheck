@@ -34,10 +34,12 @@ function runDigest(PDO $pdo, string $job): array {
   if (isWeekendBkk()) return ['skipped' => 'weekend'];
   $sent = 0;
   $users = $pdo->query("SELECT id,role,lang,region,telegram_chat_id,off_days FROM users
-    WHERE status='approved' AND telegram_chat_id IS NOT NULL AND role IN ('sreq','schk')")->fetchAll();
+    WHERE status='approved' AND telegram_chat_id IS NOT NULL AND role IN ('sreq','schk','admin')")->fetchAll();
   foreach ($users as $u) {
     if (isOffDayToday($u['off_days'] ?? null)) continue; // skip on off-day
-    $role = $u['role']; $lang = $u['lang'] ?: 'ko'; $rg = $u['region'] ?? null;
+    /* 관리자는 확인자와 같은 기준으로 집계한다 (2026-08-30 사용자 결정) */
+    $role = ($u['role'] === 'admin') ? 'schk' : $u['role'];
+    $lang = $u['lang'] ?: 'ko'; $rg = $u['region'] ?? null;
     if ($job === 'morning') {
       $items = pendingList($pdo, $role, bkkDayStartMs(), $rg); // 오늘 이전에 생긴 미처리
       if (!$items) continue;                              // 할 일 없으면 발송 안 함

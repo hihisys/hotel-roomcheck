@@ -67,6 +67,17 @@ function migrate(PDO $pdo): void {
     updated_at BIGINT NOT NULL,
     updated_by BIGINT NULL
   )");
+  /* 세션 저장소 (2026-08-30)
+     PHP 기본 세션은 컨테이너 로컬 파일(/tmp)에 저장된다. Cloud Run 은 인스턴스를
+     여러 개 띄우므로, 로그인한 인스턴스가 아닌 곳으로 다음 요청이 가면 세션이 없어
+     401 이 났다. 앱은 그 401 을 조용히 무시해서(if(!r.ok)return) 화면이 며칠 전
+     데이터로 멈춰 있었고 아무도 원인을 몰랐다 (8/24~8/30 사건).
+     세션을 DB 에 두면 인스턴스가 몇 개로 늘어도 같은 세션을 본다. */
+  $pdo->exec("CREATE TABLE IF NOT EXISTS sessions (
+    sid VARCHAR(128) PRIMARY KEY,
+    data $TXT NOT NULL,
+    updated_at BIGINT NOT NULL
+  )");
   $pdo->exec("CREATE TABLE IF NOT EXISTS meta (
     k VARCHAR(40) PRIMARY KEY,
     v $TXT NOT NULL

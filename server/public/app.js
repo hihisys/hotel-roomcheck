@@ -692,7 +692,10 @@ function mgrsFor(agentName){
   fetchMgrs(idx);
   return [];
 }
-let SRV={on:false,rev:-1,me:null,nicks:{},shadow:{},shadowP:'',shadowF:'',timer:null,pushing:false};
+let SRV={on:false,rev:-1,me:null,nicks:{},shadow:{},shadowP:'',shadowF:'',timer:null,pushing:false,
+  hydrated:false,   /* 첫 동기화(서버 기준)를 마쳤는가 — srvPull 참조 */
+  dirtyTicks:0,     /* 밀어올리기가 연속으로 막힌 횟수 */
+  authLost:false};  /* 401 배너를 띄운 상태인가 */
 let NOTIF={unread:0,items:[]};
 const meName=()=>((SRV.on&&SRV.me&&SRV.me.name)||'');
 const nickOf=n=>(n&&SRV.nicks&&SRV.nicks[n])||n||''; /* 서버 로그인 사용자 이름 (에이전시 부계정 포함) */
@@ -728,17 +731,60 @@ function srvApplyState(j){
   if(j.notifs)NOTIF=j.notifs;
   SRV.rev=j.rev;
 }
+/* ── 인증 끊김 배너 (2026-08-30) ────────────────────────────────────
+   전에는 401 을 조용히 무시했다(if(!r.ok)return). 그래서 로그인 세션이
+   끊겨도 화면에는 며칠 전 데이터가 그대로 남았고, 아무도 문제를 몰랐다.
+   실제로 8/24~8/30 사이 확인자·요청자 화면이 그렇게 멈춰 있었다. */
+function srvAuthLost(){
+  if(SRV.authLost)return;
+  SRV.authLost=true;
+  let b=document.getElementById('authbar');
+  if(!b){
+    b=document.createElement('div');b.id='authbar';
+    b.innerHTML='<span class="authmsg"></span><button type="button" class="authbtn"></button>';
+    b.querySelector('.authbtn').onclick=function(){location.href='login.html?to='+encodeURIComponent(ui.role);};
+    document.body.appendChild(b);
+  }
+  b.querySelector('.authmsg').textContent=T('auth_lost');
+  b.querySelector('.authbtn').textContent=T('relogin_btn');
+  b.style.display='flex';
+  /* 배너가 헤더를 가리지 않게 본문을 그만큼 내린다 */
+  try{document.body.style.paddingTop=b.offsetHeight+'px';}catch(e){}
+}
+function srvAuthOk(){
+  if(!SRV.authLost)return;
+  SRV.authLost=false;
+  const b=document.getElementById('authbar');if(b)b.style.display='none';
+  try{document.body.style.paddingTop='';}catch(e){}
+}
+/* ── 동기화 (2026-08-30 개정) ───────────────────────────────────────
+   첫 동기화는 서버가 기준이다.
+   전에는 페이지를 열자마자 srvFlush() 가 먼저 돌았는데, 그 시점에는
+   SRV.shadow 가 비어 있어 로컬 요청 전부가 「바뀐 것」으로 보였다.
+   그래서 며칠 지난 기기를 열면 옛 내용이 서버의 최신 답변을 덮어썼고,
+   서버 데이터를 지워도 곧바로 되살아났다 (8/30 09:37 전체 갱신 사건).
+   이제 처음 한 번은 rev=-1 로 서버 상태를 받아 그대로 채택하고,
+   그 뒤에 생긴 변경만 올린다. 오래된 기기는 새로고침만으로 스스로 맞춰진다. */
 async function srvPull(){
   if(!SRV.on)return;
-  await srvFlush();
+  if(SRV.hydrated) await srvFlush();
   try{
-    const r=await fetch('api/state?rev='+SRV.rev,{cache:'no-store'});
+    const r=await fetch('api/state?rev='+(SRV.hydrated?SRV.rev:-1),{cache:'no-store'});
+    if(r.status===401){srvAuthLost();return;}
     if(!r.ok)return;
+    srvAuthOk();
     const j=await r.json();
+    if(!SRV.hydrated){SRV.hydrated=true;SRV.dirtyTicks=0;srvApplyState(j);renderApp();return;}
     const hadData='requests' in j;
     const editing=document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
     if(hadData&&editing)return;
-    if(hadData){const dirty=(DB.requests||[]).some(x=>SRV.shadow[x.id]!==JSON.stringify(x));if(dirty){srvSchedule();return;}}
+    if(hadData){
+      const dirty=(DB.requests||[]).some(x=>SRV.shadow[x.id]!==JSON.stringify(x));
+      /* 밀어올리기가 막히면 로컬만 붙들고 있다가 화면이 며칠 전에서 멈춘다.
+         5번(약 1분) 넘게 못 올리면 서버를 기준으로 삼는다. */
+      if(dirty){SRV.dirtyTicks++;if(SRV.dirtyTicks<5){srvSchedule();return;}}
+      else SRV.dirtyTicks=0;
+    }
     const before=JSON.stringify(NOTIF);
     srvApplyState(j);
     if(hadData||before!==JSON.stringify(NOTIF))renderApp();
@@ -747,6 +793,7 @@ async function srvPull(){
 function srvSchedule(){if(!SRV.on)return;clearTimeout(SRV.timer);SRV.timer=setTimeout(srvFlush,400);}
 async function srvFlush(){
   if(!SRV.on)return;
+  if(!SRV.hydrated)return;   /* 서버 상태를 받기 전에는 아무것도 올리지 않는다 (srvPull 주석 참조) */
   if(SRV.pushing){clearTimeout(SRV.timer);SRV.timer=setTimeout(srvFlush,500);return;}
   {var _seen={};DB.requests=(DB.requests||[]).filter(function(r){if(!r||r.id==null)return false;var e=_seen[r.id];if(e){e.ws=e.ws||{};var rw=r.ws||{};for(var k in rw){if(!e.ws[k]||(rw[k]&&rw[k].status&&!e.ws[k].status))e.ws[k]=rw[k];}return false;}_seen[r.id]=r;return true;});}
   const changed=[],ids=new Set();
@@ -762,6 +809,8 @@ async function srvFlush(){
   try{
     if(body.requests||body.phones||body.fullbook){
       const r=await fetch('api/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(r.status===401){srvAuthLost();return;}
+      srvAuthOk();
       const j=await r.json();
       if(j&&j.ok){
         changed.forEach(x=>SRV.shadow[x.id]=JSON.stringify(x));

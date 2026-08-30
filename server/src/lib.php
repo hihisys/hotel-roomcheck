@@ -2,8 +2,54 @@
 /* ===== 공용 헬퍼: 세션, 응답, 권한 ===== */
 require_once __DIR__ . '/db.php';
 
+/* ── DB 세션 핸들러 (2026-08-30) ──────────────────────────────────
+   세션을 컨테이너 로컬 파일이 아니라 DB 에 저장한다. 이유는 db.php 의
+   sessions 테이블 주석 참조. 만료는 30일 고정 — 요청마다 달라지는
+   gc_maxlifetime 을 그대로 쓰면 자동로그인(30일) 세션을 짧은 세션의
+   기준으로 지워 버린다. */
+final class DbSessionHandler implements SessionHandlerInterface {
+  private const KEEP_SEC = 2592000;   // 30일
+  public function open(string $path, string $name): bool { return true; }
+  public function close(): bool { return true; }
+  public function read(string $sid): string {
+    try {
+      $st = db()->prepare("SELECT data FROM sessions WHERE sid=?");
+      $st->execute([$sid]);
+      $r = $st->fetch();
+      return $r ? (string)$r['data'] : '';
+    } catch (Throwable $e) { error_log('session read: ' . $e->getMessage()); return ''; }
+  }
+  public function write(string $sid, string $data): bool {
+    try {
+      $pdo = db();
+      $sql = isMySQL($pdo)
+        ? "INSERT INTO sessions (sid,data,updated_at) VALUES (?,?,?)
+           ON DUPLICATE KEY UPDATE data=VALUES(data), updated_at=VALUES(updated_at)"
+        : "INSERT INTO sessions (sid,data,updated_at) VALUES (?,?,?)
+           ON CONFLICT(sid) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at";
+      $pdo->prepare($sql)->execute([$sid, $data, nowMs()]);
+      return true;
+    } catch (Throwable $e) { error_log('session write: ' . $e->getMessage()); return false; }
+  }
+  public function destroy(string $sid): bool {
+    try { db()->prepare("DELETE FROM sessions WHERE sid=?")->execute([$sid]); } catch (Throwable $e) {}
+    return true;
+  }
+  #[\ReturnTypeWillChange]
+  public function gc(int $maxLife) {
+    try {
+      $cut = nowMs() - self::KEEP_SEC * 1000;
+      db()->prepare("DELETE FROM sessions WHERE updated_at < ?")->execute([$cut]);
+    } catch (Throwable $e) {}
+    return 1;
+  }
+}
 function startSession(): void {
   if (session_status() === PHP_SESSION_ACTIVE) return;
+  /* DB 세션 (2026-08-30). 실패하면 기본 파일 세션으로 떨어진다 — 로컬 개발이나
+     DB 일시 장애에도 로그인 화면 자체는 뜨게 하기 위함이다. */
+  try { session_set_save_handler(new DbSessionHandler(), true); }
+  catch (Throwable $e) { error_log('session handler: ' . $e->getMessage()); }
   $secure = (($_SERVER['HTTPS'] ?? '') !== '' || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
   $remember = (($_COOKIE['rc_remember'] ?? '') === '1'); // 자동 로그인 시 세션 30일 유지
   if ($remember) ini_set('session.gc_maxlifetime', '2592000');

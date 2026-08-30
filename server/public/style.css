@@ -907,3 +907,16 @@ button.qdelq{width:100%;margin-top:10px;padding:9px;border-radius:10px;backgroun
   border-radius:6px;cursor:pointer;transition:background .12s,color .12s}
 .pkarrow:hover{background:#EDF1F6;color:#334155}
 .pkwrap.pkopen .pkarrow{transform:translateY(-50%) rotate(180deg);color:#334155}
+
+/* ── 인증 끊김 배너 (2026-08-30) ────────────────────────────────────
+   서버 세션이 끊기면 앱은 옛 데이터를 계속 보여 준다. 화면이 최신이
+   아니라는 사실을 눈에 보이게 알린다. 상태색은 쓰지 않는다(상태 전용). */
+#authbar{position:fixed;left:0;right:0;top:0;z-index:9999;display:none;
+  align-items:center;gap:10px;padding:10px 14px;
+  background:#3B2F2F;color:#fff;font-size:13px;font-weight:700;
+  font-family:var(--sans);box-shadow:0 2px 10px rgba(0,0,0,.25)}
+#authbar .authmsg{flex:1;min-width:0;line-height:1.45}
+#authbar .authbtn{flex:0 0 auto;border:none;border-radius:8px;cursor:pointer;
+  padding:8px 14px;font-size:12.5px;font-weight:800;background:#fff;color:#3B2F2F;
+  font-family:var(--sans);white-space:nowrap}
+@media (max-width:420px){#authbar{font-size:12px;padding:9px 11px}}

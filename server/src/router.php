@@ -569,13 +569,16 @@ function route(string $path, string $method): void {
 
       $agent = $pick($p['_agencyParent'] ?? '', $p['agencyParentName'] ?? '', $p['agent'] ?? '');
       $mgr   = $pick($p['_agency'] ?? '', $p['agencyName'] ?? '', $p['agentManager'] ?? '');
-      /* 에이전트가 직접 등록한 건은 registrant 에 그 에이전트 이름이 들어간다.
-         요청자 집계는 니르바나 직원 기준이므로 그 경우는 (미지정)으로 둔다. */
-      $reqBy = (($p['_creatorRole'] ?? '') === 'agent') ? '' : $pick($p['registrant'] ?? '');
+      /* 요청자 집계는 니르바나 직원만 (2026-08-30 사용자 결정).
+         에이전트가 직접 등록한 건은 registrant 에 그 에이전트 이름이 들어가므로 제외한다.
+         (미지정) 줄도 만들지 않는다 — 목록에 니르바나 직원만 남아야 한다.
+         registrant 가 비어 있으면 등록한 계정 이름으로 대신한다. */
+      $reqBy = (($p['_creatorRole'] ?? '') === 'agent')
+        ? '' : $pick($p['registrant'] ?? '', $p['_creatorName'] ?? '');
 
       statBump($byAgent, $agent ?: $none, $confirmed, $quoteSent, $contracted);
       statBump($byAgentMgr, $mgr ?: $none, $confirmed, $quoteSent, $contracted);
-      statBump($byRequester, $reqBy ?: $none, $confirmed, $quoteSent, $contracted);
+      if ($reqBy !== '') statBump($byRequester, $reqBy, $confirmed, $quoteSent, $contracted);
       if ($answered) statBump($byChecker, $pick($p['manager'] ?? '') ?: $none, $confirmed, $quoteSent, $contracted);
     }
     $fmt = function (array $arr): array {

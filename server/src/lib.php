@@ -259,7 +259,7 @@ function allRequests(PDO $pdo, ?array $currentUser = null, bool $withMeta = fals
   /* $withMeta: 통계용. 요청 행에 저장된 에이전시 정보와 등록자 역할을 함께 돌려준다.
      payload(JSON) 안의 값은 화면 입력이라 비어 있을 수 있는데, 이 컬럼들은 저장 시점에
      서버가 세션에서 찍은 값이라 믿을 수 있다 (2026-08-30). */
-  $meta = $withMeta ? ", r.agency_name, r.agency_parent_name, u.role AS creator_role" : "";
+  $meta = $withMeta ? ", r.agency_name, r.agency_parent_name, u.role AS creator_role, u.name AS creator_name" : "";
   $join = $withMeta ? " LEFT JOIN users u ON u.id = r.created_by" : "";
   if ($systemCall || $isSuperAdmin || $userRole === 'agent') {
     $query = "SELECT r.payload$meta FROM requests r$join WHERE r.deleted=0";
@@ -276,6 +276,7 @@ function allRequests(PDO $pdo, ?array $currentUser = null, bool $withMeta = fals
       $p['_agency']       = trim((string)($r['agency_name'] ?? ''));         // 에이전시 부계정 = 담당자
       $p['_agencyParent'] = trim((string)($r['agency_parent_name'] ?? ''));  // 소속 회사 = 에이전트
       $p['_creatorRole']  = (string)($r['creator_role'] ?? '');
+      $p['_creatorName']  = trim((string)($r['creator_name'] ?? ''));
     }
 
     // 시스템 호출·최고관리자·에이전트: 모든 요청 포함

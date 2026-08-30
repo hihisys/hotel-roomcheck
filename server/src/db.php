@@ -135,8 +135,16 @@ function migrate(PDO $pdo): void {
   ensureColumn($pdo, 'users', 'bank_account', 'VARCHAR(255) NULL');
   ensureColumn($pdo, 'users', 'orig_role', 'VARCHAR(10) NULL'); // 관리자 승격 전 원래 역할 (해제 시 복원)
   ensureColumn($pdo, 'users', 'off_days', 'LONGTEXT NULL'); // 휴무일 JSON {"dates":["YYYY-MM-DD"],"weekdays":[0..6]} (2026-07-18)
-  ensureColumn($pdo, 'users', 'region', 'VARCHAR(20) NULL'); // 관할지역 (2026-07-22): 'krabi' | 'bangkok' | null
+  ensureColumn($pdo, 'users', 'region', 'VARCHAR(20) NULL'); // 관할지역 (2026-07-22): 'khaolak' | 'bangkok' | null
   ensureColumn($pdo, 'requests', 'created_by', 'BIGINT NULL'); // 요청 생성자 ID (2026-07-22, 지역 필터링용)
+  /* 권역 코드 이름 변경 (2026-08-30): krabi → khaolak.
+     「카오락 + 푸켓」 권역인데 코드가 krabi 라 크라비 한 지역만 뜻하는 것처럼 보였다.
+     뜻은 그대로고 값 이름만 바꾼다. 한 번만 돌면 되므로 meta 에 표시를 남긴다. */
+  if (metaGet($pdo, 'zone_khaolak_rename', '') !== '1') {
+    $pdo->exec("UPDATE users SET region='khaolak' WHERE region='krabi'");
+    try { $pdo->exec("UPDATE notifications SET zone='khaolak' WHERE zone='krabi'"); } catch (PDOException $e) {}
+    metaSet($pdo, 'zone_khaolak_rename', '1');
+  }
   // 최초 관리자 계정 + env 변경 시 아이디·비밀번호 동기화 (2026-07-17)
   $adminEmail = env('ADMIN_EMAIL', 'admin@nirvana.local');
   $admin = $pdo->query("SELECT id,email FROM users WHERE role='admin' ORDER BY id LIMIT 1")->fetch();

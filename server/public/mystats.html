@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>너바나 · 업무 통계</title>
-<link rel="stylesheet" href="style.css?v=20260830b" />
+<link rel="stylesheet" href="style.css?v=20260830c" />
 <style>
 /* 직원 업무 통계 (2026-08-02, [014])
    요청자·확인자가 "회사 전체 업무 중 내가 얼마나 처리했는지"를 확인하는 별도 페이지.
@@ -125,7 +125,7 @@ function renderFilter(){
   $('go').onclick=()=>load();
   const [f,t]=rangeOf();
   /* 2026-08-07 (사용자 확정): 본인 관리지역 기준 통계임을 표시 */
-  const ZN={krabi:{ko:'카오락+푸켓+크라비',en:'Khaolak+Phuket+Krabi',th:'เขาหลัก+ภูเก็ต+กระบี่'},bangkok:{ko:'방콕+파타야',en:'Bangkok+Pattaya',th:'กรุงเทพ+พัทยา'}};
+  const ZN={khaolak:{ko:'카오락+푸켓+크라비',en:'Khaolak+Phuket+Krabi',th:'เขาหลัก+ภูเก็ต+กระบี่'},bangkok:{ko:'방콕+파타야',en:'Bangkok+Pattaya',th:'กรุงเทพ+พัทยา'}};
   const zk=(DATA&&DATA.zone)||''; const zt=zk?('  ·  🗺 '+((ZN[zk]&&ZN[zk][L])||zk)):'';
   $('pnote').textContent=T.range+' · '+(f===t?f:(f+' ~ '+t))+zt;
 }

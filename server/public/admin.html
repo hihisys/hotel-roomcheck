@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>너바나 · 관리자</title>
-<link rel="stylesheet" href="style.css?v=20260830b" />
+<link rel="stylesheet" href="style.css?v=20260830c" />
 <style>
 :root{--brand:#54406E;--brandDark:#3F3054;--paper:#EEEAF3;--line:#DCD4E6}
 .urow{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-top:10px;background:#fff}
@@ -191,7 +191,7 @@
     <select id="nrole"><option value="sreq">직원 요청자</option><option value="schk">직원 확인자</option></select>
     <div class="label" style="margin-top:12px">관할 지역</div>
     <select id="nregion">
-      <option value="krabi">카오락 + 푸켓</option>
+      <option value="khaolak">카오락 + 푸켓</option>
       <option value="bangkok">방콕 + 파타야</option>
       <option value="">제한 없음 (전 지역)</option>
     </select>
@@ -316,7 +316,7 @@ function row(u,withDecide){
     +(RGROLE(u.role)
       ?'<div class="rgrow"><span class="rglab">관할</span>'
         +'<select class="rgsel" data-rg="'+u.id+'">'
-          +RGOPT('krabi','카오락 + 푸켓',u.region)
+          +RGOPT('khaolak','카오락 + 푸켓',u.region)
           +RGOPT('bangkok','방콕 + 파타야',u.region)
           +RGOPT('','제한 없음 (전 지역)',u.region)
         +'</select></div>':'')

@@ -145,7 +145,7 @@ function isPendingForRequester(array $p): bool {
 /* ── 관할권역 (2026-08-24, 2026-08-27 개정) ────────────────────────────
    직원의 region 은 단일 지역이 아니라 권역이다 (profile.html 참조).
 
-     krabi   「카오락 + 푸켓」 = 카오락 · 푸켓 · 크라비 · 사무이 · 방콕
+     khaolak 「카오락 + 푸켓」 = 카오락 · 푸켓 · 크라비 · 사무이 · 방콕
      bangkok 「방콕 + 파타야」 = 방콕 · 파타야
 
    ⚠️ 방콕은 두 권역 모두에 속한다 (2026-08-27, 사용자 결정).
@@ -158,17 +158,21 @@ function isPendingForRequester(array $p): bool {
    전에는 요청에 region 을 넣는 코드가 없어 $p['region'] 이 늘 비었고,
    그 결과 직원이 '본인이 만든 요청'만 보였다. 이제 payload 를 읽을 때마다
    행에서 직접 계산하므로 예전에 저장된 요청도 그대로 살아난다. */
-const ZONE_DEFAULT = 'krabi';
+/* 권역 코드 (2026-08-30: krabi → khaolak 로 이름 변경).
+   「카오락 + 푸켓」 권역인데 코드가 krabi 라 크라비 한 지역만 뜻하는 것처럼 보였다.
+   값 이름만 바꾼 것이고 뜻은 그대로다. 예전에 저장된 'krabi' 는 지역명 크라비로
+   해석되어 결국 같은 권역이 되므로 그대로 두어도 동작한다 (db.php 에서 일괄 변환). */
+const ZONE_DEFAULT = 'khaolak';
 function regionZones(?string $region): array {
   $r = strtolower(trim((string)$region));
   $r = str_replace([' ', '-', '_'], '', $r);
   static $map = [
-    'phuket'   => ['krabi'],            '푸켓'   => ['krabi'],
-    'khaolak'  => ['krabi'],            '카오락' => ['krabi'],
-    'krabi'    => ['krabi'],            '크라비' => ['krabi'],
-    'samui'    => ['krabi'],            '사무이' => ['krabi'],
-    'kohsamui' => ['krabi'],            '코사무이' => ['krabi'],
-    'bangkok'  => ['krabi', 'bangkok'], '방콕'   => ['krabi', 'bangkok'],
+    'phuket'   => ['khaolak'],            '푸켓'   => ['khaolak'],
+    'khaolak'  => ['khaolak'],            '카오락' => ['khaolak'],
+    'krabi'    => ['khaolak'],            '크라비' => ['khaolak'],
+    'samui'    => ['khaolak'],            '사무이' => ['khaolak'],
+    'kohsamui' => ['khaolak'],            '코사무이' => ['khaolak'],
+    'bangkok'  => ['khaolak', 'bangkok'], '방콕'   => ['khaolak', 'bangkok'],
     'pattaya'  => ['bangkok'],          '파타야' => ['bangkok'],
   ];
   if ($r === '' || $r === '전체' || $r === 'all') return [];   // 지역 미지정 → 권역 없음
@@ -197,17 +201,27 @@ function requestZones(array $p): array {
 }
 /* 이 사용자가 이 요청을 볼 수 있는 권역인가.
    관할지역을 정하지 않은 직원은 제한 없이 전부 본다. */
-/* 직원의 region 에는 권역 코드(krabi | bangkok)가 들어간다 (admin.html 의 선택값).
+/* 직원의 region 에는 권역 코드(khaolak | bangkok)가 들어간다 (admin.html 의 선택값).
    예전에는 지역명('푸켓' 등)이 저장된 적이 있어 그 값도 권역으로 바꿔 준다.
    ⚠️ 'bangkok' 은 권역 코드로 먼저 해석한다 — 지역명 '방콕'은 두 권역에 걸치지만,
       권역 코드 'bangkok'(방콕+파타야 담당)은 카오락 요청을 받으면 안 된다.
-      regionZones('bangkok') 를 그대로 쓰면 ['krabi','bangkok'] 이 되어
+      regionZones('bangkok') 를 그대로 쓰면 ['khaolak','bangkok'] 이 되어
       방콕 담당에게 카오락 요청까지 가 버린다 (2026-08-30 사용자 지적). */
 function userZones(?string $region): array {
   $r = strtolower(trim((string)$region));
   if ($r === '' || $r === '전체' || $r === 'all') return [];   // 제한 없음
-  if (in_array($r, ['krabi', 'bangkok'], true)) return [$r];   // 권역 코드
+  if (in_array($r, ['khaolak', 'bangkok'], true)) return [$r];   // 권역 코드
   return regionZones($r);                                      // 예전 지역명
+}
+/* 입력받은 관할권역 값을 정식 코드로 다듬는다 (2026-08-30).
+   예전 화면이 캐시되어 'krabi' 를 보내는 경우가 있어 그대로 받아 khaolak 으로 바꾼다.
+   빈 값·모르는 값은 '' (제한 없음)을 돌려주고, 호출부에서 오류로 처리할지 정한다. */
+function normZone($v): string {
+  $r = strtolower(trim((string)$v));
+  if ($r === '' || $r === '전체' || $r === 'all') return '';
+  if ($r === 'khaolak' || $r === 'krabi' || $r === '카오락' || $r === '크라비') return 'khaolak';
+  if ($r === 'bangkok' || $r === '방콕') return 'bangkok';
+  return '';
 }
 /* 이 사용자의 관할권역이 주어진 권역들과 겹치는가. 관할 미설정이면 전부 해당. */
 function zoneMatch(?string $userRegion, array $zones): bool {

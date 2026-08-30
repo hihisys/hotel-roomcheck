@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>너바나 · 회원정보</title>
-<link rel="stylesheet" href="style.css?v=20260830b" />
+<link rel="stylesheet" href="style.css?v=20260830c" />
 <style>
 .wrap{max-width:470px}
 .field{margin-top:12px}
@@ -80,7 +80,7 @@
 <script>
 const LD={
 ko:{back:"← 돌아가기",lede:"회원정보를 확인하고 수정합니다.",title:"회원정보",name:"이름",acct:"계정",nickname:"닉네임",email:"이메일",phone:"연락처 (전화번호)",bank:"은행 계좌",region:"관할지역",save:"저장",
- ph_name:"이름 (한글이름)",ph_nickname:"표시용 닉네임 (선택사항)",ph_bank:"은행명 + 계좌번호 (선택사항)",region_none:"선택 안 함",region_krabi:"카오락 + 푸켓",region_bangkok:"방콕 + 파타야",
+ ph_name:"이름 (한글이름)",ph_nickname:"표시용 닉네임 (선택사항)",ph_bank:"은행명 + 계좌번호 (선택사항)",region_none:"선택 안 함",region_khaolak:"카오락 + 푸켓",region_bangkok:"방콕 + 파타야",
  region_fixed:"관할지역은 관리자가 정합니다. 바꾸려면 관리자에게 문의하세요.",
  pw_title:"비밀번호 변경",cur_pw:"현재 비밀번호",new_pw:"새 비밀번호 (6자 이상)",pw_btn:"비밀번호 변경",
  ext_note:"아이디·비밀번호는 니르바나에서 관리합니다. 비밀번호를 바꾸거나 잊으셨다면 니르바나 담당자에게 재발급을 요청해 주세요.",
@@ -89,7 +89,7 @@ ko:{back:"← 돌아가기",lede:"회원정보를 확인하고 수정합니다."
  role_agent:"에이전트",role_sreq:"직원 · 요청자",role_schk:"직원 · 확인자",role_admin:"관리자",agency_acct:"에이전시 부계정",
  tg_title:"📲 텔레그램 연결",tg_desc:"Telegram을 통해 알림을 받을 수 있습니다.",tg_link:"텔레그램 연결 링크 생성",tg_connected:"✓ 텔레그램이 연결되었습니다.",tg_disconnect:"연결 해제",tg_not_connected:"아직 연결되지 않았습니다.",tg_link_copied:"텔레그램 링크를 복사했습니다.",tg_link_desc:"아래 링크를 Telegram에서 열어서 연결하세요:",tg_link_failed:"링크 생성에 실패했습니다",tg_confirm_disconnect:"텔레그램 연결을 해제할까요?",tg_disconnect_failed:"해제하지 못했습니다"},
 en:{back:"← Back",lede:"View and update your account info.",title:"My Info",name:"Name",acct:"Account",nickname:"Nickname",email:"Email",phone:"Phone",bank:"Bank Account",region:"Region",save:"Save",
- ph_name:"Name (Korean name)",ph_nickname:"Display nickname (optional)",ph_bank:"Bank name + Account number (optional)",region_none:"Not selected",region_krabi:"Krabi + Phuket",region_bangkok:"Bangkok + Pattaya",
+ ph_name:"Name (Korean name)",ph_nickname:"Display nickname (optional)",ph_bank:"Bank name + Account number (optional)",region_none:"Not selected",region_khaolak:"Krabi + Phuket",region_bangkok:"Bangkok + Pattaya",
  region_fixed:"Your region is set by an administrator. Contact them to change it.",
  pw_title:"Change Password",cur_pw:"Current password",new_pw:"New password (6+ chars)",pw_btn:"Change password",
  ext_note:"Your login ID and password are managed by Nirvana. To change or reset your password, please ask your Nirvana representative to reissue it.",
@@ -98,7 +98,7 @@ en:{back:"← Back",lede:"View and update your account info.",title:"My Info",na
  role_agent:"Agent",role_sreq:"Staff · Requester",role_schk:"Staff · Checker",role_admin:"Admin",agency_acct:"Agency sub-account",
  tg_title:"📲 Connect Telegram",tg_desc:"Get notifications via Telegram.",tg_link:"Create connection link",tg_connected:"✓ Telegram connected.",tg_disconnect:"Disconnect",tg_not_connected:"Not connected yet.",tg_link_copied:"Telegram link copied.",tg_link_desc:"Open the link in Telegram to connect:",tg_link_failed:"Failed to generate link",tg_confirm_disconnect:"Disconnect Telegram?",tg_disconnect_failed:"Failed to disconnect"},
 th:{back:"← กลับ",lede:"ดูและแก้ไขข้อมูลบัญชีของคุณ",title:"ข้อมูลของฉัน",name:"ชื่อ",acct:"บัญชี",nickname:"ชื่อเล่น",email:"อีเมล",phone:"เบอร์โทร",bank:"บัญชีธนาคาร",region:"ภูมิภาค",save:"บันทึก",
- ph_name:"ชื่อ (ชื่อเกาหลี)",ph_nickname:"ชื่อเล่น (ไม่บังคับ)",ph_bank:"ชื่อธนาคาร + หมายเลขบัญชี (ไม่บังคับ)",region_none:"ไม่เลือก",region_krabi:"กระบี่ + ภูเก็ต",region_bangkok:"กรุงเทพ + พัทยา",
+ ph_name:"ชื่อ (ชื่อเกาหลี)",ph_nickname:"ชื่อเล่น (ไม่บังคับ)",ph_bank:"ชื่อธนาคาร + หมายเลขบัญชี (ไม่บังคับ)",region_none:"ไม่เลือก",region_khaolak:"กระบี่ + ภูเก็ต",region_bangkok:"กรุงเทพ + พัทยา",
  region_fixed:"ภูมิภาคกำหนดโดยผู้ดูแล หากต้องการเปลี่ยน กรุณาติดต่อผู้ดูแล",
  pw_title:"เปลี่ยนรหัสผ่าน",cur_pw:"รหัสผ่านปัจจุบัน",new_pw:"รหัสผ่านใหม่ (6 ตัวขึ้นไป)",pw_btn:"เปลี่ยนรหัสผ่าน",
  ext_note:"ชื่อผู้ใช้และรหัสผ่านจัดการโดย Nirvana หากต้องการเปลี่ยนหรือลืมรหัสผ่าน กรุณาขอให้ผู้ดูแลของ Nirvana ออกรหัสใหม่",
@@ -212,7 +212,7 @@ function paintRegion(){
   const el=document.getElementById('regionText');
   if(!el||typeof ME==='undefined'||!ME)return;
   const d=LD[L]||LD.ko||{};
-  const nm={'krabi':d.region_krabi||'카오락 + 푸켓','bangkok':d.region_bangkok||'방콕 + 파타야'};
+  const nm={'khaolak':d.region_khaolak||'카오락 + 푸켓','krabi':d.region_khaolak||'카오락 + 푸켓','bangkok':d.region_bangkok||'방콕 + 파타야'};
   el.textContent=nm[ME.region]||(d.region_none||'선택 안 함');
   const h=document.getElementById('regionHint');
   if(h&&d.region_fixed)h.textContent=d.region_fixed;

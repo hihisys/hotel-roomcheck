@@ -389,8 +389,7 @@ function route(string $path, string $method): void {
       $allowedLang = ['sreq' => ['en', 'ko'], 'schk' => ['th', 'en']][$role] ?? [$lang];
       if (in_array($reqLang, $allowedLang, true)) $lang = $reqLang;
       // 지역 유효성 검증 (2026-07-22)
-      $region = $in['region'] ?? null;
-      if ($region && !in_array($region, ['krabi', 'bangkok'], true)) $region = null;
+      $region = normZone($in['region'] ?? null);
       try {
         $pdo->prepare("INSERT INTO users (name,email,pass_hash,role,status,lang,region,created_at) VALUES (?,?,?,?, 'approved', ?,?,?)")
             ->execute([$name, $id, password_hash($pw, PASSWORD_DEFAULT), $role, $lang, $region, nowMs()]);
@@ -430,16 +429,17 @@ function route(string $path, string $method): void {
   /* 관할지역 변경 (2026-08-27)
      전에는 계정을 발행할 때만 정할 수 있었고, 그 뒤로는 직원이 자기 회원정보에서
      바꾸는 길밖에 없었다. 관리자가 목록에서 바로 바꾸게 한다.
-       krabi   「카오락 + 푸켓」 = 카오락 · 푸켓 · 크라비 · 사무이 · 방콕
+       khaolak 「카오락 + 푸켓」 = 카오락 · 푸켓 · 크라비 · 사무이 · 방콕
        bangkok 「방콕 + 파타야」 = 방콕 · 파타야
        빈 값    제한 없음 — 전 지역을 본다
      에이전트(부계정)는 지역 제한 자체가 없으므로 대상이 아니다. */
   if ($path === 'admin/setregion' && $method === 'POST') {
     requireAdmin();
     $id = (int)($in['id'] ?? 0);
-    $rg = trim((string)($in['region'] ?? ''));
+    $rgIn = trim((string)($in['region'] ?? ''));
     if (!$id) jsonOut(['error' => 'invalid'], 422);
-    if ($rg !== '' && !in_array($rg, ['krabi', 'bangkok'], true)) jsonOut(['error' => 'invalid_region'], 422);
+    $rg = (string)normZone($rgIn);
+    if ($rgIn !== '' && $rg === '') jsonOut(['error' => 'invalid_region'], 422);
 
     $st = $pdo->prepare("SELECT id,role,agency_idx FROM users WHERE id=?");
     $st->execute([$id]);

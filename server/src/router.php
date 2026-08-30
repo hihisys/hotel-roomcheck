@@ -546,7 +546,15 @@ function route(string $path, string $method): void {
     $u = requireAdmin();   /* 2026-08-30: 사용자를 넘기지 않아 통계가 늘 0 이었다 */
     $byAgent = []; $byAgentMgr = []; $byRequester = []; $byChecker = [];
     $tot = ['requests' => 0, 'confirmed' => 0, 'quoteSent' => 0, 'contracted' => 0];
-    foreach (allRequests($pdo, $u) as $p) {
+    /* 집계 기준 (2026-08-30 사용자 확인)
+         에이전트 = 에이전시(회사)          → 요청 행의 agency_parent_name
+         담당자   = 그 회사 소속 부계정      → 요청 행의 agency_name
+         요청자   = 니르바나 직원(등록자)    → payload.registrant
+                    단 에이전트가 직접 넣은 건은 니르바나 요청자가 아직 없다
+         확인자   = 답변한 니르바나 직원      → payload.manager
+       요청 행의 컬럼은 저장 시점에 서버가 세션에서 찍은 값이라 화면 입력값보다 믿을 만하다.
+       옛 요청은 그 컬럼이 비어 있어 payload 값으로 되돌아간다. */
+    foreach (allRequests($pdo, $u, true) as $p) {
       $answered = (($p['status'] ?? '') === 'answered');
       $confirmed = $answered && !empty($p['answerComplete']); // 확인자 답변 완료 = 확정
       $quoteSent = !empty($p['quoteSent']);
@@ -556,10 +564,19 @@ function route(string $path, string $method): void {
       if ($quoteSent) $tot['quoteSent']++;
       if ($contracted) $tot['contracted']++;
       $none = '(미지정)';
-      statBump($byAgent, trim((string)($p['agent'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);
-      statBump($byAgentMgr, trim((string)($p['agentManager'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);
-      statBump($byRequester, trim((string)($p['registrant'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);
-      if ($answered) statBump($byChecker, trim((string)($p['manager'] ?? '')) ?: $none, $confirmed, $quoteSent, $contracted);
+      $pick = fn(...$vals) => (string)(array_values(array_filter(array_map(
+                fn($v) => trim((string)$v), $vals), fn($v) => $v !== ''))[0] ?? '');
+
+      $agent = $pick($p['_agencyParent'] ?? '', $p['agencyParentName'] ?? '', $p['agent'] ?? '');
+      $mgr   = $pick($p['_agency'] ?? '', $p['agencyName'] ?? '', $p['agentManager'] ?? '');
+      /* 에이전트가 직접 등록한 건은 registrant 에 그 에이전트 이름이 들어간다.
+         요청자 집계는 니르바나 직원 기준이므로 그 경우는 (미지정)으로 둔다. */
+      $reqBy = (($p['_creatorRole'] ?? '') === 'agent') ? '' : $pick($p['registrant'] ?? '');
+
+      statBump($byAgent, $agent ?: $none, $confirmed, $quoteSent, $contracted);
+      statBump($byAgentMgr, $mgr ?: $none, $confirmed, $quoteSent, $contracted);
+      statBump($byRequester, $reqBy ?: $none, $confirmed, $quoteSent, $contracted);
+      if ($answered) statBump($byChecker, $pick($p['manager'] ?? '') ?: $none, $confirmed, $quoteSent, $contracted);
     }
     $fmt = function (array $arr): array {
       $out = [];

@@ -241,7 +241,7 @@ function zoneVisible(?string $userRegion, array $p): bool {
 
    2026-08-27 — 전에는 일반 관리자가 sreq/schk 목록에 들어가지 못해
    '본인이 등록한 것'만 보였다. 관리자도 직원과 같은 규칙을 따르게 고쳤다 (사용자 결정 3번). */
-function allRequests(PDO $pdo, ?array $currentUser = null): array {
+function allRequests(PDO $pdo, ?array $currentUser = null, bool $withMeta = false): array {
   $out = [];
   $isSuperAdmin = $currentUser && $currentUser['role'] === 'admin' &&
                   (strtolower((string)($currentUser['email'] ?? '')) === strtolower(env('ADMIN_EMAIL', 'admin@nirvana.local')));
@@ -256,17 +256,27 @@ function allRequests(PDO $pdo, ?array $currentUser = null): array {
   $systemCall = ($currentUser === null);
 
   // 최고관리자는 모든 요청 조회 가능, 에이전트도 지역 제한 없음
+  /* $withMeta: 통계용. 요청 행에 저장된 에이전시 정보와 등록자 역할을 함께 돌려준다.
+     payload(JSON) 안의 값은 화면 입력이라 비어 있을 수 있는데, 이 컬럼들은 저장 시점에
+     서버가 세션에서 찍은 값이라 믿을 수 있다 (2026-08-30). */
+  $meta = $withMeta ? ", r.agency_name, r.agency_parent_name, u.role AS creator_role" : "";
+  $join = $withMeta ? " LEFT JOIN users u ON u.id = r.created_by" : "";
   if ($systemCall || $isSuperAdmin || $userRole === 'agent') {
-    $query = "SELECT payload FROM requests WHERE deleted=0";
+    $query = "SELECT r.payload$meta FROM requests r$join WHERE r.deleted=0";
   } else {
     // 일반 직원: 본인 지역 또는 본인이 요청한 것
-    $query = "SELECT payload, created_by FROM requests WHERE deleted=0";
+    $query = "SELECT r.payload, r.created_by$meta FROM requests r$join WHERE r.deleted=0";
   }
 
   $st = $pdo->query($query);
   foreach ($st->fetchAll() as $r) {
     $p = json_decode($r['payload'], true);
     if (!$p) continue;
+    if ($withMeta) {
+      $p['_agency']       = trim((string)($r['agency_name'] ?? ''));         // 에이전시 부계정 = 담당자
+      $p['_agencyParent'] = trim((string)($r['agency_parent_name'] ?? ''));  // 소속 회사 = 에이전트
+      $p['_creatorRole']  = (string)($r['creator_role'] ?? '');
+    }
 
     // 시스템 호출·최고관리자·에이전트: 모든 요청 포함
     if ($systemCall || $isSuperAdmin || $userRole === 'agent') {

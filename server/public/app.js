@@ -1536,6 +1536,25 @@ function bindForm(){
   });
   function doSubmit(direct){
     if(!d.rows.some(r=>r.hotel.trim())){toast(T('t_need_hotel1'));return;}
+    /* 룸타입 필수 (2026-08-30) — 호텔만 고르고 룸타입 없이 보내면 확인자가 어느
+       객실을 확인해야 할지 몰라 되물어야 했다. 비어 있는 첫 칸으로 커서를 옮긴다. */
+    var _bad=-1, _badName='';
+    for(var _i=0;_i<d.rows.length;_i++){
+      var _r=d.rows[_i];
+      if(_r.hotel.trim()&&!String(_r.roomType||'').trim()){_bad=_i;_badName=dHotel(_r.hotel);break;}
+      var _subs=_r.subOptions||[];
+      for(var _k=0;_k<_subs.length;_k++){
+        if(String(_subs[_k].hotel||'').trim()&&!String(_subs[_k].roomType||'').trim()){
+          _bad=_i;_badName=dHotel(_subs[_k].hotel);break;}
+      }
+      if(_bad>=0)break;
+    }
+    if(_bad>=0){
+      toast(TF('t_need_room',{hotel:_badName||'-'}),3500);
+      var _els=document.querySelectorAll('.inRoom');
+      if(_els[_bad]){_els[_bad].scrollIntoView({behavior:'smooth',block:'center'});setTimeout(function(){_els[_bad].focus();},350);}
+      return;
+    }
     if(d.mode==='parallel')d.rows.forEach(r=>{r.rooms=Math.max(1,Number(d.sharedRooms)||1);});
     DB.agentName=d.agent;
     var _sk=direct?'seqD':'seqA';DB[_sk]=(DB[_sk]||0)+1;
